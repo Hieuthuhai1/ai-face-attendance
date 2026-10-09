@@ -196,4 +196,12 @@ smoke 9/9 routes 307 + headers đầy đủ.
 **Next:** Phase 9 E2E browser suite → Phase 10 provider thật + production deploy
 (cần credentials, DPA, privacy sign-off từ bạn).
 
+## Deployment — Vercel (connected 2026-10-09)
+
+- Project `ai-face-attendance`, production `https://ai-face-attendance-zeta.vercel.app` — Status Ready.
+- Source `main` @ `8cdd1be`, auto-deploy mỗi push. Verify: `/login` production 200, UI tiếng Việt đúng.
+- Env hiện tại trỏ Supabase local → data features chưa chạy trên cloud (giới hạn đã biết).
+- Next: tạo Supabase Cloud (staging) → `supabase link` + `db push` → đổi env Vercel →
+  smoke login/check-in trên Preview. Không push migration lên cloud khi chưa duyệt.
+
 ## Next task — Phase 9 (E2E browser) / Phase 10 (Production)
