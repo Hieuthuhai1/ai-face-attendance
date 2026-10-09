@@ -190,5 +190,73 @@ begin
   raise notice 'PASS cross-org isolation';
 end $$;
 
+-- ================= 8. Enrollment lifecycle + audit (Phase 4) =================
+do $$
+declare denied boolean; v text;
+begin
+  -- B nộp thêm pending (chưa có active) → được.
+  perform set_config('request.jwt.claims',
+    '{"sub":"bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb","role":"authenticated","aud":"authenticated"}', true);
+  insert into public.face_enrollments (organization_id, employee_id, provider, status, consent_version, consent_at)
+  values ('11111111-1111-1111-1111-111111111111', 'e0000000-0000-0000-0000-000000000002',
+          'mock', 'pending', 'v1', now());
+
+  -- Employee tự insert thẳng active → WITH CHECK chặn.
+  denied := false;
+  begin
+    insert into public.face_enrollments (organization_id, employee_id, provider, provider_subject_id, status)
+    values ('11111111-1111-1111-1111-111111111111', 'e0000000-0000-0000-0000-000000000002',
+            'mock', 'fake', 'active');
+  exception when sqlstate '42501' then denied := true;
+  end;
+  if not denied then raise exception 'FAIL employee tự tạo enrollment active'; end if;
+
+  -- B thu hồi pending của mình → được.
+  update public.face_enrollments set status = 'revoked'
+    where id = 'f0000000-0000-0000-0000-000000000002';
+  select status into v from public.face_enrollments where id = 'f0000000-0000-0000-0000-000000000002';
+  if v <> 'revoked' then raise exception 'FAIL employee không revoke được của mình'; end if;
+
+  -- Manager sửa enrollment của team → RLS lọc, 0 dòng đổi (không raise, kiểm tra status).
+  perform set_config('request.jwt.claims',
+    '{"sub":"cccccccc-cccc-cccc-cccc-cccccccccccc","role":"authenticated","aud":"authenticated"}', true);
+  update public.face_enrollments set status = 'revoked'
+    where id = 'f0000000-0000-0000-0000-000000000001';
+  select status into v from public.face_enrollments where id = 'f0000000-0000-0000-0000-000000000001';
+  if v <> 'active' then raise exception 'FAIL manager sửa được enrollment team'; end if;
+
+  -- HR duyệt pending mới của B → active + đóng dấu verified_by.
+  perform set_config('request.jwt.claims',
+    '{"sub":"dddddddd-dddd-dddd-dddd-dddddddddddd","role":"authenticated","aud":"authenticated"}', true);
+  update public.face_enrollments set status = 'active', provider_subject_id = 'mock_subject_NV002', quality = 0.85
+    where employee_id = 'e0000000-0000-0000-0000-000000000002' and status = 'pending'
+    and id <> 'f0000000-0000-0000-0000-000000000002';
+  select verified_by::text into v from public.face_enrollments
+    where employee_id = 'e0000000-0000-0000-0000-000000000002' and status = 'active' limit 1;
+  if v <> 'dddddddd-dddd-dddd-dddd-dddddddddddd' then
+    raise exception 'FAIL thiếu dấu verified_by của HR (%)', v;
+  end if;
+
+  -- HR ghi audit → được; employee ghi audit cho chính mình → được; ghi hộ → bị chặn.
+  insert into public.audit_logs (organization_id, actor_id, action, resource_type, resource_id)
+  values ('11111111-1111-1111-1111-111111111111', 'dddddddd-dddd-dddd-dddd-dddddddddddd',
+          'enrollment.approved', 'face_enrollment', 'test');
+  perform set_config('request.jwt.claims',
+    '{"sub":"aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa","role":"authenticated","aud":"authenticated"}', true);
+  insert into public.audit_logs (organization_id, actor_id, action, resource_type, resource_id)
+  values ('11111111-1111-1111-1111-111111111111', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+          'enrollment.submitted', 'face_enrollment', 'test');
+  denied := false;
+  begin
+    insert into public.audit_logs (organization_id, actor_id, action, resource_type, resource_id)
+    values ('11111111-1111-1111-1111-111111111111', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+            'enrollment.submitted', 'face_enrollment', 'test');
+  exception when sqlstate '42501' then denied := true;
+  end;
+  if not denied then raise exception 'FAIL employee ghi audit hộ người khác'; end if;
+
+  raise notice 'PASS enrollment lifecycle + audit';
+end $$;
+
 reset role;
 rollback;

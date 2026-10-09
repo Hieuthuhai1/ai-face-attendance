@@ -79,6 +79,15 @@ Events seed: A in/out success 09/10, B in success ca đêm 08/10, 1 failed (live
 | S-10c | Manager duyệt adjustment team | 1 dòng, tự đóng dấu reviewer | 2 (test_rls §4) |
 | S-11 | HR active enrollment B + đọc toàn org | ≥2 active, ≥4 events | 2 (test_rls §5) |
 | S-06 | Ca đêm 22:00–06:00 | event 08/10 22:05 thuộc ca đêm | 2 (seed) + 6 |
+| E-01 | Quality gate (tối/mờ/nhỏ) | từ chối + hướng dẫn cụ thể | 4 ✅ unit |
+| E-02 | Submit thiếu consent | `CONSENT_REQUIRED` | 4 (action, chưa test tự động — E2E Phase 9) |
+| E-03 | Liveness fail (fixture) | `LIVENESS_FAILED`, không tạo row | 4 (mock unit + flow) |
+| E-04 | Provider timeout | `PROVIDER_UNAVAILABLE` sau 8s | 4 ✅ unit |
+| E-05 | Rate limit enroll | chặn sau 5 lần/10 phút | 4 ✅ unit |
+| E-06 | Duplicate active | `ALREADY_ACTIVE`, phải revoke trước | 4 (action + SQL partial unique) |
+| E-07 | HR approve/deny/revoke + audit | verified_by stamp, audit rows | 4 ✅ SQL §8 |
+| E-08 | Manager sửa enrollment team | 0 dòng đổi | 4 ✅ SQL §8 |
+| E-09 | Employee ghi audit hộ | 42501 | 4 ✅ SQL §8 |
 | S-01/02/03/04/05/08 | Enroll revoked, camera, liveness, low-conf, checkout | Theo đặc tả §11 | 5–6 |
 
 ## 5. Seed / reset

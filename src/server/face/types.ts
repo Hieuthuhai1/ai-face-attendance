@@ -19,11 +19,26 @@ export interface VerifyResult {
 
 export type FaceFixture = "good" | "blurry" | "no-match" | "liveness-fail";
 
+export interface LivenessResult {
+  status: LivenessStatus;
+  providerReference: string;
+}
+
+export interface ProviderHealth {
+  /** false khi production chưa cấu hình provider thật (fail closed). */
+  configured: boolean;
+  provider: string;
+  demo: boolean;
+  message: string;
+}
+
 export interface FaceRecognitionProvider {
   readonly name: string;
   /** True khi provider này KHÔNG dùng được cho chấm công thật. */
   readonly isDemo: boolean;
   enroll(input: { employeeId: string; images: FaceFixture[] }): Promise<EnrollResult>;
+  /** Liveness/anti-spoof là bước riêng, chạy trước verify 1:1. */
+  checkLiveness(input: { image: FaceFixture }): Promise<LivenessResult>;
   verify1to1(input: {
     providerSubjectId: string;
     image: FaceFixture;

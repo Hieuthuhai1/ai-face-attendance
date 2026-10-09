@@ -2,6 +2,7 @@ import type {
   EnrollResult,
   FaceFixture,
   FaceRecognitionProvider,
+  LivenessResult,
   VerifyResult,
 } from "./types";
 
@@ -19,6 +20,17 @@ export class MockFaceRecognitionProvider implements FaceRecognitionProvider {
       throw new Error("MOCK_LOW_QUALITY");
     }
     return { providerSubjectId: `mock_${input.employeeId}`, quality: 0.9 };
+  }
+
+  async checkLiveness(input: { image: FaceFixture }): Promise<LivenessResult> {
+    // Mock KHÔNG có liveness thật: chỉ ánh xạ fixture để test pipeline.
+    if (input.image === "liveness-fail") {
+      return { status: "fail", providerReference: "mock_ref_liveness" };
+    }
+    if (input.image === "blurry") {
+      return { status: "unknown", providerReference: "mock_ref_liveness" };
+    }
+    return { status: "pass", providerReference: "mock_ref_liveness" };
   }
 
   async verify1to1(input: {

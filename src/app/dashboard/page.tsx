@@ -56,6 +56,15 @@ async function DashboardContent({
 
       <div className="grid gap-4 sm:grid-cols-2">
         <Card>
+          <CardTitle>Đăng ký khuôn mặt</CardTitle>
+          <CardDescription>Đồng ý thông báo, chụp ảnh, chờ HR xác minh.</CardDescription>
+          <div className="mt-3">
+            <Link href="/enrollment">
+              <Button size="sm">Đăng ký khuôn mặt</Button>
+            </Link>
+          </div>
+        </Card>
+        <Card>
           <CardTitle>Chấm công</CardTitle>
           <CardDescription>Check-in/out bằng khuôn mặt (Phase 6).</CardDescription>
           <div className="mt-3">

@@ -1,9 +1,19 @@
 # Provider Setup — Face Recognition
 
-## Trạng thái hiện tại (Phase 1): MOCK ONLY
+## Trạng thái hiện tại (Phase 4): MOCK ONLY
 
 - `FACE_PROVIDER=mock` dùng `MockFaceRecognitionProvider` — kết quả xác định
-  trước theo fixture, **không nhận diện thật, không liveness thật**.
+  theo fixture, **không nhận diện thật, không liveness thật**.
+- Interface đầy đủ (`src/server/face/types.ts`): `enroll`, `checkLiveness` (bước riêng),
+  `verify1to1`, `deleteSubject`. Mọi gọi provider bọc `withProviderTimeout`
+  (mặc định 8000ms, chỉnh `FACE_PROVIDER_TIMEOUT_MS`) → timeout trả
+  `PROVIDER_UNAVAILABLE`, không treo request.
+- Health công khai `getProviderHealth()` (không secret): UI/banner + trang HR hiển thị.
+- Rate limit (bộ nhớ tiến trình, single-instance): enroll 5 lần/10 phút/user,
+  verify 10 lần/phút. Production đa instance cần Redis/DB.
+- Mock **hủy bytes ảnh ngay sau khi nhận**: frame upload qua server action (giới hạn
+  ~500KB, chỉ jpeg/png) chỉ để chạy đúng flow; verdict theo fixture do DEMO UI chọn,
+  không đọc pixel. Không lưu file, không ghi log.
 - Mock chỉ khởi tạo được khi `NODE_ENV` là `development` hoặc `test`.
   Production (`NODE_ENV=production`) + `FACE_PROVIDER=mock`/trống → **fail closed**:
   `getFaceProvider()` throw `PROVIDER_NOT_CONFIGURED`, mọi verify bị từ chối.

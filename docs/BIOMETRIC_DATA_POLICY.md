@@ -15,6 +15,8 @@
 4. **Consent:** enrollment yêu cầu hiển thị thông báo (mục đích, loại dữ liệu, thời gian
    lưu, quyền truy cập, cách xóa, phương án thay thế) + xác nhận của nhân viên +
    HR xác minh danh tính trước khi active. Lưu consent version + thời điểm.
+   (Đã triển khai consent v1 ở Phase 4: `src/features/face-enrollment/consent.ts`,
+   submit không consent → `CONSENT_REQUIRED`.)
 5. **Thu hồi:** nhân viên rút consent → revoke subject ở provider + xóa enrollment
    trong SLA 72h, có audit log.
 
