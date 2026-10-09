@@ -28,7 +28,7 @@ Tailwind v4 + zod + vitest 5. ESLint 9 (0 errors). `@types/node` nâng lên v22
 - Secret scan: `grep` không thấy `AKIA|sk-|service_role|BEGIN PRIVATE KEY` trong diff;
   không file `.env*` nào được commit (`.env.example` đã un-ignore hợp lệ).
 
-**Commit:** `chore(setup): initialize attendance app foundation` — SHA: _điền sau push_.
+**Commit:** `chore(setup): initialize attendance app foundation` — SHA: `28735b3` (pushed `main`).
 **Deployment:** chưa link Vercel → không Preview ở phase này.
 **Known issues:**
 - create-next-app 16 sinh `layout.tsx` dùng `LayoutProps` không tồn tại → đã sửa
