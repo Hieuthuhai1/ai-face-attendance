@@ -103,6 +103,12 @@ Events seed: A in/out success 09/10, B in success ca đêm 08/10, 1 failed (live
 | R-04 | Manager scope | team + mình, export audit ok, org khác chặn | 6 ✅ SQL §10 + integration |
 | R-05 | Routes anon | `/history`, `/reports` → 307 `/login` | 6 ✅ smoke |
 | R-06 | Export action + dashboard counts (authenticated render) | cần session browser | 6 (E2E Phase 9) |
+| W-01 | Tạo request (thiếu giờ/cross-user/trùng pending) | validation + 42501 + 23505 | 7 ✅ unit + SQL §11 + integration |
+| W-02 | Duyệt qua RPC (manager team) | approved + reviewer + audit + correction | 7 ✅ SQL §11 + integration |
+| W-03 | Duyệt trùng (idempotent) | `ALREADY_DECIDED` | 7 ✅ SQL §11 + integration |
+| W-04 | Employee/HR ngoài phạm vi duyệt | 42501 | 7 ✅ SQL §11 + integration |
+| W-05 | Leave tạo + duyệt team | approved qua RLS + stamp | 7 ✅ SQL §11 + integration |
+| W-06 | Routes `/adjustments` `/leave` `/audit` anon | 307 `/login` | 7 (smoke, như R-05) |
 | S-01/02/03/04/05/08 | Enroll revoked, camera, liveness, low-conf, checkout | Theo đặc tả §11 | 5–6 |
 
 ## 5. Seed / reset

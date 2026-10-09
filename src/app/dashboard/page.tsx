@@ -81,6 +81,18 @@ async function DashboardContent({
             </Link>
           </div>
         </Card>
+        <Card>
+          <CardTitle>Chỉnh công & nghỉ phép</CardTitle>
+          <CardDescription>Gửi yêu cầu chỉnh công, đơn nghỉ, theo dõi duyệt.</CardDescription>
+          <div className="mt-3 flex gap-2">
+            <Link href="/adjustments">
+              <Button size="sm" variant="secondary">Chỉnh công</Button>
+            </Link>
+            <Link href="/leave">
+              <Button size="sm" variant="secondary">Đơn nghỉ</Button>
+            </Link>
+          </div>
+        </Card>
         {hasRole(profile.role, REVIEW_ROLES) ? (
           <Card>
             <CardTitle>Báo cáo</CardTitle>
@@ -88,6 +100,17 @@ async function DashboardContent({
             <div className="mt-3">
               <Link href="/reports">
                 <Button size="sm" variant="secondary">Xem báo cáo</Button>
+              </Link>
+            </div>
+          </Card>
+        ) : null}
+        {hasRole(profile.role, ["hr_admin", "system_admin"]) ? (
+          <Card>
+            <CardTitle>Nhật ký audit</CardTitle>
+            <CardDescription>Tra cứu thao tác đặc quyền (chỉ đọc).</CardDescription>
+            <div className="mt-3">
+              <Link href="/audit">
+                <Button size="sm" variant="secondary">Xem audit</Button>
               </Link>
             </div>
           </Card>

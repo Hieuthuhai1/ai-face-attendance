@@ -51,6 +51,10 @@ Browser ──► Next.js routes (src/app)
   ngày xem (theo giờ server, so sánh chuỗi ISO theo tz tổ chức ở tầng gọi).
 - Summary là dữ liệu tổng hợp tái tính từ events (RPC `record_attendance_event`);
   events là nguồn sự thật cho lịch sử chi tiết.
+- **Correction model (Phase 7):** events gốc bất biến; điều chỉnh công là records riêng
+  (`attendance_adjustment_requests`) + audit. Khi duyệt, RPC `decide_adjustment_request`
+  áp `requested_in/out` vào summaries (giữ nguyên events) trong cùng transaction với
+  quyết định và audit row. Leave không sửa công đã ghi.
 
 ## Data & validation conventions
 - Zod schemas ở biên (form + API). Server re-validate mọi thứ client gửi.

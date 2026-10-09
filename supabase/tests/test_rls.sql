@@ -352,5 +352,89 @@ begin
   raise notice 'PASS report scope + export audit';
 end $$;
 
+-- ================= 11. Adjustment/leave/audit workflow (Phase 7) =================
+do $$
+declare denied boolean; v text; aid uuid;
+begin
+  -- Employee A tạo request cho chính mình → được.
+  perform set_config('request.jwt.claims',
+    '{"sub":"aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa","role":"authenticated","aud":"authenticated"}', true);
+  insert into public.attendance_adjustment_requests
+    (organization_id, employee_id, work_date, requested_in, reason, status)
+  values ('11111111-1111-1111-1111-111111111111', 'e0000000-0000-0000-0000-000000000001',
+          '2026-10-05', '2026-10-05T08:00:00+07', 'RLS test', 'pending')
+  returning id into aid;
+
+  -- Employee tạo request cho người khác → WITH CHECK chặn.
+  denied := false;
+  begin
+    insert into public.attendance_adjustment_requests
+      (organization_id, employee_id, work_date, reason, status)
+    values ('11111111-1111-1111-1111-111111111111', 'e0000000-0000-0000-0000-000000000002',
+            '2026-10-05', 'RLS test', 'pending');
+  exception when sqlstate '42501' then denied := true;
+  end;
+  if not denied then raise exception 'FAIL employee tạo request cho người khác'; end if;
+
+  -- Manager duyệt request của team qua RPC → approved + reviewer + audit.
+  perform set_config('request.jwt.claims',
+    '{"sub":"cccccccc-cccc-cccc-cccc-cccccccccccc","role":"authenticated","aud":"authenticated"}', true);
+  perform public.decide_adjustment_request(aid, 'approved', 'RLS test duyet');
+  select status into v from public.attendance_adjustment_requests where id = aid;
+  if v <> 'approved' then raise exception 'FAIL manager không duyệt được request team'; end if;
+  -- Audit chỉ HR/system được đọc → kiểm tra dưới quyền HR.
+  perform set_config('request.jwt.claims',
+    '{"sub":"dddddddd-dddd-dddd-dddd-dddddddddddd","role":"authenticated","aud":"authenticated"}', true);
+  select count(*) into v from public.audit_logs
+    where action = 'adjustment.approved' and resource_id = aid::text;
+  if v <> '1' then raise exception 'FAIL thiếu audit cho quyết định (%)', v; end if;
+  perform set_config('request.jwt.claims',
+    '{"sub":"cccccccc-cccc-cccc-cccc-cccccccccccc","role":"authenticated","aud":"authenticated"}', true);
+
+  -- Duyệt lại (idempotent) → ALREADY_DECIDED.
+  denied := false;
+  begin
+    perform public.decide_adjustment_request(aid, 'rejected', 'doi y');
+  exception when sqlstate 'P0001' then denied := true;
+  end;
+  if not denied then raise exception 'FAIL duyệt trùng không bị chặn'; end if;
+
+  -- Employee thường gọi RPC duyệt trên request PENDING → 42501 (quyền check sau status).
+  perform set_config('request.jwt.claims',
+    '{"sub":"aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa","role":"authenticated","aud":"authenticated"}', true);
+  insert into public.attendance_adjustment_requests
+    (organization_id, employee_id, work_date, reason, status)
+  values ('11111111-1111-1111-1111-111111111111', 'e0000000-0000-0000-0000-000000000001',
+          '2026-10-06', 'RLS test 2', 'pending')
+  returning id into aid;
+
+  -- Employee thường gọi RPC duyệt → 42501.
+  perform set_config('request.jwt.claims',
+    '{"sub":"bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb","role":"authenticated","aud":"authenticated"}', true);
+  denied := false;
+  begin
+    perform public.decide_adjustment_request(aid, 'approved', 'x');
+  exception when sqlstate '42501' then denied := true;
+  end;
+  if not denied then raise exception 'FAIL employee gọi được RPC duyệt'; end if;
+
+  -- Leave: employee tạo cho mình được; manager duyệt đơn team được (RLS + stamp).
+  insert into public.leave_requests
+    (organization_id, employee_id, leave_type, start_date, end_date, reason, status)
+  values ('11111111-1111-1111-1111-111111111111', 'e0000000-0000-0000-0000-000000000002',
+          'sick', '2026-10-20', '2026-10-21', 'RLS test', 'pending');
+  perform set_config('request.jwt.claims',
+    '{"sub":"cccccccc-cccc-cccc-cccc-cccccccccccc","role":"authenticated","aud":"authenticated"}', true);
+  update public.leave_requests set status = 'approved'
+    where employee_id = 'e0000000-0000-0000-0000-000000000002' and status = 'pending'
+    and start_date = '2026-10-20';
+  select count(*) into v from public.leave_requests
+    where employee_id = 'e0000000-0000-0000-0000-000000000002' and status = 'approved'
+    and start_date = '2026-10-20';
+  if v <> '1' then raise exception 'FAIL manager không duyệt được đơn team'; end if;
+
+  raise notice 'PASS adjustment leave audit workflow';
+end $$;
+
 reset role;
 rollback;
