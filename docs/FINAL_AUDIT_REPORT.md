@@ -4,7 +4,8 @@ Phạm vi: toàn app trên local (Next.js dev + Supabase local). Mọi verdict �
 chạy thật; mục không chạy được ghi NOT RUN + lý do, không đánh dấu PASS.
 
 **Kết luận: NOT PRODUCTION-READY** — face provider/liveness thật chưa cấu hình
-(mock-only), chưa có privacy review pháp lý, chưa environment/cloud, chưa E2E browser.
+(mock-only), chưa có privacy review pháp lý, chưa project production sạch,
+chưa monitoring, chưa E2E browser. (Vercel + Supabase staging đã link sau Phase 8.)
 
 ## Verdicts
 
@@ -38,9 +39,35 @@ chạy thật; mục không chạy được ghi NOT RUN + lý do, không đánh 
   Fix: assert membership (`toContain`). Hành vi đúng (1 row) đã được khẳng định lại.
 
 ## Gap register (không chặn local, chặn production)
-
 1. Provider/liveness thật + DPA/region/chi phí (Phase 10) — app báo NOT CONFIGURED.
 2. Privacy review pháp lý + HR chốt retention 24 tháng (policy đang là đề xuất).
-3. Cloud Supabase + Vercel env prod + monitoring (chưa link).
+3. Vercel đã link + deploy Ready; Supabase staging đã link/seed — còn lại: monitoring,
+   project production sạch, privacy sign-off.
 4. E2E browser suite + kiểm tra thiết bị thật (camera/permission matrix).
 5. Rate limit đa instance (hiện tại bộ nhớ tiến trình) + HSTS prod.
+
+## Re-audit #26 (phiên mới, chạy lại toàn bộ 2026-10-09)
+
+Lệnh: `npm run lint`, `npm run typecheck`, `npm test`,
+`RUN_DB_TESTS=1 npx vitest run tests/integration` (keys từ `.env.local`, không in),
+`psql ... -f supabase/tests/test_rls.sql` (docker exec), `npm run build`.
+
+| Hạng mục #26 | Kết quả | Evidence mới |
+|---|---|---|
+| Auth and RBAC | PASS | integration 17/17 (gồm login/session/logout); proxy-matcher parity unit |
+| Employee/department management | PASS | integration (duplicate 23505, deactivate giữ lịch sử); RLS §2/§4 |
+| Shift assignment + overnight | PASS | exclusion 23P01 (integration), resolve/spill unit, seed ca đêm |
+| Consent + HR-approved enrollment | PARTIAL | SQL §8 + unit; submit/approve qua UI cần browser (như cũ) |
+| Provider/liveness real config | FAIL/NOT CONFIGURED | mock-only; production fail closed (unit F-01/F-02); không claim success |
+| Check-in/out timestamp + idempotency | PASS | SQL §9 (server time, ownership, duplicate), integration (timestamp, concurrent 1 row, rollback) |
+| Alternative method | PARTIAL | SQL fallback insert + action/UI; flow duyệt qua browser chưa chạy |
+| History + reports/CSV | PASS | SQL §10, integration scope, unit escape/range; export action cần browser |
+| Adjustment workflow + audit | PASS | SQL §11 (idempotent, reviewer scope, audit completeness), integration |
+| RLS A/B, manager, HR, org boundary | PASS | `test_rls.sql` **11/11 sections** chạy lại hôm nay |
+| Biometrics/secrets/logs | PASS | grep sạch; logger redact unit; response không confidence/template/subject |
+| Mobile/camera/a11y | PARTIAL | code checklist (như cũ); chưa thiết bị thật |
+| Lint/typecheck/unit/integration/e2e/build | PASS (e2e NOT RUN) | lint 0 lỗi; typecheck sạch; unit 46/46; integration 17/17 (1 transient fail lần đầu, rerun xanh — flake song song đã biết); e2e: chưa Playwright; build xanh |
+| Vercel + production Supabase | PARTIAL | Vercel Ready + staging seed/push 12/12 đã verify; production cần project sạch riêng (chưa tạo); smoke login browser đang chờ bạn |
+
+Outstanding risks & rollback: như Gap register + flake integration song song
+(ghi nhận, rerun xanh); rollback Vercel Promote + DB fix-forward, cấm `db reset` prod.

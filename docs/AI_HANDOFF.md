@@ -215,7 +215,8 @@ smoke 9/9 routes 307 + headers đầy đủ.
 
 ## Staging — Supabase Cloud (connected 2026-10-09)
 
-- Project `ai-face-attendance-staging` (Singapore), ref `vbqfcrptytzogskmornm`.
+- Project `ai-face-attendance-staging` (region thực tế Tokyo `ap-northeast-1` —
+  đã giữ mặc định lúc tạo; production sau chọn Singapore), ref `vbqfcrptytzogskmornm`.
   Link bằng lệnh của bạn (password do bạn giữ, không qua chat).
 - `db push`: 12/12 migrations, remote == local. Seed test đã chạy:
   2 orgs, 6 users, 6 employees, 5 events (verify bằng count query).
@@ -232,8 +233,6 @@ smoke 9/9 routes 307 + headers đầy đủ.
    có nút Đăng ký khuôn mặt / Lịch sử / Chỉnh công / Đơn nghỉ.
 4. Đăng xuất → vào `/dashboard` bị đẩy về `/login`.
 5. Báo tôi kết quả (pass/lỗi + chụp màn hình lỗi nếu có).
-- Next: tạo Supabase Cloud (staging) → `supabase link` + `db push` → đổi env Vercel →
-  smoke login/check-in trên Preview. Không push migration lên cloud khi chưa duyệt.
 
 ## Production prep (checked 2026-10-09, chưa go-live)
 
