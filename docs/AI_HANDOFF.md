@@ -211,6 +211,7 @@ smoke 9/9 routes 307 + headers đầy đủ.
 - Fix: thêm đúng tên cho cả 3 môi trường, xóa biến sai. Verify bằng
   `vercel env pull` (chỉ đọc tên, không in giá trị) + curl site hết lỗi.
 - Bài học: env mới phải có smoke ngay; cân nhắc fail-fast message rõ khi thiếu env.
+- Resolve: redeploy xong, `/login` render đủ form (verify qua HTML), log hết lỗi Supabase.
 
 ## Staging — Supabase Cloud (connected 2026-10-09)
 
