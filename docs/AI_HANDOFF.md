@@ -90,7 +90,28 @@ deactivate, overlap 23P01, time 23514, ca đêm, escalation) · RLS SQL 7/7 lạ
 **Known issues:** E2E browser (Playwright) để Phase 9; mời tài khoản mới cho HR chưa có
 (dùng tài khoản seed); `AGENTS.md` có block auto-added của `next dev` (giữ theo yêu cầu tool).
 
-## Next task — Phase 4 (Face enrollment + provider adapter)
+## Phase 4 — Face enrollment + provider adapter (completed 2026-10-09)
 
-Consent flow, camera/quality checks, enrollment API qua `IFaceProvider` (mock local),
-HR approve/revoke + audit, UI states đầy đủ. Provider thật vẫn NOT CONFIGURED.
+**Adapter:** `IFaceProvider` mở rộng (`enroll`, `checkLiveness` riêng, `verify1to1`,
+`deleteSubject`) + `withProviderTimeout` (8s) + `getProviderHealth()` (không secret) +
+rate limit (enroll 5/10ph, verify 10/1ph, single-instance; đa instance cần Redis).
+Mock chỉ dev/test, production fail closed; mock **hủy bytes frame**, verdict theo
+fixture DEMO, UI gắn nhãn.
+**Flow:** consent v1 (5 mục + checkbox bắt buộc) → camera (permission/denied/unavailable,
+preview, chụp, quality gate sáng/mờ/size trung thực) → submit (eligibility, rate,
+consent, ≤500KB, liveness→enroll→pending) → HR queue (kích hoạt/từ chối lý do,
+trigger stamp verified_by) → revoke/re-enroll + audit. Không template/ảnh về client/log.
+**Migrations:** `...130000_enrollment_ops` (audit insert HR + stamp verifier),
+`...131000_audit_self_insert` (employee tự ghi audit).
+
+**Kết quả chạy thật (local):** `typecheck` ✅ · `lint` ✅ · unit 27/27
+(quality E-01, rate E-05, timeout E-04, mock liveness, health) · RLS SQL 8/8
+(+lifecycle/audit E-07/E-08/E-09; sửa test manager-update-0-dòng) · `build` ✅
+(`/enrollment`, `/admin/enrollments` PPR) · smoke: anon → 307 `/login` ·
+secret scan sạch (kể cả base64 dài).
+**Commit:** `feat(biometrics): add face enrollment provider adapter` — SHA: `99f977a`.
+**Chưa có:** face provider/liveness thật (NOT CONFIGURED, Phase 10); E2E browser (Phase 9);
+action-level test submit (cần session, E2E Phase 9 — đã ghi E-02).
+**Next:** Phase 5 check-in/out 1:1 (đã có enrollment tiền đề).
+
+## Next task — Phase 5 (Attendance check-in/out)
