@@ -313,6 +313,14 @@ begin
   end;
   if not denied then raise exception 'FAIL RPC cho trùng idempotency key'; end if;
 
+  -- Fallback thay thế: employee insert trực tiếp status fallback + lý do → được.
+  insert into public.attendance_events
+    (organization_id, employee_id, event_type, status, method, idempotency_key, note)
+  values ('11111111-1111-1111-1111-111111111111', 'e0000000-0000-0000-0000-000000000001',
+          'check_in', 'fallback', 'pin_fallback', 'evt_rls_rpc_fb1', 'RLS test fallback');
+  select count(*) into v from public.attendance_events where idempotency_key = 'evt_rls_rpc_fb1';
+  if v <> '1' then raise exception 'FAIL employee không ghi được fallback'; end if;
+
   raise notice 'PASS attendance rpc guards';
 end $$;
 

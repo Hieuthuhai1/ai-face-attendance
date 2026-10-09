@@ -101,6 +101,24 @@ function rpcArgs(key: string, overrides: Record<string, unknown> = {}) {
     }
   });
 
+  it("concurrent duplicate: 2 rpc cùng key → đúng 1 row", async () => {
+    const sb = await login("nv.a@demo.vn");
+    const key = `evt_it_${Date.now()}_cc`;
+    try {
+      const [r1, r2] = await Promise.all([
+        sb.rpc("record_attendance_event", rpcArgs(key)),
+        sb.rpc("record_attendance_event", rpcArgs(key)),
+      ]);
+      const codes = [r1.error?.code ?? null, r2.error?.code ?? null];
+      expect(codes).toContain(null);
+      expect(codes).toContain("23505");
+      const rows = await sb.from("attendance_events").select("id").eq("idempotency_key", key);
+      expect((rows.data ?? []).length).toBe(1);
+    } finally {
+      await sb.auth.signOut();
+    }
+  });
+
   it("transaction rollback: key lỗi → không tạo summary mồ côi", async () => {
     const sb = await login("nv.a@demo.vn");
     const key = `evt_it_${Date.now()}_4`;
