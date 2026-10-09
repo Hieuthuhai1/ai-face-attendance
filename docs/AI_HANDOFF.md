@@ -114,4 +114,27 @@ secret scan sạch (kể cả base64 dài).
 action-level test submit (cần session, E2E Phase 9 — đã ghi E-02).
 **Next:** Phase 5 check-in/out 1:1 (đã có enrollment tiền đề).
 
-## Next task — Phase 5 (Attendance check-in/out)
+## Phase 5 — Check-in/out 1:1 (completed 2026-10-09)
+
+**Ghi event:** RPC `record_attendance_event` (migration `...132000`): ownership qua
+`auth.uid()` trong function, org/assignment match, `occurred_at=now()`, idempotency
+unique, upsert + recompute summary cùng transaction. Gọi bằng user-JWT (không cần
+service-role key). Browser insert success trực tiếp vẫn bị RLS+trigger chặn.
+**Quyết định:** `decideVerification` thuần — success / review (band thấp, HR rà soát,
+không phải gian lận) / failed (liveness fail, no-match ghi event failed để audit).
+Thresholds từ config. Late/early tính bằng rules Phase 3.
+**Flow:** eligibility (active, enrollment, ca resolve gồm overnight spill, rate) →
+liveness → verify 1:1 → record; retry cùng key trả bản ghi cũ (chống trùng);
+out-yêu-cầu-in-mở; fallback PIN + lý do → HR xác nhận; mock success gắn note DEMO.
+**UI:** `/check-in` (in/out theo trạng thái, states riêng cho từng lỗi, camera-denied,
+mạng lỗi, fallback form).
+
+**Kết quả chạy thật (local):** `typecheck` ✅ · `lint` ✅ · unit 37/37 (10 decision mới) ·
+integration 9/9 (4 attendance mới: timestamp+summary, duplicate, cross-user, rollback) ·
+RLS SQL 9/9 (+rpc guards) · `build` ✅ · smoke `/check-in` anon → 307 · secret sạch.
+**Commit:** `feat(attendance): add verified check in and check out` — SHA: `214529b`.
+**Chưa có:** provider thật; E2E browser các nhánh C-07/C-08/C-09 (Phase 9);
+orchestration action-level (cần session, E2E Phase 9).
+**Next:** Phase 6/7 — history/dashboard/reports CSV + adjustments/audit UI.
+
+## Next task — Phase 6 (History, dashboard, reports)
