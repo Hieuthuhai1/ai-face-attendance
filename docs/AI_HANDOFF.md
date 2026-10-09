@@ -69,7 +69,28 @@ máy có project local khác (`english-kid`, ports 544xx) — tuyệt đối kh�
 vào đó; mọi lệnh Phase 2 chỉ chạy trong `D:\web-app\timekeeping` (ports 543xx).
 **Local DB:** `postgresql://postgres:postgres@127.0.0.1:54322/postgres` (user/pass local mặc định).
 
-## Next task — Phase 3 (Auth & RBAC)
+## Phase 3 — Auth/RBAC + Nhân sự + Ca làm (completed 2026-10-09)
 
-Supabase Auth email/password + login/session, protected routes, role từ server
-(`profiles`), seed accounts ở trên dùng để test matrix 4 roles.
+**Auth:** `@supabase/ssr` clients (browser/server) + `src/proxy.ts` (Next 16 KHÔNG dùng
+`middleware.ts` — phát hiện qua smoke test) + `requireUser/requireRole` server-side +
+`/login`, `/dashboard`, logout action. Role từ `profiles` (DB), client không tự nâng.
+**HR:** server actions CRUD employees (mã duy nhất/org, verify tham chiếu đúng org,
+vô hiệu hóa giữ lịch sử, chặn tự vô hiệu chính mình) + shifts/assignments
+(overlap → 23P01 map tiếng Việt) + UI search/pagination/dialogs/confirm.
+`src/lib/attendance/rules.ts`: grace/rounding/overnight pure service.
+
+**Kết quả chạy thật (local):** `typecheck` ✅ · `lint` ✅ · unit 19/19 ✅ ·
+integration 5/5 qua API thật (login/session/logout, A/B, HR scope+duplicate 23505,
+deactivate, overlap 23P01, time 23514, ca đêm, escalation) · RLS SQL 7/7 lại sau
+đổi seed · `build` ✅ (Partial Prerender + Proxy) · smoke: `/login` 200 có form,
+`/dashboard` anon → 307 `/login` · secret scan sạch.
+**Seed fix trong phase:** `instance_id` zero-UUID + token columns `''` + `phone` NULL
+(GoTrue scan) — `db reset` sạch. Chưa link cloud/Vercel → không Preview.
+**Commit:** `feat(hr): add employee and shift management` — SHA: `e91638e` (pushed `main`).
+**Known issues:** E2E browser (Playwright) để Phase 9; mời tài khoản mới cho HR chưa có
+(dùng tài khoản seed); `AGENTS.md` có block auto-added của `next dev` (giữ theo yêu cầu tool).
+
+## Next task — Phase 4 (Face enrollment + provider adapter)
+
+Consent flow, camera/quality checks, enrollment API qua `IFaceProvider` (mock local),
+HR approve/revoke + audit, UI states đầy đủ. Provider thật vẫn NOT CONFIGURED.
