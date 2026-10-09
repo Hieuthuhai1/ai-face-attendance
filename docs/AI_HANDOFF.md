@@ -62,7 +62,7 @@ summary, adjustments (pending/approved/rejected), leave, audit, settings.
 - Secret scan: grep sạch; seed chứa bcrypt + password local-only đã document
   trong TEST_DATA (không dùng cho cloud).
 
-**Commit:** `feat(database): add attendance schema rls and seed` — SHA: _điền sau push_.
+**Commit:** `feat(database): add attendance schema rls and seed` — SHA: `24d3ca1` (pushed `main`).
 **Deployment:** Vercel chưa link → không Preview.
 **Known issues/blockers:** Docker Desktop phải khởi động tay trước `supabase start`;
 máy có project local khác (`english-kid`, ports 544xx) — tuyệt đối không reset/db push
