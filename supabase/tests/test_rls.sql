@@ -258,5 +258,63 @@ begin
   raise notice 'PASS enrollment lifecycle + audit';
 end $$;
 
+-- ================= 9. Attendance RPC (Phase 5) =================
+do $$
+declare denied boolean; v text; d date;
+begin
+  -- A ghi check-in qua RPC → được, occurred_at do server set, summary tạo kèm.
+  perform set_config('request.jwt.claims',
+    '{"sub":"aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa","role":"authenticated","aud":"authenticated"}', true);
+  perform public.record_attendance_event(
+    'e0000000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-000000000001',
+    'check_in', 'success', 'face', 'rpc_ref_1', 'pass', 0.95,
+    'evt_rls_rpc_0001', null, current_date,
+    '50000000-0000-0000-0000-000000000001', 0, 0);
+  select status into v from public.attendance_daily_summaries
+    where employee_id = 'e0000000-0000-0000-0000-000000000001' and work_date = current_date
+    and shift_id = '50000000-0000-0000-0000-000000000001';
+  if v not in ('incomplete', 'present', 'late') then
+    raise exception 'FAIL summary không được tạo/cập nhật (%)', v;
+  end if;
+
+  -- A gọi RPC với employee của B → ownership chặn.
+  denied := false;
+  begin
+    perform public.record_attendance_event(
+      'e0000000-0000-0000-0000-000000000002', 'a0000000-0000-0000-0000-000000000002',
+      'check_in', 'success', 'face', 'rpc_ref_x', 'pass', 0.95,
+      'evt_rls_rpc_0002', null, current_date,
+      '50000000-0000-0000-0000-000000000002', 0, 0);
+  exception when sqlstate '42501' then denied := true;
+  end;
+  if not denied then raise exception 'FAIL RPC cho phép ghi hộ nhân viên khác'; end if;
+
+  -- A dùng assignment của B → chặn.
+  denied := false;
+  begin
+    perform public.record_attendance_event(
+      'e0000000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-000000000002',
+      'check_in', 'success', 'face', 'rpc_ref_y', 'pass', 0.95,
+      'evt_rls_rpc_0003', null, current_date,
+      '50000000-0000-0000-0000-000000000002', 0, 0);
+  exception when sqlstate '42501' then denied := true;
+  end;
+  if not denied then raise exception 'FAIL RPC cho phép dùng phân ca người khác'; end if;
+
+  -- Trùng idempotency key qua RPC → unique violation (client retry cùng key).
+  denied := false;
+  begin
+    perform public.record_attendance_event(
+      'e0000000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-000000000001',
+      'check_in', 'failed', 'face', 'rpc_ref_z', 'fail', 0.2,
+      'evt_rls_rpc_0001', null, current_date,
+      '50000000-0000-0000-0000-000000000001', 0, 0);
+  exception when sqlstate '23505' then denied := true;
+  end;
+  if not denied then raise exception 'FAIL RPC cho trùng idempotency key'; end if;
+
+  raise notice 'PASS attendance rpc guards';
+end $$;
+
 reset role;
 rollback;

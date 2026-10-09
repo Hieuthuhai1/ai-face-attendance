@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { UI_STATUS } from "@/lib/status";
@@ -66,9 +65,11 @@ async function DashboardContent({
         </Card>
         <Card>
           <CardTitle>Chấm công</CardTitle>
-          <CardDescription>Check-in/out bằng khuôn mặt (Phase 6).</CardDescription>
+          <CardDescription>Check-in/out bằng khuôn mặt đã xác minh.</CardDescription>
           <div className="mt-3">
-            <Badge tone="neutral">Sắp có</Badge>
+            <Link href="/check-in">
+              <Button size="sm">Chấm công ngay</Button>
+            </Link>
           </div>
         </Card>
         {hasRole(profile.role, ["hr_admin", "system_admin"]) ? (

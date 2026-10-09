@@ -88,6 +88,15 @@ Events seed: A in/out success 09/10, B in success ca đêm 08/10, 1 failed (live
 | E-07 | HR approve/deny/revoke + audit | verified_by stamp, audit rows | 4 ✅ SQL §8 |
 | E-08 | Manager sửa enrollment team | 0 dòng đổi | 4 ✅ SQL §8 |
 | E-09 | Employee ghi audit hộ | 42501 | 4 ✅ SQL §8 |
+| C-01 | check-in/out hợp lệ (rpc) | server timestamp + summary | 5 ✅ integration |
+| C-02 | Retry cùng key | 23505 → trả bản ghi cũ, không trùng | 5 ✅ integration + SQL §9 |
+| C-03 | Ghi hộ NV khác / assignment lạ | 42501 (ownership trong RPC) | 5 ✅ integration + SQL §9 |
+| C-04 | Rollback | lỗi validation → không side-effect | 5 ✅ integration |
+| C-05 | Thresholds | success/review/failed, review ≠ gian lận | 5 ✅ unit |
+| C-06 | Ca qua đêm resolve | spill → work_date hôm trước | 5 ✅ unit |
+| C-07 | Out trước in / đã check-in | `OUT_WITHOUT_IN` / `ALREADY_CHECKED_IN` | 5 (action, E2E Phase 9) |
+| C-08 | Fallback PIN + lý do | status fallback, chờ HR | 5 (action, E2E Phase 9) |
+| C-09 | Liveness fail / no-match / timeout | failed + event audit / unavailable, key giữ để retry | 5 (mock unit + flow) |
 | S-01/02/03/04/05/08 | Enroll revoked, camera, liveness, low-conf, checkout | Theo đặc tả §11 | 5–6 |
 
 ## 5. Seed / reset
