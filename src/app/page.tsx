@@ -25,9 +25,15 @@ export default function Home() {
           Luồng chấm công, enrollment và quản lý ca triển khai ở Phase 3–6.
         </CardDescription>
         <div className="mt-3 flex flex-wrap gap-2">
-          <Button>Chấm công vào</Button>
-          <Button variant="secondary">Chấm công ra</Button>
-          <Button variant="ghost">Lịch sử</Button>
+          <a href="/login">
+            <Button>Đăng nhập để chấm công</Button>
+          </a>
+          <Button variant="secondary" disabled title="Có từ Phase 6">
+            Chấm công ra
+          </Button>
+          <Button variant="ghost" disabled title="Có từ Phase 7">
+            Lịch sử
+          </Button>
         </div>
       </Card>
 

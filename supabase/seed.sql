@@ -8,14 +8,15 @@ insert into public.organizations (id, name, timezone) values
 on conflict (id) do update set name = excluded.name, timezone = excluded.timezone;
 
 -- ============ auth.users (trigger handle_new_user tự tạo profiles employee) ============
--- LƯU Ý: cột theo schema auth của Supabase local; đã verify ở lần reset đầu (xem AI_HANDOFF).
-insert into auth.users (id, aud, role, email, encrypted_password, email_confirmed_at, created_at, updated_at) values
-  ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'authenticated', 'authenticated', 'nv.a@demo.vn', crypt('Passw0rd!', gen_salt('bf')), now(), now(), now()),
-  ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'authenticated', 'authenticated', 'nv.b@demo.vn', crypt('Passw0rd!', gen_salt('bf')), now(), now(), now()),
-  ('cccccccc-cccc-cccc-cccc-cccccccccccc', 'authenticated', 'authenticated', 'quan.ly@demo.vn', crypt('Passw0rd!', gen_salt('bf')), now(), now(), now()),
-  ('dddddddd-dddd-dddd-dddd-dddddddddddd', 'authenticated', 'authenticated', 'hr@demo.vn', crypt('Passw0rd!', gen_salt('bf')), now(), now(), now()),
-  ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', 'authenticated', 'authenticated', 'admin@demo.vn', crypt('Passw0rd!', gen_salt('bf')), now(), now(), now()),
-  ('ffffffff-ffff-ffff-ffff-ffffffffffff', 'authenticated', 'authenticated', 'ngoai@khac.vn', crypt('Passw0rd!', gen_salt('bf')), now(), now(), now())
+-- instance_id bắt buộc = instance local (zero UUID; auth.instances để trống ở local).
+-- Thiếu cột này → GoTrue không tìm thấy user → "Invalid login credentials".
+insert into auth.users (id, instance_id, aud, role, email, email_change, phone_change, raw_app_meta_data, raw_user_meta_data, encrypted_password, email_confirmed_at, confirmation_token, recovery_token, email_change_token_current, email_change_token_new, phone_change_token, reauthentication_token, created_at, updated_at) values
+  ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'nv.a@demo.vn', '', '', '{}', '{}', crypt('Passw0rd!', gen_salt('bf')), now(), '', '', '', '', '', '', now(), now()),
+  ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'nv.b@demo.vn', '', '', '{}', '{}', crypt('Passw0rd!', gen_salt('bf')), now(), '', '', '', '', '', '', now(), now()),
+  ('cccccccc-cccc-cccc-cccc-cccccccccccc', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'quan.ly@demo.vn', '', '', '{}', '{}', crypt('Passw0rd!', gen_salt('bf')), now(), '', '', '', '', '', '', now(), now()),
+  ('dddddddd-dddd-dddd-dddd-dddddddddddd', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'hr@demo.vn', '', '', '{}', '{}', crypt('Passw0rd!', gen_salt('bf')), now(), '', '', '', '', '', '', now(), now()),
+  ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'admin@demo.vn', '', '', '{}', '{}', crypt('Passw0rd!', gen_salt('bf')), now(), '', '', '', '', '', '', now(), now()),
+  ('ffffffff-ffff-ffff-ffff-ffffffffffff', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'ngoai@khac.vn', '', '', '{}', '{}', crypt('Passw0rd!', gen_salt('bf')), now(), '', '', '', '', '', '', now(), now())
 on conflict (id) do nothing;
 
 -- Gán role + organization (service_role/postgres bypass RLS; trigger cho phép).

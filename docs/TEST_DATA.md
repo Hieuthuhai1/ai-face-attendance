@@ -17,6 +17,17 @@ supabase db reset       # chạy migrations + supabase/seed.sql (idempotent)
 psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -f supabase/tests/test_rls.sql
 ```
 
+Integration tests qua API thật (cần DB local + keys từ `.env.local`, không in keys ra màn hình):
+
+```powershell
+$lines = Get-Content .env.local
+foreach ($l in $lines) {
+  if ($l -match 'SUPABASE_URL=(.*)') { $env:SUPABASE_TEST_URL = $Matches[1] }
+  if ($l -match 'SUPABASE_ANON_KEY=(.*)') { $env:SUPABASE_TEST_ANON_KEY = $Matches[1] }
+}
+$env:RUN_DB_TESTS='1'; npx vitest run tests/integration
+```
+
 `test_rls.sql` tự `ROLLBACK` nên không làm bẩn seed. Assert fail → `RAISE EXCEPTION`, psql exit != 0.
 
 ## 3. Tài khoản seed (password: `Passw0rd!` — local only)
@@ -34,7 +45,21 @@ Ca: `Ca hanh chinh` 08:00–17:00 · `Ca dem` 22:00–06:00 (overnight) · `Ca c
 Events seed: A in/out success 09/10, B in success ca đêm 08/10, 1 failed (liveness fail),
 1 pending_review (confidence 0.65). Adjustments: pending/approved/rejected. Leave: pending.
 
-## 4. Scenario matrix
+## 4. Scenario matrix (kết quả Phase 3 — chạy thật trên local)
+
+| # | Scenario | Expected | Kết quả |
+|---|---|---|---|
+| Login/session/logout | signIn đúng/sai, getUser, signOut | pass | ✅ integration 5/5 |
+| Protected route | `/dashboard` chưa login → 307 `/login` | pass | ✅ smoke (curl) |
+| Proxy convention | Next 16 dùng `src/proxy.ts` (không phải `middleware.ts`) | pass | ✅ (fix trong phase) |
+| Role escalation API | employee tự set `hr_admin` bị chặn | pass | ✅ integration |
+| Employee A/B | A chỉ thấy NV001 + events mình | pass | ✅ integration |
+| HR org scope | thấy ≥5 NV, trùng mã → 23505 | pass | ✅ integration |
+| Deactivate | terminated, giữ lịch sử | pass | ✅ integration |
+| Overlap assignment | exclusion → 23P01 | pass | ✅ integration |
+| Invalid shift time | start==end → 23514 | pass | ✅ integration |
+| Ca đêm | `Ca dem` overnight 22:00–06:00 | pass | ✅ integration + unit S-06 |
+| Rules service | grace/rounding/overnight | pass | ✅ unit 6/6 |
 
 | # | Scenario | Expected | Phase |
 |---|---|---|---|
