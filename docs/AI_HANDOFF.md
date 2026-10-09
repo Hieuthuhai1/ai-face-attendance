@@ -159,4 +159,26 @@ proxy config).
 **Chưa có:** export action + dashboard authenticated render (E2E Phase 9); Vercel Preview.
 **Next:** Phase 7 — adjustments/leave/audit UI + security/E2E QA.
 
-## Next task — Phase 7 (Adjustments, leave, audit UI)
+## Phase 7 — Adjustments, leave, audit UI (completed 2026-10-09)
+
+**Model:** events gốc bất biến; duyệt điều chỉnh qua RPC `decide_adjustment_request`
+(`...134000`): idempotent (`ALREADY_DECIDED`), phân quyền reviewer trong DB
+(manager team / HR org), approved → áp correction vào summaries + audit cùng transaction.
+Chống pending trùng bằng partial unique (`...135000`) + check app. Leave: tạo/duyệt
+qua RLS + optimistic concurrency (`eq status pending` + rowcount) + audit.
+**UI:** `/adjustments` (form + của tôi + hàng đợi duyệt), `/leave`, `/audit`
+(HR/admin, filter, phân trang, metadata tối thiểu). Từ chối bắt buộc lý do.
+
+**Kết quả chạy thật (local):** `typecheck`/`lint` ✅ · unit 46/46 (+3 workflow validation) ·
+integration 16/16 sau fix (+3 workflow: duplicate-23505, RPC approve/idempotent/42501+audit,
+leave) · RLS SQL 11/11 (+§11) · `build` ✅ · smoke 307 cả 3 routes · secret sạch.
+**Điều tra trong phase:** (1) test audit-count phải đọc dưới quyền HR (manager không có
+select audit); (2) RPC check status trước role → test 42501 cần row pending;
+(3) flakes: Docker clock drift gây `PGRST303 JWT issued at future` (môi trường, đã sync),
+rows test tồn đọng → self-cleanup + ngày động; (4) `it3.txt` lọt commit → amend +
+force-with-lease, verify sạch.
+**Commit:** `feat(workflow): add attendance adjustments and audit trail` — SHA: `616dd9b`.
+**Chưa có:** E2E browser full flow; Vercel Preview.
+**Next:** Phase 8 — security hardening/QA tổng + production readiness (provider thật vẫn NOT CONFIGURED).
+
+## Next task — Phase 8 (Security hardening & QA)
