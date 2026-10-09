@@ -202,6 +202,16 @@ smoke 9/9 routes 307 + headers đầy đủ.
 - Source `main` @ `8cdd1be`, auto-deploy mỗi push. Verify: `/login` production 200, UI tiếng Việt đúng.
 - Env Vercel đang trỏ Supabase local (xem bước đổi bên dưới).
 
+## Incident — login crash production (2026-10-09, đã fix)
+
+- Triệu chứng: `/login` hiện error boundary. Log Vercel:
+  `Your project's URL and Key are required to create a Supabase client!`
+- Root cause: env var gõ sai tên `EXT_PUBLIC_SUPABASE_URL` (thiếu `N`),
+  app đọc `NEXT_PUBLIC_SUPABASE_URL` → undefined.
+- Fix: thêm đúng tên cho cả 3 môi trường, xóa biến sai. Verify bằng
+  `vercel env pull` (chỉ đọc tên, không in giá trị) + curl site hết lỗi.
+- Bài học: env mới phải có smoke ngay; cân nhắc fail-fast message rõ khi thiếu env.
+
 ## Staging — Supabase Cloud (connected 2026-10-09)
 
 - Project `ai-face-attendance-staging` (Singapore), ref `vbqfcrptytzogskmornm`.
