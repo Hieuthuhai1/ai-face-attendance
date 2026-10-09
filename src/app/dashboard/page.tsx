@@ -3,7 +3,7 @@ import { Suspense } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { UI_STATUS } from "@/lib/status";
-import { hasRole } from "@/lib/roles";
+import { hasRole, REVIEW_ROLES } from "@/lib/roles";
 import { requireUser } from "@/server/auth";
 import { signOut } from "@/features/auth/actions";
 import { LoadingState } from "@/components/ui/states";
@@ -72,6 +72,26 @@ async function DashboardContent({
             </Link>
           </div>
         </Card>
+        <Card>
+          <CardTitle>Lịch sử của tôi</CardTitle>
+          <CardDescription>Xem công theo tháng, trạng thái chỉnh công.</CardDescription>
+          <div className="mt-3">
+            <Link href="/history">
+              <Button size="sm" variant="secondary">Xem lịch sử</Button>
+            </Link>
+          </div>
+        </Card>
+        {hasRole(profile.role, REVIEW_ROLES) ? (
+          <Card>
+            <CardTitle>Báo cáo</CardTitle>
+            <CardDescription>Dashboard, lọc, xuất CSV (ghi audit).</CardDescription>
+            <div className="mt-3">
+              <Link href="/reports">
+                <Button size="sm" variant="secondary">Xem báo cáo</Button>
+              </Link>
+            </div>
+          </Card>
+        ) : null}
         {hasRole(profile.role, ["hr_admin", "system_admin"]) ? (
           <>
             <Card>

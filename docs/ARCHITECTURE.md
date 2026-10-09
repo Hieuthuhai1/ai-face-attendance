@@ -38,8 +38,21 @@ Browser ──► Next.js routes (src/app)
 7. Ghi `attendance_events` với server timestamp + idempotency key.
 8. Xóa frame ngay sau xử lý; frontend chỉ nhận success/failure/retry/fallback.
 
-## Data & validation conventions
+## Định nghĩa số liệu báo cáo (Phase 6, nguồn chuẩn: summaries + events)
 
+- **Tổng nhân sự (totalActive):** employees `employment_status='active'` trong scope
+  (manager: team + chính mình; HR: toàn org).
+- **Đã chấm công (checkedIn):** số nhân viên có summary `first_in NOT NULL` trong ngày xem.
+- **Đi trễ (late):** summaries `status='late'` (`late_min > 0`, đã trừ grace, làm tròn xuống).
+- **Về sớm (earlyLeave):** summaries `status='early_leave'`.
+- **Vắng (absent):** CHỈ kết luận khi có shift data — nhân viên active có phân ca phủ
+  ngày xem nhưng không có `first_in`. Không ca → không tính vắng.
+- **Chờ rà soát (pendingReview):** events `status IN (pending_review, fallback)` từ 00:00
+  ngày xem (theo giờ server, so sánh chuỗi ISO theo tz tổ chức ở tầng gọi).
+- Summary là dữ liệu tổng hợp tái tính từ events (RPC `record_attendance_event`);
+  events là nguồn sự thật cho lịch sử chi tiết.
+
+## Data & validation conventions
 - Zod schemas ở biên (form + API). Server re-validate mọi thứ client gửi.
 - `occurred_at` luôn do server set (`now()`); client time chỉ hiển thị.
 - Idempotency: client sinh key `evt_<uuid>`; DB unique constraint (Phase 2).

@@ -1,7 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const PROTECTED_PREFIXES = ["/dashboard", "/admin", "/check-in", "/history", "/enrollment"];
+export const PROTECTED_PREFIXES = ["/dashboard", "/admin", "/check-in", "/history", "/enrollment", "/reports"];
 
 /** Refresh session qua cookies; chưa đăng nhập mà vào route bảo vệ → /login. */
 export async function updateSession(request: NextRequest) {

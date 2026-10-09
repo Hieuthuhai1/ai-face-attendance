@@ -97,6 +97,12 @@ Events seed: A in/out success 09/10, B in success ca đêm 08/10, 1 failed (live
 | C-07 | Out trước in / đã check-in | `OUT_WITHOUT_IN` / `ALREADY_CHECKED_IN` | 5 (action, E2E Phase 9) |
 | C-08 | Fallback PIN + lý do | status fallback, chờ HR | 5 (action, E2E Phase 9) |
 | C-09 | Liveness fail / no-match / timeout | failed + event audit / unavailable, key giữ để retry | 5 (mock unit + flow) |
+| R-01 | CSV injection (= + - @ tab) | tiền tố ' + quote RFC4180 | 6 ✅ unit |
+| R-02 | Khoảng ngày (biên tháng nhuận, thứ tự, ≤62 ngày) | validate đúng | 6 ✅ unit |
+| R-03 | Employee A/B summaries | chỉ thấy mình | 6 ✅ SQL §10 + integration |
+| R-04 | Manager scope | team + mình, export audit ok, org khác chặn | 6 ✅ SQL §10 + integration |
+| R-05 | Routes anon | `/history`, `/reports` → 307 `/login` | 6 ✅ smoke |
+| R-06 | Export action + dashboard counts (authenticated render) | cần session browser | 6 (E2E Phase 9) |
 | S-01/02/03/04/05/08 | Enroll revoked, camera, liveness, low-conf, checkout | Theo đặc tả §11 | 5–6 |
 
 ## 5. Seed / reset

@@ -316,5 +316,41 @@ begin
   raise notice 'PASS attendance rpc guards';
 end $$;
 
+-- ================= 10. Report scope + export audit (Phase 6) =================
+do $$
+declare n int; denied boolean;
+begin
+  -- A chỉ đọc summary của mình.
+  perform set_config('request.jwt.claims',
+    '{"sub":"aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa","role":"authenticated","aud":"authenticated"}', true);
+  select count(*) into n from public.attendance_daily_summaries
+    where employee_id <> 'e0000000-0000-0000-0000-000000000001';
+  if n <> 0 then raise exception 'FAIL A đọc được summary người khác (%)', n; end if;
+
+  -- Manager đọc summary team (A+B), nhưng không đọc employees org khác (đã cover §2).
+  perform set_config('request.jwt.claims',
+    '{"sub":"cccccccc-cccc-cccc-cccc-cccccccccccc","role":"authenticated","aud":"authenticated"}', true);
+  select count(distinct employee_id) into n from public.attendance_daily_summaries
+    where employee_id in ('e0000000-0000-0000-0000-000000000001', 'e0000000-0000-0000-0000-000000000002');
+  if n < 1 then raise exception 'FAIL manager không đọc được summary team'; end if;
+
+  -- Manager ghi audit export trong org mình → được (policy 0010).
+  insert into public.audit_logs (organization_id, actor_id, action, resource_type, resource_id, metadata)
+  values ('11111111-1111-1111-1111-111111111111', 'cccccccc-cccc-cccc-cccc-cccccccccccc',
+          'report.export', 'attendance_report', '2026-10-01_2026-10-09', '{"rows": 3}');
+
+  -- Manager ghi audit org khác → bị chặn.
+  denied := false;
+  begin
+    insert into public.audit_logs (organization_id, actor_id, action, resource_type, resource_id)
+    values ('22222222-2222-2222-2222-222222222222', 'cccccccc-cccc-cccc-cccc-cccccccccccc',
+            'report.export', 'attendance_report', 'x');
+  exception when sqlstate '42501' then denied := true;
+  end;
+  if not denied then raise exception 'FAIL manager ghi audit org khác'; end if;
+
+  raise notice 'PASS report scope + export audit';
+end $$;
+
 reset role;
 rollback;
