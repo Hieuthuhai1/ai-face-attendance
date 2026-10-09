@@ -181,4 +181,19 @@ force-with-lease, verify sạch.
 **Chưa có:** E2E browser full flow; Vercel Preview.
 **Next:** Phase 8 — security hardening/QA tổng + production readiness (provider thật vẫn NOT CONFIGURED).
 
-## Next task — Phase 8 (Security hardening & QA)
+## Phase 8 — Security review, E2E & fix (completed 2026-10-09)
+
+**Audit đầy đủ 14 hạng mục** (`docs/FINAL_AUDIT_REPORT.md`): 11 PASS, 3 PARTIAL
+(enrollment/flow qua UI, fallback→duyệt browser, thiết bị thật — cần E2E),
+1 NOT RUN (Playwright chưa cài), build PASS.
+**Kết luận: NOT PRODUCTION-READY** (provider/liveness thật, privacy review, cloud env).
+**Fix trong audit:** B1 security headers (4 headers + smoke verify);
+B2 assertion concurrency phụ thuộc thứ tự (chuyển membership).
+**Mới:** concurrency test (2 RPC cùng key → đúng 1 row), fallback insert SQL,
+smoke 9/9 routes 307 + headers đầy đủ.
+**Kết quả:** typecheck/lint ✅ · unit 63/63 · integration 17/17 · RLS 11/11 · build ✅.
+**Commit:** `test(qa): audit attendance flows and security` — SHA: `adbc199`.
+**Next:** Phase 9 E2E browser suite → Phase 10 provider thật + production deploy
+(cần credentials, DPA, privacy sign-off từ bạn).
+
+## Next task — Phase 9 (E2E browser) / Phase 10 (Production)
