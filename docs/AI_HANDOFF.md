@@ -137,4 +137,26 @@ RLS SQL 9/9 (+rpc guards) · `build` ✅ · smoke `/check-in` anon → 307 · se
 orchestration action-level (cần session, E2E Phase 9).
 **Next:** Phase 6/7 — history/dashboard/reports CSV + adjustments/audit UI.
 
-## Next task — Phase 6 (History, dashboard, reports)
+## Phase 6 — Dashboard, history, reports, CSV (completed 2026-10-09)
+
+**Employee:** `/history` — công theo tháng, ca/in/out, trễ/sớm, trạng thái, adjustment status.
+**HR/Manager:** `/reports` — 6 thẻ (tổng, đã chấm công, trễ, về sớm, vắng-có-ca, chờ rà soát;
+vắng chỉ khi có shift data) + lọc (ngày ≤62 ngày, phòng, ca, trạng thái, NV trong scope)
++ phân trang + **xuất CSV** (escape `=+-@`, BOM UTF-8, tối đa 5000 dòng, ghi audit
+`report.export`). Manager giới hạn team (kể cả filter employeeId), HR theo org.
+Định nghĩa metrics ghi trong `docs/ARCHITECTURE.md`.
+**Migration:** `...133000_audit_manager_insert` (manager ghi audit export).
+
+**Kết quả chạy thật (local):** `typecheck` ✅ · `lint` ✅ · unit 43/43 (CSV injection,
+biên tháng/tháng nhuận, range + parity test proxy-matcher) · integration 13/13
+(+4 reports scope) · RLS SQL 10/10 (+§10) · `build` ✅ · smoke anon → 307 cả hai ·
+secret sạch.
+**Lỗi thật đã sửa:** `/reports` anon 200 do `PROTECTED_PREFIXES` thiếu entry (matcher và
+prefix là 2 nguồn → revert matcher static + test parity, vì Next cấm `.map` trong
+proxy config).
+**Flake ghi nhận:** 1 lần integration fail khi chạy song song 3 files, chạy lại xanh 2 lần.
+**Commit:** `feat(reports): add attendance dashboard and export` — SHA: `12ee52a`.
+**Chưa có:** export action + dashboard authenticated render (E2E Phase 9); Vercel Preview.
+**Next:** Phase 7 — adjustments/leave/audit UI + security/E2E QA.
+
+## Next task — Phase 7 (Adjustments, leave, audit UI)
