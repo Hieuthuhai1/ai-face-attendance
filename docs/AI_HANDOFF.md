@@ -200,7 +200,16 @@ smoke 9/9 routes 307 + headers đầy đủ.
 
 - Project `ai-face-attendance`, production `https://ai-face-attendance-zeta.vercel.app` — Status Ready.
 - Source `main` @ `8cdd1be`, auto-deploy mỗi push. Verify: `/login` production 200, UI tiếng Việt đúng.
-- Env hiện tại trỏ Supabase local → data features chưa chạy trên cloud (giới hạn đã biết).
+- Env Vercel đang trỏ Supabase local (xem bước đổi bên dưới).
+
+## Staging — Supabase Cloud (connected 2026-10-09)
+
+- Project `ai-face-attendance-staging` (Singapore), ref `vbqfcrptytzogskmornm`.
+  Link bằng lệnh của bạn (password do bạn giữ, không qua chat).
+- `db push`: 12/12 migrations, remote == local. Seed test đã chạy:
+  2 orgs, 6 users, 6 employees, 5 events (verify bằng count query).
+- Seed staging chứa tài khoản test đã document — xóa trước khi production thật.
+- Còn lại: đổi env Vercel sang cloud (đang chờ bạn) → redeploy → smoke.
 - Next: tạo Supabase Cloud (staging) → `supabase link` + `db push` → đổi env Vercel →
   smoke login/check-in trên Preview. Không push migration lên cloud khi chưa duyệt.
 
