@@ -30,6 +30,26 @@ npm run dev
 | `npm run test:watch` | Unit tests (watch) |
 | `npm run build` | Production build |
 
+## Môi trường & Deploy
+
+| Môi trường | Frontend | Database |
+|---|---|---|
+| Local | `npm run dev` | Supabase CLI (`supabase start`, ports 543xx) |
+| Preview/Staging | Vercel Preview deploys | Supabase Cloud project staging |
+| Production | `https://ai-face-attendance-zeta.vercel.app` | Supabase Cloud project production (riêng, không seed) |
+
+Env vars (chỉ tên — giá trị cấu hình trong Vercel Dashboard, không commit):
+`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`,
+`NEXT_PUBLIC_APP_TZ`, `NEXT_PUBLIC_FACE_DEMO_BANNER` (server-only:
+`SUPABASE_SERVICE_ROLE_KEY`, `FACE_PROVIDER*` khi có provider thật).
+
+**Face AI/Liveness: NOT CONFIGURED.** Production fail closed khi thiếu provider;
+mock chỉ local/test. Không claim end-to-end success khi chưa có provider thật.
+
+Rollback: Vercel → Deployments → chọn bản Ready cũ → Promote (instant).
+Database migrations chỉ tiến (không down tự động) — rollback DB bằng migration
+fix-forward mới, tuyệt đối không `db reset` production.
+
 ## Docs
 
 - `docs/IMPLEMENTATION_PLAN.md` — plan tổng thể 11 phase.

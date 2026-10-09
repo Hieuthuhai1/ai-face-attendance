@@ -224,4 +224,17 @@ smoke 9/9 routes 307 + headers đầy đủ.
 - Next: tạo Supabase Cloud (staging) → `supabase link` + `db push` → đổi env Vercel →
   smoke login/check-in trên Preview. Không push migration lên cloud khi chưa duyệt.
 
+## Production prep (checked 2026-10-09, chưa go-live)
+
+- Vercel production `https://ai-face-attendance-zeta.vercel.app` trỏ Supabase Cloud
+  staging (verify: env đủ 3 môi trường; client bundle không chứa localhost —
+  "localhost" duy nhất từ URL-parser polyfill, vô hại; kiến trúc server-side nên
+  không inline Supabase client ra browser).
+- Production fail closed đã verify bằng unit (mock + NODE_ENV=production → throw).
+- Migrations 12/12 đã review + apply staging; production cần project Supabase RIÊNG
+  (Singapore, sạch, không seed) — chưa tạo.
+- Supabase Auth Site URL/redirects trên cloud phải đổi sang domain Vercel (việc của bạn).
+- E2E browser: NOT RUN (chưa Playwright). Smoke login staging: đang chờ bạn.
+- Tuyệt đối không `db reset`/push seed lên production.
+
 ## Next task — Phase 9 (E2E browser) / Phase 10 (Production)
