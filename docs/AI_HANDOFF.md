@@ -35,7 +35,41 @@ Tailwind v4 + zod + vitest 5. ESLint 9 (0 errors). `@types/node` nâng lên v22
   thành `{ children: React.ReactNode }`.
 - `Button` không forward `ref` (React 19 types) → Dialog dùng `autoFocus`.
 
-## Next task — Phase 2 (Database/RLS/seed)
+## Phase 2 — Database/RLS/seed (completed 2026-10-09)
 
-Supabase CLI + migrations `0001–0007` (schema mục 7 plan), RLS matrix + tests A/B
-(S-09), seed idempotent. Chưa code provider thật, attendance hay quản lý ca.
+**Migrations** (`supabase/migrations/`, đã apply 2 lần sạch qua `start` + `db reset`):
+`20261009120000_core` (orgs, profiles+role guard trigger, departments, employees,
+`handle_new_user`, helpers `my_role/my_org/my_employee_id`) →
+`...121000_shifts` (work_shifts, assignments + exclusion chống overlap ca) →
+`...122000_face` (enrollments: chỉ subject ref + quality + consent, partial unique active) →
+`...123000_attendance` (events: server timestamp + idempotency unique + trigger harden,
+summaries PK(employee,work_date,shift)) →
+`...124000_requests_audit` (adjustments, leave, audit append-only, app_settings) →
+`...125000_rls` (grants + policies 4 roles; manager KHÔNG đọc face refs;
+browser cấm insert success; summaries/audit client chỉ đọc).
+
+**Seed** (`supabase/seed.sql`, idempotent): 2 orgs, 6 auth users (A/B khác dept,
+manager X, HR, sysadmin, outsider org2), 3 ca (ngày/đêm overnight/chiều),
+enrollments (active/pending/revoked), 5 events (success/failed/pending_review),
+summary, adjustments (pending/approved/rejected), leave, audit, settings.
+
+**Kết quả kiểm tra (chạy thật trên local, KHÔNG cloud):**
+- `supabase db reset` ✅ 2 lần · `test_rls.sql` ✅ 7/7 sections
+  (anon 0 rows · A/B isolation · insert downgrade+ép giờ · chặn success giả ·
+  duplicate 23505 · chặn tự nâng role · cross-org · manager scope/duyệt ·
+  HR active · sysadmin đa org), tự ROLLBACK.
+- `typecheck` ✅ · `lint` ✅ · `test` 9/9 ✅ · `build` ✅.
+- Secret scan: grep sạch; seed chứa bcrypt + password local-only đã document
+  trong TEST_DATA (không dùng cho cloud).
+
+**Commit:** `feat(database): add attendance schema rls and seed` — SHA: _điền sau push_.
+**Deployment:** Vercel chưa link → không Preview.
+**Known issues/blockers:** Docker Desktop phải khởi động tay trước `supabase start`;
+máy có project local khác (`english-kid`, ports 544xx) — tuyệt đối không reset/db push
+vào đó; mọi lệnh Phase 2 chỉ chạy trong `D:\web-app\timekeeping` (ports 543xx).
+**Local DB:** `postgresql://postgres:postgres@127.0.0.1:54322/postgres` (user/pass local mặc định).
+
+## Next task — Phase 3 (Auth & RBAC)
+
+Supabase Auth email/password + login/session, protected routes, role từ server
+(`profiles`), seed accounts ở trên dùng để test matrix 4 roles.
