@@ -248,3 +248,14 @@ smoke 9/9 routes 307 + headers đầy đủ.
 - Tuyệt đối không `db reset`/push seed lên production.
 
 ## Next task — Phase 9 (E2E browser) / Phase 10 (Production)
+
+## Google OAuth (added 2026-10-15, chưa kích hoạt provider)
+
+- Code: nút Google + `/auth/callback` (chống open-redirect, unit), trigger map tên
+  `full_name`/`name` (migration `...136000`, SQL test pass), fail-closed khi chưa bật.
+- Migration 0013 mới apply LOCAL (reset sạch); staging/production CHƯA push (cần duyệt).
+- Còn lại (bạn, theo `docs/GOOGLE_OAUTH_SETUP.md`): tạo OAuth client Google →
+  bật provider + redirect URLs trên Supabase local/staging → test browser G-04/G-05.
+- Commit `feat(auth): add google oauth sign-in` — SHA: `9145375` (pushed `main`).
+- Tests: typecheck/lint ✅ · unit 48/48 (+2 oauth) · RLS 11/11 ✅ · integration 17/17 ✅ ·
+  oauth SQL 2/2 ✅ · build ✅ · smoke nút Google render ✅ · secret sạch.
