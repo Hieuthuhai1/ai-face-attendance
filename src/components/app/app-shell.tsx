@@ -2,14 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import type { Role } from "@/types/db";
 import { Icon, type IconName } from "@/components/ui/icon";
-import { Toaster } from "@/components/ui/toast";
 import {
   findTrail,
   isActiveItem,
-  isPublicRoute,
   NAV_GROUPS,
   primaryMobileNav,
 } from "./nav";
@@ -107,6 +105,11 @@ export function AppShell({
   children: ReactNode;
 }) {
   const pathname = usePathname();
+  // Đánh dấu đã hydrate xong — E2E chờ marker này trước khi click (tránh click
+  // vào HTML tĩnh chưa gắn handler).
+  useEffect(() => {
+    document.body.dataset.hydrated = "1";
+  }, []);
   const [collapsed, setCollapsed] = useState(() => {
     try {
       return typeof window !== "undefined" && window.localStorage.getItem("app:sidebar") === "collapsed";
@@ -126,12 +129,8 @@ export function AppShell({
     });
   }
 
-  if (!user || isPublicRoute(pathname)) {
-    return (
-      <Toaster>
-        <div className="min-h-full">{children}</div>
-      </Toaster>
-    );
+  if (!user) {
+    return <div className="min-h-full">{children}</div>;
   }
 
   const groups = NAV_GROUPS.map((g) => ({
@@ -142,8 +141,7 @@ export function AppShell({
   const initial = (user.displayName || user.email || "?").trim().charAt(0).toUpperCase();
 
   return (
-    <Toaster>
-      <div className="flex min-h-full">
+    <div className="flex min-h-full">
         {/* Sidebar desktop */}
         <nav
           aria-label="Điều hướng chính"
@@ -157,7 +155,7 @@ export function AppShell({
               <span className="truncate text-sm font-bold text-slate-900">AI Face Attendance</span>
             ) : null}
           </div>
-          <nav className="flex flex-1 flex-col gap-4">
+          <div className="flex flex-1 flex-col gap-4">
             {groups.map((g) => (
               <div key={g.title} className="flex flex-col gap-1">
                 {!collapsed ? (
@@ -168,7 +166,7 @@ export function AppShell({
                 ))}
               </div>
             ))}
-          </nav>
+          </div>
           <button
             type="button"
             onClick={toggle}
@@ -225,7 +223,6 @@ export function AppShell({
           </nav>
         </div>
       </div>
-    </Toaster>
   );
 }
 

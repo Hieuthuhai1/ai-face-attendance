@@ -1,15 +1,20 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { DemoBanner } from "@/components/ui/demo-banner";
+import { Icon } from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
 import { CameraCapture } from "@/features/face-enrollment/camera-capture";
 import { fallbackCheck, verifyCheck, type CheckResult } from "@/features/attendance/actions";
-import { newIdempotencyKey } from "@/lib/idempotency";
 import type { FaceFixture } from "@/server/face/types";
+
+/** Key cho attempt mới (Web Crypto, chạy sau hydrate nên không lệch SSR). */
+function newClientKey(): string {
+  return `evt_${crypto.randomUUID()}`;
+}
 
 export interface TodayStatus {
   eligible: boolean;
@@ -26,24 +31,60 @@ type UiState =
   | { kind: "result"; res: Extract<CheckResult, { ok: true }> }
   | { kind: "failed"; code: string; message: string };
 
+const STEPS = ["1. Chọn thao tác", "2. Quét & xác minh", "3. Kết quả"] as const;
+
+const FAILED_META: Record<string, { title: string; hint: string }> = {
+  LIVENESS_FAILED: {
+    title: "Không xác định được người thật",
+    hint: "Thử lại đủ sáng, nhìn thẳng. Mock hiện tại không có liveness thật.",
+  },
+  NO_MATCH: {
+    title: "Khuôn mặt không khớp",
+    hint: "Thử lại hoặc dùng phương thức thay thế. Hệ thống không kết luận gian lận.",
+  },
+  PROVIDER_UNAVAILABLE: {
+    title: "Dịch vụ nhận diện bận",
+    hint: "Giữ nguyên trang, bấm Thử lại (cùng mã, không tạo trùng).",
+  },
+  NETWORK_ERROR: {
+    title: "Mất kết nối",
+    hint: "Kiểm tra mạng rồi bấm Thử lại (cùng mã).",
+  },
+  NO_SHIFT: { title: "Không có ca làm", hint: "Liên hệ HR nếu cần bổ sung phân ca." },
+  NO_ENROLLMENT: { title: "Chưa có mẫu khuôn mặt", hint: "Đăng ký và chờ HR duyệt trước." },
+  OUT_WITHOUT_IN: { title: "Chưa có lượt vào", hint: "Nếu quên check-in, gửi yêu cầu chỉnh công." },
+  ALREADY_CHECKED_IN: { title: "Đã check-in rồi", hint: "Hãy check-out khi ra về." },
+  RATE_LIMITED: { title: "Thao tác quá nhanh", hint: "Nghỉ ít phút rồi thử lại." },
+};
+
 export function CheckInFlow(props: { status: TodayStatus; providerDemo: boolean }) {
   const router = useRouter();
   const [direction, setDirection] = useState<"check_in" | "check_out">(
     props.status.canCheckOut ? "check_out" : "check_in",
   );
   const [fixture, setFixture] = useState<FaceFixture>("good");
-  const [key, setKey] = useState(() => newIdempotencyKey());
+  // Idempotency key giữ trong ref (không render) để SSR/client hydration khớp nhau.
+  // Sinh bằng Web Crypto tại thời điểm submit — không import node:crypto vào browser.
+  const keyRef = useRef("");
+  function ensureKey(): string {
+    if (!keyRef.current) keyRef.current = newClientKey();
+    return keyRef.current;
+  }
+  function newAttempt() {
+    keyRef.current = newClientKey();
+  }
   const [ui, setUi] = useState<UiState>({ kind: "idle" });
   const [showFallback, setShowFallback] = useState(false);
   const [reason, setReason] = useState("");
 
   const s = props.status;
+  const step = ui.kind === "idle" ? 0 : ui.kind === "verifying" ? 1 : 2;
 
   async function onCapture(frameDataUrl: string) {
     setUi({ kind: "verifying" });
     let res: CheckResult;
     try {
-      res = await verifyCheck({ direction, frameDataUrl, fixture: props.providerDemo ? fixture : undefined, idempotencyKey: key });
+      res = await verifyCheck({ direction, frameDataUrl, fixture: props.providerDemo ? fixture : undefined, idempotencyKey: ensureKey() });
     } catch {
       setUi({ kind: "failed", code: "NETWORK_ERROR", message: "Mất mạng khi gửi. Bấm Thử lại (dùng cùng mã, không tạo trùng)." });
       return;
@@ -53,24 +94,29 @@ export function CheckInFlow(props: { status: TodayStatus; providerDemo: boolean 
       return;
     }
     setUi({ kind: "result", res });
-    setKey(newIdempotencyKey()); // attempt mới dùng key mới
+    newAttempt();
     router.refresh();
   }
 
   function retry() {
-    setUi({ kind: "idle" }); // giữ nguyên key → retry không trùng
+    setUi({ kind: "idle" });
+  }
+
+  function newCapture() {
+    newAttempt();
+    setUi({ kind: "idle" });
   }
 
   async function onFallback(e: React.FormEvent) {
     e.preventDefault();
     setUi({ kind: "verifying" });
-    const res = await fallbackCheck({ direction, reason, idempotencyKey: key });
+    const res = await fallbackCheck({ direction, reason, idempotencyKey: ensureKey() });
     if (!res.ok) {
       setUi({ kind: "failed", code: res.code, message: res.message });
       return;
     }
     setUi({ kind: "result", res });
-    setKey(newIdempotencyKey());
+    newAttempt();
     setShowFallback(false);
     router.refresh();
   }
@@ -92,9 +138,34 @@ export function CheckInFlow(props: { status: TodayStatus; providerDemo: boolean 
     );
   }
 
+  const failed = ui.kind === "failed" ? (FAILED_META[ui.code] ?? { title: `Lỗi (${ui.code})`, hint: ui.message }) : null;
+
   return (
     <div className="flex flex-col gap-4">
       <DemoBanner />
+
+      {/* Stepper */}
+      <ol aria-label="Tiến trình chấm công" className="flex items-center gap-1 text-xs">
+        {STEPS.map((label, i) => {
+          const done = i < step;
+          const current = i === step;
+          return (
+            <li key={label} className="flex flex-1 items-center gap-1" aria-current={current ? "step" : undefined}>
+              <span
+                aria-hidden="true"
+                className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full font-semibold ${
+                  done ? "bg-[var(--success-bg)] text-[var(--success)]" : current ? "bg-[var(--brand)] text-white" : "bg-slate-100 text-slate-400"
+                }`}
+              >
+                {done ? <Icon name="check" size={14} /> : i + 1}
+              </span>
+              <span className={current ? "font-medium text-slate-800" : "text-slate-500"}>{label}</span>
+              {i < STEPS.length - 1 ? <span aria-hidden="true" className="mx-1 h-px flex-1 bg-slate-200" /> : null}
+            </li>
+          );
+        })}
+      </ol>
+
       <Card>
         <CardTitle>
           {s.shift ? `Ca: ${s.shift.name} (${s.shift.start_time}–${s.shift.end_time}${s.shift.overnight ? ", qua đêm" : ""})` : "Hôm nay không có ca làm"}
@@ -116,25 +187,42 @@ export function CheckInFlow(props: { status: TodayStatus; providerDemo: boolean 
 
       {ui.kind === "result" ? (
         <Card>
-          <p role="status" className="font-medium">
-            {ui.res.status === "success" ? "✓ " : ui.res.status === "fallback" ? "○ " : "⚑ "}
-            {ui.res.message}
-          </p>
-          <p className="mt-1 text-sm text-slate-500">
-            {new Date(ui.res.occurred_at).toLocaleString("vi-VN")}
-            {ui.res.duplicate ? " · (bản ghi đã tồn tại — chống trùng)" : ""}
-          </p>
-          <div className="mt-3">
+          <div className="flex flex-col items-center gap-2 py-4 text-center">
+            <span className={ui.res.status === "success" ? "text-[var(--success)]" : "text-[var(--warning)]"}>
+              <Icon name={ui.res.status === "success" ? "check" : ui.res.status === "fallback" ? "clock" : "flag"} size={40} />
+            </span>
+            <p role="status" className="text-lg font-semibold">
+              {ui.res.status === "success"
+                ? direction === "check_in" ? "Check-in thành công" : "Check-out thành công"
+                : ui.res.status === "fallback" ? "Đã ghi nhận thay thế" : "Chờ HR rà soát"}
+            </p>
+            {/* Giờ server — chỉ hiện sau khi backend xác nhận và trả về */}
+            <p className="tnum text-3xl font-bold">
+              {new Date(ui.res.occurred_at).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+            </p>
+            <p className="text-sm text-slate-500">
+              {new Date(ui.res.occurred_at).toLocaleDateString("vi-VN")} · giờ do server ghi nhận
+              {ui.res.duplicate ? " · (bản ghi đã tồn tại — chống trùng)" : ""}
+            </p>
+            <p className="text-sm text-slate-600">{ui.res.message}</p>
+          </div>
+          <div className="flex justify-center gap-2">
             <Button variant="secondary" size="sm" onClick={() => setUi({ kind: "idle" })}>Tiếp tục</Button>
+            <Button variant="ghost" size="sm" onClick={() => { setShowFallback(true); }}>Dùng phương thức thay thế</Button>
           </div>
         </Card>
-      ) : ui.kind === "failed" ? (
+      ) : ui.kind === "failed" && failed ? (
         <Card>
-          <p role="alert" className="font-medium text-red-700">✕ {ui.code}</p>
-          <p className="mt-1 text-sm text-slate-600">{ui.message}</p>
-          <div className="mt-3 flex gap-2">
+          <div className="flex flex-col items-center gap-2 py-4 text-center">
+            <span className="text-[var(--danger)]"><Icon name="x" size={36} /></span>
+            <p role="alert" className="text-lg font-semibold">{failed.title}</p>
+            <p className="text-sm text-slate-600">{failed.hint}</p>
+            <p className="text-xs text-slate-400">Mã lỗi: {ui.code} (để đối chiếu với HR/kỹ thuật)</p>
+          </div>
+          <div className="flex flex-wrap justify-center gap-2">
             <Button size="sm" variant="secondary" onClick={retry}>Thử lại (cùng mã)</Button>
-            <Button size="sm" variant="ghost" onClick={() => { setKey(newIdempotencyKey()); setShowFallback(true); }}>
+            <Button size="sm" variant="secondary" onClick={newCapture}>Chụp lại (mã mới)</Button>
+            <Button size="sm" variant="ghost" onClick={() => { newAttempt(); setShowFallback(true); }}>
               Dùng phương thức thay thế
             </Button>
           </div>
@@ -152,9 +240,13 @@ export function CheckInFlow(props: { status: TodayStatus; providerDemo: boolean 
           ) : null}
           <div className="mt-3">
             {ui.kind === "verifying" ? (
-              <p role="status" className="text-sm">◌ Đang xác minh, vui lòng giữ nguyên…</p>
+              <div role="status" className="flex flex-col items-center gap-2 py-8 text-center">
+                <span className="animate-spin text-[var(--info)]"><Icon name="refresh" size={32} /></span>
+                <p className="font-medium">Đang xác minh, vui lòng giữ nguyên trang…</p>
+                <p className="text-sm text-slate-500">Hệ thống đang đối chiếu với mẫu của bạn và ghi nhận giờ server. Chưa hiển thị thành công cho tới khi backend xác nhận.</p>
+              </div>
             ) : (
-              <CameraCapture onCapture={onCapture} />
+              <CameraCapture onCapture={onCapture} showGuide />
             )}
           </div>
           <div className="mt-2">

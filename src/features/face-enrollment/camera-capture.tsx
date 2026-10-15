@@ -14,13 +14,72 @@ export type CameraState =
 
 const CAPTURE_WIDTH = 480;
 
+/** Mở camera: ưu tiên cam trước, fallback không ràng buộc khi thiết bị lạ/không hỗ trợ.
+ *  Mỗi lượt race với timeout — request treo (prompt limbo, thiết bị lỗi) không được kẹt
+ *  mãi ở "Đang xử lý…". Stream đến muộn (thua race) bị dừng ngay để không rò camera. */
+function openWithTimeout(constraints: MediaStreamConstraints, ms: number): Promise<MediaStream> {
+  return new Promise((resolve, reject) => {
+    let done = false;
+    const timer = window.setTimeout(() => {
+      if (!done) {
+        done = true;
+        reject(new DOMException("Camera timeout", "TimeoutError"));
+      }
+    }, ms);
+    navigator.mediaDevices
+      .getUserMedia(constraints)
+      .then(
+        (s) => {
+          if (done) {
+            s.getTracks().forEach((t) => t.stop());
+            return;
+          }
+          done = true;
+          window.clearTimeout(timer);
+          resolve(s);
+        },
+        (e: unknown) => {
+          if (done) return;
+          done = true;
+          window.clearTimeout(timer);
+          reject(e instanceof Error ? e : new Error("camera failed"));
+        },
+      )
+      .catch(() => {});
+  });
+}
+
+const ATTEMPT_MS = 6000;
+
+async function openCamera(): Promise<MediaStream> {
+  try {
+    return await openWithTimeout(
+      { video: { facingMode: "user", width: { ideal: 1280 } }, audio: false },
+      ATTEMPT_MS,
+    );
+  } catch (err) {
+    if (
+      err instanceof DOMException &&
+      (err.name === "OverconstrainedError" ||
+        err.name === "NotFoundError" ||
+        err.name === "TimeoutError")
+    ) {
+      return openWithTimeout({ video: true, audio: false }, ATTEMPT_MS);
+    }
+    throw err;
+  }
+}
+
 /** Camera preview + chụp 1 frame, kiểm tra sáng/mờ/size trước khi gửi. */
 export function CameraCapture({
   onCapture,
   disabled,
+  showGuide,
 }: {
   onCapture: (frameDataUrl: string, quality: QualityReport) => void;
   disabled?: boolean;
+  /** Khung căn vị trí + tips (hướng dẫn đặt mặt, KHÔNG phải phát hiện/liveness). */
+  showGuide?: boolean;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -40,10 +99,7 @@ export function CameraCapture({
     }
     setState("requesting");
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "user", width: { ideal: 1280 } },
-        audio: false,
-      });
+      const stream = await openCamera();
       streamRef.current = stream;
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
@@ -81,7 +137,14 @@ export function CameraCapture({
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="overflow-hidden rounded-xl border border-slate-200 bg-slate-950">
+      {showGuide ? (
+        <ul className="flex flex-col gap-1 text-sm text-slate-600" aria-label="Hướng dẫn trước khi chụp">
+          <li>• Đưa khuôn mặt vào giữa khung, nhìn thẳng camera.</li>
+          <li>• Đủ sáng, tránh đèn chiếu thẳng sau lưng.</li>
+          <li>• Giữ yên máy khi bấm chụp.</li>
+        </ul>
+      ) : null}
+      <div className="relative overflow-hidden rounded-xl border border-slate-200 bg-slate-950">
         <video
           ref={videoRef}
           playsInline
@@ -89,8 +152,18 @@ export function CameraCapture({
           aria-label="Xem trước camera đăng ký khuôn mặt"
           className="aspect-[4/3] w-full object-cover"
         />
+        {showGuide && state === "ready" ? (
+          <div aria-hidden="true" className="pointer-events-none absolute inset-0 flex items-center justify-center">
+            <div className="h-3/4 w-1/2 rounded-full border-2 border-dashed border-white/80" />
+          </div>
+        ) : null}
       </div>
 
+      {showGuide ? (
+        <p className="text-xs text-slate-500">
+          Khung tròn chỉ giúp căn vị trí — không phải phát hiện khuôn mặt hay chống giả mạo.
+        </p>
+      ) : null}
       {state === "idle" || state === "requesting" ? (
         <Button onClick={start} loading={state === "requesting"} disabled={disabled}>
           Bật camera
@@ -117,8 +190,8 @@ export function CameraCapture({
       ) : null}
 
       {state === "error" ? (
-        <div className="flex flex-col gap-2">
-          <p role="alert" className="text-sm text-red-600">✕ Không mở được camera.</p>
+        <div role="alert" className="flex flex-col gap-2">
+          <p className="text-sm text-red-600">✕ Không mở được camera.</p>
           <Button variant="secondary" size="sm" onClick={start}>Thử lại</Button>
         </div>
       ) : null}

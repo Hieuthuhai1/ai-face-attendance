@@ -30,6 +30,15 @@ $env:RUN_DB_TESTS='1'; npx vitest run tests/integration
 
 `test_rls.sql` tự `ROLLBACK` nên không làm bẩn seed. Assert fail → `RAISE EXCEPTION`, psql exit != 0.
 
+> E2E (`npm run test:e2e`) chạy trên **production build** (`next start`), không chạy
+> trên `next dev`: Turbopack dev + PPR trong môi trường này không hydrate đầy đủ
+> (đã verify bằng marker effect — dev null, prod `"1"`), gây fail giả ở test cần JS.
+> ```bash
+> npm run build
+> npx next start -p 3100   # terminal riêng
+> npm run test:e2e
+> ```
+
 ## 3. Tài khoản seed (password: `Passw0rd!` — local only)
 
 | Email | Role | Org | Employee | Ghi chú |
