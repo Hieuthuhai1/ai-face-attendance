@@ -48,8 +48,8 @@ export function LoginForm() {
         </p>
       ) : null}
       <div className="mt-4">
-        <Button variant="secondary" onClick={onGoogle} loading={oauthLoading} aria-label="Đăng nhập bằng Google">
-          <span aria-hidden="true">G</span> Đăng nhập bằng Google
+        <Button variant="secondary" onClick={onGoogle} loading={oauthLoading} aria-label="Đăng nhập hoặc đăng ký bằng Google">
+          <span aria-hidden="true">G</span> Đăng nhập / Đăng ký bằng Google
         </Button>
       </div>
       <div className="my-4 flex items-center gap-2 text-xs text-slate-500" aria-hidden="true">
