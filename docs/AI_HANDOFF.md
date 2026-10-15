@@ -266,13 +266,18 @@ smoke 9/9 routes 307 + headers đầy đủ.
 
 ## Next task — Phase 9 (E2E browser) / Phase 10 (Production)
 
-## Google OAuth (added 2026-10-15, chưa kích hoạt provider)
+## Google OAuth (added 2026-10-15, staging đã bật provider)
 
 - Code: nút Google + `/auth/callback` (chống open-redirect, unit), trigger map tên
   `full_name`/`name` (migration `...136000`, SQL test pass), fail-closed khi chưa bật.
-- Migration 0013 mới apply LOCAL (reset sạch); staging/production CHƯA push (cần duyệt).
-- Còn lại (bạn, theo `docs/GOOGLE_OAUTH_SETUP.md`): tạo OAuth client Google →
-  bật provider + redirect URLs trên Supabase local/staging → test browser G-04/G-05.
-- Commit `feat(auth): add google oauth sign-in` — SHA: `9145375` (pushed `main`).
-- Tests: typecheck/lint ✅ · unit 48/48 (+2 oauth) · RLS 11/11 ✅ · integration 17/17 ✅ ·
-  oauth SQL 2/2 ✅ · build ✅ · smoke nút Google render ✅ · secret sạch.
+- **Self enrollment:** Gmail mới nộp enrollment được tự tạo employee (`G-<hash>`,
+  org mặc định) qua RPC `ensure_self_employee` (migration `...137000`); enrollment
+  vẫn pending chờ HR duyệt; check-in vẫn cần HR gán ca. Kèm fix: employee không
+  tự đổi `organization_id` (mở rộng role guard).
+- Migration 0013+0014 mới apply LOCAL; staging/production CHƯA push (cần duyệt).
+- Commit `feat(enrollment): self-provision employee for oauth users` — SHA: `a721368`
+  (branch `ui/redesign`, pushed).
+- Tests: typecheck/lint ✅ · unit 58/58 · RLS 11/11 · integration 17/17 ·
+  self-enrollment SQL 2/2 · build ✅ · secret sạch.
+- Còn lại (bạn, theo `docs/GOOGLE_OAUTH_SETUP.md`): tạo OAuth client →
+  bật provider + redirect URLs local/staging → test browser G-04/G-05/S-01.
