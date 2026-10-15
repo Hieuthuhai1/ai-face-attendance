@@ -3,11 +3,22 @@ import { requireRole } from "@/server/auth";
 import { createClient } from "@/lib/supabase/server";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { EmptyState } from "@/components/ui/states";
-import { Td, Th, Table } from "@/components/ui/table";
+import { DataTable } from "@/components/ui/data-table";
+import { Pagination } from "@/components/ui/pagination";
 import { LoadingState } from "@/components/ui/states";
 
 const PAGE_SIZE = 30;
+
+function parseMeta(raw: string): Array<[string, string]> {
+  try {
+    const obj = JSON.parse(raw) as Record<string, unknown>;
+    return Object.entries(obj)
+      .slice(0, 4)
+      .map(([k, v]) => [k, String(v ?? "—")]);
+  } catch {
+    return [["raw", raw.slice(0, 120)]];
+  }
+}
 
 export default function AuditPage({
   searchParams,
@@ -63,25 +74,53 @@ async function AuditData({ searchParams }: { searchParams: Promise<{ action?: st
         <Button type="submit" size="sm" variant="secondary">Lọc</Button>
       </form>
       <Card>
-        {rows.length === 0 ? (
-          <EmptyState title="Chưa có bản ghi audit" description="Đổi bộ lọc hoặc thực hiện thao tác quản trị." />
-        ) : (
-          <Table>
-            <thead><tr><Th>Thời gian</Th><Th>Hành động</Th><Th>Đối tượng</Th><Th>Người thực hiện</Th><Th>Metadata</Th></tr></thead>
-            <tbody>
-              {rows.map((r) => (
-                <tr key={r.id}>
-                  <Td className="whitespace-nowrap">{r.at}</Td>
-                  <Td>{r.action}</Td>
-                  <Td className="text-xs">{r.resource}</Td>
-                  <Td>{r.actor}</Td>
-                  <Td className="max-w-64 truncate text-xs" title={r.metadata}>{r.metadata}</Td>
-                </tr>
-              ))}
-            </tbody>
-          </Table>
-        )}
-        <p className="mt-2 text-sm text-slate-500">Tổng {count ?? 0} · trang {page}</p>
+        <DataTable
+          ariaLabel="Nhật ký audit"
+          rows={rows}
+          keyOf={(r) => String(r.id)}
+          emptyTitle="Chưa có bản ghi audit"
+          emptyDescription="Đổi bộ lọc hoặc thực hiện thao tác quản trị."
+          columns={[
+            { key: "at", header: "Thời gian", render: (r) => <span className="tnum whitespace-nowrap text-xs">{r.at}</span> },
+            { key: "action", header: "Hành động", render: (r) => <span className="font-medium">{r.action}</span> },
+            { key: "resource", header: "Đối tượng", render: (r) => <span className="text-xs">{r.resource}</span> },
+            { key: "actor", header: "Người thực hiện", render: (r) => r.actor },
+            {
+              key: "meta",
+              header: "Metadata",
+              render: (r) => (
+                <dl className="grid max-w-64 grid-cols-[auto_1fr] gap-x-2 text-xs">
+                  {parseMeta(r.metadata).map(([k, v]) => (
+                    <div key={k} className="contents">
+                      <dt className="truncate text-slate-400">{k}</dt>
+                      <dd className="truncate text-slate-600" title={v}>{v}</dd>
+                    </div>
+                  ))}
+                </dl>
+              ),
+            },
+          ]}
+          cardTitle={(r) => r.action}
+          cardMeta={(r) => (
+            <span className="text-xs">
+              {r.at} · {r.resource} · {r.actor}
+            </span>
+          )}
+        />
+        <div className="mt-3">
+          <Pagination
+            page={page}
+            totalPages={Math.max(1, Math.ceil((count ?? 0) / 30))}
+            total={count ?? 0}
+            label="bản ghi"
+            hrefFor={(p) =>
+              `?page=${p}` +
+              (params.action ? `&action=${encodeURIComponent(params.action)}` : "") +
+              (params.from ? `&from=${params.from}` : "") +
+              (params.to ? `&to=${params.to}` : "")
+            }
+          />
+        </div>
       </Card>
     </div>
   );

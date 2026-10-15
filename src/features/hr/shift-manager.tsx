@@ -6,10 +6,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { DataTable } from "@/components/ui/data-table";
 import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { EmptyState, ErrorState } from "@/components/ui/states";
-import { Td, Th, Table } from "@/components/ui/table";
+import { ErrorState } from "@/components/ui/states";
 import { createAssignment, createShift, deleteAssignment, updateShift } from "@/features/hr/actions";
 
 export interface ShiftRow {
@@ -107,34 +107,28 @@ export function ShiftManager(props: {
           <CardTitle>Ca làm (múi giờ Asia/Ho_Chi_Minh)</CardTitle>
           <Button size="sm" onClick={openCreateShift}>Thêm ca</Button>
         </div>
-        {props.shifts.length === 0 ? (
-          <EmptyState title="Chưa có ca làm" description="Tạo ca ngày, ca đêm qua ngày…" />
-        ) : (
-          <Table>
-            <thead>
-              <tr>
-                <Th>Tên ca</Th>
-                <Th>Giờ</Th>
-                <Th>Qua đêm</Th>
-                <Th>Grace vào/ra</Th>
-                <Th aria-label="Thao tác" />
-              </tr>
-            </thead>
-            <tbody>
-              {props.shifts.map((s) => (
-                <tr key={s.id}>
-                  <Td>{s.name}</Td>
-                  <Td>{s.start_time}–{s.end_time}</Td>
-                  <Td>{s.overnight ? <Badge tone="info">◐ Qua đêm</Badge> : "—"}</Td>
-                  <Td>{s.grace_in_min}′/{s.grace_out_min}′</Td>
-                  <Td>
-                    <Button size="sm" variant="secondary" onClick={() => openEditShift(s)}>Sửa</Button>
-                  </Td>
-                </tr>
-              ))}
-            </tbody>
-          </Table>
-        )}
+        <DataTable
+          ariaLabel="Danh sách ca làm"
+          rows={props.shifts}
+          keyOf={(s) => s.id}
+          emptyTitle="Chưa có ca làm"
+          emptyDescription="Tạo ca ngày, ca đêm qua ngày…"
+          columns={[
+            { key: "name", header: "Tên ca", render: (s) => <span className="font-medium">{s.name}</span> },
+            { key: "time", header: "Giờ", render: (s) => <span className="tnum">{s.start_time}–{s.end_time}</span> },
+            { key: "night", header: "Qua đêm", render: (s) => (s.overnight ? <Badge tone="info">◐ Qua đêm</Badge> : "—") },
+            { key: "grace", header: "Grace vào/ra", render: (s) => <span className="tnum">{s.grace_in_min}′/{s.grace_out_min}′</span> },
+            {
+              key: "actions",
+              header: <span className="sr-only">Thao tác</span>,
+              render: (s) => <Button size="sm" variant="secondary" onClick={() => openEditShift(s)}>Sửa</Button>,
+            },
+          ]}
+          cardTitle={(s) => `${s.name} (${s.start_time}–${s.end_time})`}
+          cardStatus={(s) => (s.overnight ? <Badge tone="info">◐ Qua đêm</Badge> : undefined)}
+          cardMeta={(s) => <span className="tnum">Grace {s.grace_in_min}′/{s.grace_out_min}′</span>}
+          cardActions={(s) => <Button size="sm" variant="secondary" onClick={() => openEditShift(s)}>Sửa</Button>}
+        />
       </Card>
 
       <Card>
@@ -161,32 +155,26 @@ export function ShiftManager(props: {
           </div>
         </form>
         <div className="mt-3">
-          {props.assignments.length === 0 ? (
-            <EmptyState title="Chưa phân ca" description="Chọn nhân viên, ca và ngày hiệu lực ở trên." />
-          ) : (
-            <Table>
-              <thead>
-                <tr>
-                  <Th>Nhân viên</Th>
-                  <Th>Ca</Th>
-                  <Th>Hiệu lực</Th>
-                  <Th aria-label="Thao tác" />
-                </tr>
-              </thead>
-              <tbody>
-                {props.assignments.map((a) => (
-                  <tr key={a.id}>
-                    <Td>{a.employee_code}</Td>
-                    <Td>{a.shift_name}</Td>
-                    <Td>{a.effective_from} → {a.effective_to ?? "∞"}</Td>
-                    <Td>
-                      <Button size="sm" variant="ghost" onClick={() => setDeletingAssign(a)}>Xóa</Button>
-                    </Td>
-                  </tr>
-                ))}
-              </tbody>
-            </Table>
-          )}
+          <DataTable
+            ariaLabel="Danh sách phân ca"
+            rows={props.assignments}
+            keyOf={(a) => a.id}
+            emptyTitle="Chưa phân ca"
+            emptyDescription="Chọn nhân viên, ca và ngày hiệu lực ở trên."
+            columns={[
+              { key: "emp", header: "Nhân viên", render: (a) => <span className="font-medium">{a.employee_code}</span> },
+              { key: "shift", header: "Ca", render: (a) => a.shift_name },
+              { key: "range", header: "Hiệu lực", render: (a) => <span className="tnum">{a.effective_from} → {a.effective_to ?? "∞"}</span> },
+              {
+                key: "actions",
+                header: <span className="sr-only">Thao tác</span>,
+                render: (a) => <Button size="sm" variant="ghost" onClick={() => setDeletingAssign(a)}>Xóa</Button>,
+              },
+            ]}
+            cardTitle={(a) => `${a.employee_code} — ${a.shift_name}`}
+            cardMeta={(a) => <span className="tnum">{a.effective_from} → {a.effective_to ?? "∞"}</span>}
+            cardActions={(a) => <Button size="sm" variant="ghost" onClick={() => setDeletingAssign(a)}>Xóa</Button>}
+          />
         </div>
       </Card>
 

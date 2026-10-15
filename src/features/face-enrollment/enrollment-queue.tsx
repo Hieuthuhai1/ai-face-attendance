@@ -5,10 +5,10 @@ import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
+import { DataTable } from "@/components/ui/data-table";
 import { Input } from "@/components/ui/input";
 import { Dialog } from "@/components/ui/dialog";
-import { EmptyState, ErrorState } from "@/components/ui/states";
-import { Td, Th, Table } from "@/components/ui/table";
+import { ErrorState } from "@/components/ui/states";
 import { approveEnrollment, rejectEnrollment } from "@/features/face-enrollment/actions";
 
 export interface EnrollmentQueueRow {
@@ -73,45 +73,58 @@ export function EnrollmentQueue(props: { rows: EnrollmentQueueRow[]; filter: str
       <Card>
         <CardTitle>Hàng đợi xác minh (không hiển thị ảnh/template)</CardTitle>
         <div className="mt-3">
-          {props.rows.length === 0 ? (
-            <EmptyState title="Không có đăng ký nào" description="Đổi bộ lọc hoặc chờ nhân viên nộp." />
-          ) : (
-            <Table>
-              <thead>
-                <tr>
-                  <Th>Nhân viên</Th>
-                  <Th>Chất lượng</Th>
-                  <Th>Consent</Th>
-                  <Th>Gửi lúc</Th>
-                  <Th aria-label="Thao tác" />
-                </tr>
-              </thead>
-              <tbody>
-                {props.rows.map((r) => (
-                  <tr key={r.id}>
-                    <Td>{r.employee_code} — {r.display_name}</Td>
-                    <Td>{r.quality !== null ? r.quality.toFixed(2) : "—"}</Td>
-                    <Td>{r.consent_version ?? "—"}</Td>
-                    <Td>{new Date(r.created_at).toLocaleString("vi-VN")}</Td>
-                    <Td>
-                      {r.status === "pending" ? (
-                        <div className="flex gap-1">
-                          <Button size="sm" onClick={() => onApprove(r.id)} loading={busy}>
-                            Kích hoạt
-                          </Button>
-                          <Button size="sm" variant="secondary" onClick={() => { setRejecting(r); setReason(""); }}>
-                            Từ chối
-                          </Button>
-                        </div>
-                      ) : (
-                        <Badge tone={r.status === "active" ? "success" : "neutral"}>{r.status}</Badge>
-                      )}
-                    </Td>
-                  </tr>
-                ))}
-              </tbody>
-            </Table>
-          )}
+          <DataTable
+            ariaLabel="Hàng đợi xác minh khuôn mặt"
+            rows={props.rows}
+            keyOf={(r) => r.id}
+            emptyTitle="Không có đăng ký nào"
+            emptyDescription="Đổi bộ lọc hoặc chờ nhân viên nộp."
+            columns={[
+              { key: "emp", header: "Nhân viên", render: (r) => <span className="font-medium">{r.employee_code} — {r.display_name}</span> },
+              { key: "quality", header: "Chất lượng", render: (r) => <span className="tnum">{r.quality !== null ? r.quality.toFixed(2) : "—"}</span> },
+              { key: "consent", header: "Consent", render: (r) => r.consent_version ?? "—" },
+              { key: "at", header: "Gửi lúc", render: (r) => <span className="tnum text-xs">{new Date(r.created_at).toLocaleString("vi-VN")}</span> },
+              {
+                key: "actions",
+                header: <span className="sr-only">Thao tác</span>,
+                render: (r) =>
+                  r.status === "pending" ? (
+                    <div className="flex gap-1">
+                      <Button size="sm" onClick={() => onApprove(r.id)} loading={busy}>
+                        Kích hoạt
+                      </Button>
+                      <Button size="sm" variant="secondary" onClick={() => { setRejecting(r); setReason(""); }}>
+                        Từ chối
+                      </Button>
+                    </div>
+                  ) : (
+                    <Badge tone={r.status === "active" ? "success" : "neutral"}>{r.status}</Badge>
+                  ),
+              },
+            ]}
+            cardTitle={(r) => `${r.employee_code} — ${r.display_name}`}
+            cardStatus={(r) =>
+              r.status === "pending" ? (
+                <Badge tone="warning">⏳ Chờ duyệt</Badge>
+              ) : (
+                <Badge tone={r.status === "active" ? "success" : "neutral"}>{r.status}</Badge>
+              )
+            }
+            cardMeta={(r) => (
+              <span className="tnum text-xs">
+                CL: {r.quality !== null ? r.quality.toFixed(2) : "—"} · Consent {r.consent_version ?? "—"} ·{" "}
+                {new Date(r.created_at).toLocaleString("vi-VN")}
+              </span>
+            )}
+            cardActions={(r) =>
+              r.status === "pending" ? (
+                <>
+                  <Button size="sm" onClick={() => onApprove(r.id)} loading={busy}>Kích hoạt</Button>
+                  <Button size="sm" variant="secondary" onClick={() => { setRejecting(r); setReason(""); }}>Từ chối</Button>
+                </>
+              ) : undefined
+            }
+          />
         </div>
       </Card>
 

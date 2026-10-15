@@ -5,9 +5,9 @@ import { getDashboard, getReport, type ReportFilters } from "@/features/reports/
 import { ExportButton } from "@/features/reports/export-button";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
-import { EmptyState } from "@/components/ui/states";
+import { DataTable } from "@/components/ui/data-table";
+import { Pagination } from "@/components/ui/pagination";
 import { StatusIndicator } from "@/components/ui/status-indicator";
-import { Td, Th, Table } from "@/components/ui/table";
 import { LoadingState } from "@/components/ui/states";
 
 const STATUS_MAP: Record<string, "ontime" | "late" | "early_leave" | "absent" | "needs_review" | "idle"> = {
@@ -107,39 +107,64 @@ async function ReportsData({ searchParams }: { searchParams: Promise<Record<stri
       <Card>
         {!rows ? (
           <p role="alert" className="text-sm text-red-600">✕ {message}</p>
-        ) : rows.length === 0 ? (
-          <EmptyState title="Không có dữ liệu" description="Đổi khoảng ngày hoặc bộ lọc." />
         ) : (
-          <Table>
-            <thead>
-              <tr>
-                <Th>Ngày</Th>
-                <Th>Nhân viên</Th>
-                <Th>Phòng/Ca</Th>
-                <Th>Vào–Ra</Th>
-                <Th>Trễ/Sớm</Th>
-                <Th>Trạng thái</Th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((r) => (
-                <tr key={`${r.work_date}-${r.employee_code}`}>
-                  <Td>{r.work_date}</Td>
-                  <Td>{r.employee_code} — {r.display_name}</Td>
-                  <Td>{r.department} / {r.shift}</Td>
-                  <Td>
-                    {r.first_in ? new Date(r.first_in).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }) : "—"}
-                    {" – "}
-                    {r.last_out ? new Date(r.last_out).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }) : "—"}
-                  </Td>
-                  <Td>{r.late_min > 0 ? `Trễ ${r.late_min}′` : r.early_leave_min > 0 ? `Sớm ${r.early_leave_min}′` : "—"}</Td>
-                  <Td><StatusIndicator status={STATUS_MAP[r.status] ?? "idle"} /></Td>
-                </tr>
-              ))}
-            </tbody>
-          </Table>
+          <>
+            <DataTable
+              ariaLabel="Báo cáo chấm công"
+              rows={rows}
+              keyOf={(r) => `${r.work_date}-${r.employee_code}`}
+              emptyTitle="Không có dữ liệu"
+              emptyDescription="Đổi khoảng ngày hoặc bộ lọc."
+              columns={[
+                { key: "date", header: "Ngày", render: (r) => <span className="tnum">{r.work_date}</span> },
+                { key: "emp", header: "Nhân viên", render: (r) => `${r.employee_code} — ${r.display_name}` },
+                { key: "dept", header: "Phòng/Ca", render: (r) => `${r.department} / ${r.shift}` },
+                {
+                  key: "inout",
+                  header: "Vào–Ra",
+                  render: (r) => (
+                    <span className="tnum">
+                      {r.first_in ? new Date(r.first_in).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }) : "—"}
+                      {" – "}
+                      {r.last_out ? new Date(r.last_out).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }) : "—"}
+                    </span>
+                  ),
+                },
+                {
+                  key: "late",
+                  header: "Trễ/Sớm",
+                  render: (r) => (r.late_min > 0 ? `Trễ ${r.late_min}′` : r.early_leave_min > 0 ? `Sớm ${r.early_leave_min}′` : "—"),
+                },
+                { key: "status", header: "Trạng thái", render: (r) => <StatusIndicator status={STATUS_MAP[r.status] ?? "idle"} /> },
+              ]}
+              cardTitle={(r) => `${r.employee_code} — ${r.display_name}`}
+              cardStatus={(r) => <StatusIndicator status={STATUS_MAP[r.status] ?? "idle"} />}
+              cardMeta={(r) => (
+                <span className="tnum">
+                  {r.work_date} · {r.department} / {r.shift} · Vào{" "}
+                  {r.first_in ? new Date(r.first_in).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }) : "—"}
+                  {" – Ra "}
+                  {r.last_out ? new Date(r.last_out).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }) : "—"}
+                </span>
+              )}
+            />
+            <div className="mt-3">
+              <Pagination
+                page={page ?? 1}
+                totalPages={Math.max(1, Math.ceil((total ?? 0) / 20))}
+                total={total ?? 0}
+                label="dòng"
+                hrefFor={(p) =>
+                  `?from=${filters.from}&to=${filters.to}` +
+                  (filters.departmentId ? `&departmentId=${filters.departmentId}` : "") +
+                  (filters.shiftId ? `&shiftId=${filters.shiftId}` : "") +
+                  (filters.status ? `&status=${filters.status}` : "") +
+                  `&page=${p}`
+                }
+              />
+            </div>
+          </>
         )}
-        <p className="mt-2 text-sm text-slate-500">Tổng {total ?? 0} dòng · trang {page ?? 1}</p>
       </Card>
     </div>
   );

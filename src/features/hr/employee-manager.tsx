@@ -6,11 +6,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { DataTable } from "@/components/ui/data-table";
 import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { EmptyState, ErrorState } from "@/components/ui/states";
+import { ErrorState } from "@/components/ui/states";
 import { Pagination } from "@/components/ui/pagination";
-import { Td, Th, Table } from "@/components/ui/table";
 import { createEmployee, deactivateEmployee, updateEmployee } from "@/features/hr/actions";
 
 export interface EmployeeRow {
@@ -132,56 +132,71 @@ export function EmployeeManager(props: Props) {
       {error ? <ErrorState title="Không lưu được" description={error} /> : null}
 
       <Card>
-        {props.rows.length === 0 ? (
-          <EmptyState title="Chưa có nhân viên" description="Thử đổi từ khóa hoặc thêm mới." />
-        ) : (
-          <Table>
-            <thead>
-              <tr>
-                <Th>Mã NV</Th>
-                <Th>Họ tên</Th>
-                <Th>Phòng ban</Th>
-                <Th>Quản lý</Th>
-                <Th>Trạng thái</Th>
-                <Th aria-label="Thao tác" />
-              </tr>
-            </thead>
-            <tbody>
-              {props.rows.map((r) => (
-                <tr key={r.id}>
-                  <Td>{r.employee_code}</Td>
-                  <Td>{r.display_name || r.email}</Td>
-                  <Td>{r.department_name}</Td>
-                  <Td>{r.manager_code}</Td>
-                  <Td>
-                    {r.employment_status === "active" && r.profile_active ? (
-                      <Badge tone="success">✓ Đang hoạt động</Badge>
-                    ) : (
-                      <Badge tone="danger">✕ Vô hiệu</Badge>
-                    )}
-                  </Td>
-                  <Td>
-                    <div className="flex gap-1">
-                      <Button size="sm" variant="secondary" onClick={() => openEdit(r)}>Sửa</Button>
-                      {r.employment_status === "active" ? (
-                        <Button size="sm" variant="ghost" onClick={() => setDeactivating(r)}>
-                          Vô hiệu
-                        </Button>
-                      ) : null}
-                    </div>
-                  </Td>
-                </tr>
-              ))}
-            </tbody>
-          </Table>
-        )}
-        <Pagination
-          page={props.page}
-          totalPages={totalPages}
-          total={props.total}
-          label="nhân viên"
-          hrefFor={(p) => `?q=${encodeURIComponent(props.q)}&status=${props.status}&page=${p}`}
+        <DataTable
+          ariaLabel="Danh sách nhân viên"
+          rows={props.rows}
+          keyOf={(r) => r.id}
+          emptyTitle="Chưa có nhân viên"
+          emptyDescription="Thử đổi từ khóa hoặc thêm mới."
+          columns={[
+            { key: "code", header: "Mã NV", render: (r) => <span className="font-medium">{r.employee_code}</span> },
+            { key: "name", header: "Họ tên", render: (r) => r.display_name || r.email },
+            { key: "dept", header: "Phòng ban", render: (r) => r.department_name },
+            { key: "mgr", header: "Quản lý", render: (r) => r.manager_code },
+            {
+              key: "status",
+              header: "Trạng thái",
+              render: (r) =>
+                r.employment_status === "active" && r.profile_active ? (
+                  <Badge tone="success">✓ Đang hoạt động</Badge>
+                ) : (
+                  <Badge tone="danger">✕ Vô hiệu</Badge>
+                ),
+            },
+            {
+              key: "actions",
+              header: <span className="sr-only">Thao tác</span>,
+              render: (r) => (
+                <div className="flex gap-1">
+                  <Button size="sm" variant="secondary" onClick={() => openEdit(r)}>Sửa</Button>
+                  {r.employment_status === "active" ? (
+                    <Button size="sm" variant="ghost" onClick={() => setDeactivating(r)}>
+                      Vô hiệu
+                    </Button>
+                  ) : null}
+                </div>
+              ),
+            },
+          ]}
+          cardTitle={(r) => `${r.employee_code} — ${r.display_name || r.email}`}
+          cardStatus={(r) =>
+            r.employment_status === "active" && r.profile_active ? (
+              <Badge tone="success">✓ Đang hoạt động</Badge>
+            ) : (
+              <Badge tone="danger">✕ Vô hiệu</Badge>
+            )
+          }
+          cardMeta={(r) => `${r.department_name} · QL: ${r.manager_code}`}
+          cardActions={(r) => (
+            <>
+              <Button size="sm" variant="secondary" onClick={() => openEdit(r)}>Sửa</Button>
+              {r.employment_status === "active" ? (
+                <Button size="sm" variant="ghost" onClick={() => setDeactivating(r)}>
+                  Vô hiệu
+                </Button>
+              ) : null}
+            </>
+          )}
         />
+        <div className="mt-3">
+          <Pagination
+            page={props.page}
+            totalPages={totalPages}
+            total={props.total}
+            label="nhân viên"
+            hrefFor={(p) => `?q=${encodeURIComponent(props.q)}&status=${props.status}&page=${p}`}
+          />
+        </div>
       </Card>
 
       <Dialog open={creating || editing !== null} title={editing ? "Sửa nhân viên" : "Thêm nhân viên"} onClose={() => { setCreating(false); setEditing(null); }}>

@@ -5,10 +5,10 @@ import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
+import { DataTable } from "@/components/ui/data-table";
 import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { EmptyState, ErrorState } from "@/components/ui/states";
-import { Td, Th, Table } from "@/components/ui/table";
+import { ErrorState } from "@/components/ui/states";
 import { createAdjustment, reviewAdjustment } from "@/features/workflow/actions";
 
 export interface AdjustmentRow {
@@ -81,30 +81,44 @@ export function AdjustmentForm() {
   );
 }
 
-export function MyAdjustments({ rows }: { rows: AdjustmentRow[] }) {
-  if (rows.length === 0) return <EmptyState title="Chưa có yêu cầu nào" description="Yêu cầu bạn gửi sẽ hiện ở đây." />;
+function proposalText(r: AdjustmentRow): string {
+  const parts: string[] = [];
+  if (r.requested_in) parts.push(`vào ${new Date(r.requested_in).toLocaleString("vi-VN")}`);
+  if (r.requested_out) parts.push(`ra ${new Date(r.requested_out).toLocaleString("vi-VN")}`);
+  return parts.join(" · ");
+}
+
+function statusBadge(status: string) {
   return (
-    <Table>
-      <thead><tr><Th>Ngày</Th><Th>Đề xuất</Th><Th>Trạng thái</Th><Th>Phản hồi</Th></tr></thead>
-      <tbody>
-        {rows.map((r) => (
-          <tr key={r.id}>
-            <Td>{r.work_date}</Td>
-            <Td className="text-xs">
-              {r.requested_in ? `vào ${new Date(r.requested_in).toLocaleString("vi-VN")}` : ""}
-              {r.requested_in && r.requested_out ? " · " : ""}
-              {r.requested_out ? `ra ${new Date(r.requested_out).toLocaleString("vi-VN")}` : ""}
-            </Td>
-            <Td>
-              <Badge tone={r.status === "approved" ? "success" : r.status === "rejected" ? "danger" : "warning"}>
-                {r.status === "pending" ? "⏳ Chờ duyệt" : r.status === "approved" ? "✓ Đã duyệt" : "✕ Từ chối"}
-              </Badge>
-            </Td>
-            <Td className="text-xs">{r.resolution_note ?? "—"}</Td>
-          </tr>
-        ))}
-      </tbody>
-    </Table>
+    <Badge tone={status === "approved" ? "success" : status === "rejected" ? "danger" : "warning"}>
+      {status === "pending" ? "⏳ Chờ duyệt" : status === "approved" ? "✓ Đã duyệt" : "✕ Từ chối"}
+    </Badge>
+  );
+}
+
+export function MyAdjustments({ rows }: { rows: AdjustmentRow[] }) {
+  return (
+    <DataTable
+      ariaLabel="Yêu cầu chỉnh công của tôi"
+      rows={rows}
+      keyOf={(r) => r.id}
+      emptyTitle="Chưa có yêu cầu nào"
+      emptyDescription="Yêu cầu bạn gửi sẽ hiện ở đây."
+      columns={[
+        { key: "date", header: "Ngày", render: (r) => <span className="tnum">{r.work_date}</span> },
+        { key: "proposal", header: "Đề xuất", render: (r) => <span className="text-xs">{proposalText(r)}</span> },
+        { key: "status", header: "Trạng thái", render: (r) => statusBadge(r.status) },
+        { key: "note", header: "Phản hồi", render: (r) => <span className="text-xs">{r.resolution_note ?? "—"}</span> },
+      ]}
+      cardTitle={(r) => r.work_date}
+      cardStatus={(r) => statusBadge(r.status)}
+      cardMeta={(r) => (
+        <span className="text-xs">
+          {proposalText(r)}
+          {r.resolution_note ? ` · Phản hồi: ${r.resolution_note}` : ""}
+        </span>
+      )}
+    />
   );
 }
 
@@ -133,33 +147,37 @@ export function AdjustmentQueue({ rows }: { rows: AdjustmentRow[] }) {
   return (
     <div className="flex flex-col gap-2">
       {error ? <ErrorState title="Không xử lý được" description={error} /> : null}
-      {rows.length === 0 ? (
-        <EmptyState title="Hết yêu cầu chờ duyệt" description="Yêu cầu mới của team sẽ hiện ở đây." />
-      ) : (
-        <Table>
-          <thead><tr><Th>Nhân viên</Th><Th>Ngày</Th><Th>Đề xuất</Th><Th>Lý do</Th><Th aria-label="Thao tác" /></tr></thead>
-          <tbody>
-            {rows.map((r) => (
-              <tr key={r.id}>
-                <Td>{r.employee_code}</Td>
-                <Td>{r.work_date}</Td>
-                <Td className="text-xs">
-                  {r.requested_in ? `vào ${new Date(r.requested_in).toLocaleString("vi-VN")}` : ""}
-                  {r.requested_in && r.requested_out ? " · " : ""}
-                  {r.requested_out ? `ra ${new Date(r.requested_out).toLocaleString("vi-VN")}` : ""}
-                </Td>
-                <Td className="max-w-56 truncate text-xs" title={r.reason}>{r.reason}</Td>
-                <Td>
-                  <div className="flex gap-1">
-                    <Button size="sm" onClick={() => { setTarget({ row: r, decision: "approved" }); setNote(""); }} disabled={busy}>Duyệt</Button>
-                    <Button size="sm" variant="secondary" onClick={() => { setTarget({ row: r, decision: "rejected" }); setNote(""); }} disabled={busy}>Từ chối</Button>
-                  </div>
-                </Td>
-              </tr>
-            ))}
-          </tbody>
-        </Table>
-      )}
+      <DataTable
+        ariaLabel="Hàng đợi duyệt chỉnh công"
+        rows={rows}
+        keyOf={(r) => r.id}
+        emptyTitle="Hết yêu cầu chờ duyệt"
+        emptyDescription="Yêu cầu mới của team sẽ hiện ở đây."
+        columns={[
+          { key: "emp", header: "Nhân viên", render: (r) => <span className="font-medium">{r.employee_code}</span> },
+          { key: "date", header: "Ngày", render: (r) => <span className="tnum">{r.work_date}</span> },
+          { key: "proposal", header: "Đề xuất", render: (r) => <span className="text-xs">{proposalText(r)}</span> },
+          { key: "reason", header: "Lý do", render: (r) => <span className="max-w-56 truncate text-xs" title={r.reason}>{r.reason}</span> },
+          {
+            key: "actions",
+            header: <span className="sr-only">Thao tác</span>,
+            render: (r) => (
+              <div className="flex gap-1">
+                <Button size="sm" onClick={() => { setTarget({ row: r, decision: "approved" }); setNote(""); }} disabled={busy}>Duyệt</Button>
+                <Button size="sm" variant="secondary" onClick={() => { setTarget({ row: r, decision: "rejected" }); setNote(""); }} disabled={busy}>Từ chối</Button>
+              </div>
+            ),
+          },
+        ]}
+        cardTitle={(r) => `${r.employee_code} — ${r.work_date}`}
+        cardMeta={(r) => <span className="text-xs">{proposalText(r)} · {r.reason}</span>}
+        cardActions={(r) => (
+          <>
+            <Button size="sm" onClick={() => { setTarget({ row: r, decision: "approved" }); setNote(""); }} disabled={busy}>Duyệt</Button>
+            <Button size="sm" variant="secondary" onClick={() => { setTarget({ row: r, decision: "rejected" }); setNote(""); }} disabled={busy}>Từ chối</Button>
+          </>
+        )}
+      />
       <Dialog open={target !== null} title={target?.decision === "approved" ? "Duyệt chỉnh công" : "Từ chối chỉnh công"} onClose={() => setTarget(null)}>
         <form onSubmit={onConfirm} className="flex flex-col gap-3">
           <p className="text-sm text-slate-600">
