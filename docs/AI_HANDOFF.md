@@ -202,7 +202,15 @@ smoke 9/9 routes 307 + headers đầy đủ.
 - Source `main` @ `8cdd1be`, auto-deploy mỗi push. Verify: `/login` production 200, UI tiếng Việt đúng.
 - Env Vercel đang trỏ Supabase local (xem bước đổi bên dưới).
 
-## Incident — login crash production (2026-10-09, đã fix)
+## Incident — Google OAuth double path (2026-10-15, đã fix)
+
+- Triệu chứng: bấm Google → URL `.../rest/v1/auth/v1/authorize` → PostgREST báo
+  `No API key found in request`.
+- Root cause: `NEXT_PUBLIC_SUPABASE_URL` trên Vercel thừa đuôi `/rest/v1`
+  (copy nhầm REST URL). supabase-js tự gắn `/auth/v1`, thành 2 tiền tố.
+- Fix: value phải đúng `https://<ref>.supabase.co`, không path suffix, cả 3 env.
+- Bài học: verify authorize URL ngay sau khi đổi env (pattern `/auth/v1/authorize`
+  đơn, không `/rest/v1`).
 
 - Triệu chứng: `/login` hiện error boundary. Log Vercel:
   `Your project's URL and Key are required to create a Supabase client!`
