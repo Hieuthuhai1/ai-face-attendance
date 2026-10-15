@@ -3,6 +3,7 @@ import { requireRole } from "@/server/auth";
 import { createClient } from "@/lib/supabase/server";
 import { getProviderHealth } from "@/server/face/service";
 import { EnrollmentQueue, type EnrollmentQueueRow } from "@/features/face-enrollment/enrollment-queue";
+import { Icon } from "@/components/ui/icon";
 import { LoadingState } from "@/components/ui/states";
 
 export default function EnrollmentsAdminPage({
@@ -11,7 +12,7 @@ export default function EnrollmentsAdminPage({
   searchParams: Promise<{ status?: string }>;
 }) {
   return (
-    <main className="mx-auto flex w-full max-w-5xl flex-col gap-4 px-4 py-8">
+    <main className="mx-auto flex w-full max-w-5xl flex-col gap-4 px-4 py-6">
       <h1 className="text-2xl font-bold">Xác minh đăng ký khuôn mặt</h1>
       <Suspense fallback={<LoadingState message="Đang tải hàng đợi…" />}>
         <QueueData searchParams={searchParams} />
@@ -52,8 +53,8 @@ async function QueueData({ searchParams }: { searchParams: Promise<{ status?: st
   return (
     <>
       {!health.configured ? (
-        <p role="alert" className="rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700">
-          ✕ {health.message}
+        <p role="alert" className="flex items-center gap-1 rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700">
+          <Icon name="x" size={14} /> {health.message}
         </p>
       ) : null}
       <EnrollmentQueue rows={rows} filter={filter} />

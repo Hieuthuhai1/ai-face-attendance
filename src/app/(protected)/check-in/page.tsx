@@ -6,7 +6,7 @@ import { LoadingState } from "@/components/ui/states";
 
 export default function CheckInPage() {
   return (
-    <main className="mx-auto flex w-full max-w-2xl flex-col gap-4 px-4 py-8">
+    <main className="mx-auto flex w-full max-w-2xl flex-col gap-4 px-4 py-6">
       <h1 className="text-2xl font-bold">Chấm công</h1>
       <Suspense fallback={<LoadingState message="Đang tải ca hôm nay…" />}>
         <CheckInData />

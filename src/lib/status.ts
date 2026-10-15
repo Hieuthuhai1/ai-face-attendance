@@ -1,4 +1,4 @@
-/** UI status metadata: every state has text + icon, never color alone. */
+/** UI status metadata: mọi trạng thái có label text (icon do StatusIndicator quyết định). */
 export type UiStatus =
   | "idle"
   | "loading"
@@ -14,18 +14,18 @@ export type UiStatus =
   | "incomplete"
   | "needs_review";
 
-export const UI_STATUS: Record<UiStatus, { label: string; icon: string }> = {
-  idle: { label: "Chưa thực hiện", icon: "○" },
-  loading: { label: "Đang xử lý…", icon: "◌" },
-  success: { label: "Thành công", icon: "✓" },
-  error: { label: "Lỗi", icon: "✕" },
-  pending: { label: "Chờ duyệt", icon: "⏳" },
-  approved: { label: "Đã duyệt", icon: "✓" },
-  rejected: { label: "Từ chối", icon: "✕" },
-  ontime: { label: "Đúng giờ", icon: "✓" },
-  late: { label: "Đi trễ", icon: "!" },
-  early_leave: { label: "Về sớm", icon: "!" },
-  absent: { label: "Vắng", icon: "—" },
-  incomplete: { label: "Thiếu dữ liệu", icon: "?" },
-  needs_review: { label: "Cần rà soát", icon: "⚑" },
+export const UI_STATUS: Record<UiStatus, { label: string }> = {
+  idle: { label: "Chưa thực hiện" },
+  loading: { label: "Đang xử lý…" },
+  success: { label: "Thành công" },
+  error: { label: "Lỗi" },
+  pending: { label: "Chờ duyệt" },
+  approved: { label: "Đã duyệt" },
+  rejected: { label: "Từ chối" },
+  ontime: { label: "Đúng giờ" },
+  late: { label: "Đi trễ" },
+  early_leave: { label: "Về sớm" },
+  absent: { label: "Vắng" },
+  incomplete: { label: "Thiếu dữ liệu" },
+  needs_review: { label: "Cần rà soát" },
 };

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { exportCsv, type ReportFilters } from "@/features/reports/actions";
+import { Icon } from "@/components/ui/icon";
 import { toast } from "@/components/ui/toast";
 
 export function ExportButton({ filters }: { filters: ReportFilters }) {
@@ -36,7 +37,7 @@ export function ExportButton({ filters }: { filters: ReportFilters }) {
         </Button>
       </div>
       {error ? (
-        <p role="alert" className="text-sm text-red-600">✕ {error}</p>
+        <p role="alert" className="flex items-center gap-1 text-sm text-red-600"><Icon name="x" size={14} /> {error}</p>
       ) : null}
     </div>
   );

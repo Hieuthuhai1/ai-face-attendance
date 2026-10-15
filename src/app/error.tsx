@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Icon } from "@/components/ui/icon";
 import { logger } from "@/server/logger";
 
 export default function Error({
@@ -20,7 +21,7 @@ export default function Error({
     <main className="mx-auto flex w-full max-w-xl flex-col px-4 py-16">
       <Card>
         <div role="alert" className="flex flex-col items-start gap-3">
-          <p className="text-lg font-semibold">✕ Đã xảy ra lỗi</p>
+          <p className="flex items-center gap-2 text-lg font-semibold"><Icon name="x" /> Đã xảy ra lỗi</p>
           <p className="text-sm text-slate-500">
             Vui lòng thử lại. Nếu lỗi tiếp diễn, liên hệ quản trị viên.
           </p>

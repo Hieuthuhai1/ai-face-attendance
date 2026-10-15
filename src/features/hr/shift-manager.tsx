@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { DataTable } from "@/components/ui/data-table";
+import { Icon } from "@/components/ui/icon";
 import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { ErrorState } from "@/components/ui/states";
@@ -118,7 +119,7 @@ export function ShiftManager(props: {
           columns={[
             { key: "name", header: "Tên ca", render: (s) => <span className="font-medium">{s.name}</span> },
             { key: "time", header: "Giờ", render: (s) => <span className="tnum">{s.start_time}–{s.end_time}</span> },
-            { key: "night", header: "Qua đêm", render: (s) => (s.overnight ? <Badge tone="info">◐ Qua đêm</Badge> : "—") },
+            { key: "night", header: "Qua đêm", render: (s) => (s.overnight ? <Badge tone="info"><Icon name="clock" size={14} /> Qua đêm</Badge> : "—") },
             { key: "grace", header: "Grace vào/ra", render: (s) => <span className="tnum">{s.grace_in_min}′/{s.grace_out_min}′</span> },
             {
               key: "actions",
@@ -127,7 +128,7 @@ export function ShiftManager(props: {
             },
           ]}
           cardTitle={(s) => `${s.name} (${s.start_time}–${s.end_time})`}
-          cardStatus={(s) => (s.overnight ? <Badge tone="info">◐ Qua đêm</Badge> : undefined)}
+          cardStatus={(s) => (s.overnight ? <Badge tone="info"><Icon name="clock" size={14} /> Qua đêm</Badge> : undefined)}
           cardMeta={(s) => <span className="tnum">Grace {s.grace_in_min}′/{s.grace_out_min}′</span>}
           cardActions={(s) => <Button size="sm" variant="secondary" onClick={() => openEditShift(s)}>Sửa</Button>}
         />

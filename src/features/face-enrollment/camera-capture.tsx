@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Icon } from "@/components/ui/icon";
 import { analyzeQuality, type QualityReport } from "@/lib/face/quality";
 
 export type CameraState =
@@ -177,22 +178,26 @@ export function CameraCapture({
       ) : null}
 
       {state === "denied" ? (
-        <div role="alert" className="rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700">
-          ✕ Camera bị từ chối. Hãy cấp quyền camera trong trình duyệt rồi tải lại trang,
-          hoặc dùng phương thức chấm công thay thế (liên hệ HR).
+        <div role="alert" className="flex items-start gap-2 rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700">
+          <Icon name="x" size={16} className="mt-0.5 shrink-0" />
+          <span>
+            Camera bị từ chối. Hãy cấp quyền camera trong trình duyệt rồi tải lại trang,
+            hoặc dùng phương thức chấm công thay thế (liên hệ HR).
+          </span>
         </div>
       ) : null}
 
       {state === "unavailable" ? (
-        <div role="alert" className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800">
-          ○ Thiết bị không có camera hoặc trình duyệt không hỗ trợ. Dùng phương thức thay thế.
+        <div role="alert" className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+          <Icon name="info" size={16} className="mt-0.5 shrink-0" />
+          <span>Thiết bị không có camera hoặc trình duyệt không hỗ trợ. Dùng phương thức thay thế.</span>
         </div>
       ) : null}
 
       {state === "error" ? (
         <div role="alert" className="flex flex-col gap-2">
-          <p className="text-sm text-red-600">✕ Không mở được camera.</p>
-          <Button variant="secondary" size="sm" onClick={start}>Thử lại</Button>
+          <p className="flex items-center gap-1 text-sm text-red-600"><Icon name="x" size={14} /> Không mở được camera.</p>
+          <div><Button variant="secondary" size="sm" onClick={start}>Thử lại</Button></div>
         </div>
       ) : null}
 

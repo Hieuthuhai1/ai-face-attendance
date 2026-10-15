@@ -6,6 +6,7 @@ import { ExportButton } from "@/features/reports/export-button";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import { DataTable } from "@/components/ui/data-table";
+import { Icon } from "@/components/ui/icon";
 import { Pagination } from "@/components/ui/pagination";
 import { StatusIndicator } from "@/components/ui/status-indicator";
 import { LoadingState } from "@/components/ui/states";
@@ -24,7 +25,7 @@ export default function ReportsPage({
   searchParams: Promise<Record<string, string | undefined>>;
 }) {
   return (
-    <main className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-8">
+    <main className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-6">
       <h1 className="text-2xl font-bold">Báo cáo chấm công</h1>
       <Suspense fallback={<LoadingState message="Đang tải báo cáo…" />}>
         <ReportsData searchParams={searchParams} />
@@ -106,7 +107,7 @@ async function ReportsData({ searchParams }: { searchParams: Promise<Record<stri
 
       <Card>
         {!rows ? (
-          <p role="alert" className="text-sm text-red-600">✕ {message}</p>
+          <p role="alert" className="flex items-center gap-1 text-sm text-red-600"><Icon name="x" size={14} /> {message}</p>
         ) : (
           <>
             <DataTable

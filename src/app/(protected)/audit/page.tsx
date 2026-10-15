@@ -26,7 +26,7 @@ export default function AuditPage({
   searchParams: Promise<{ action?: string; from?: string; to?: string; page?: string }>;
 }) {
   return (
-    <main className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-8">
+    <main className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-6">
       <h1 className="text-2xl font-bold">Nhật ký audit</h1>
       <p className="text-sm text-slate-500">
         Chỉ đọc, append-only. Metadata đã tối thiểu hóa — không chứa ảnh, template hay secret.

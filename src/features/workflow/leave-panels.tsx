@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { DataTable } from "@/components/ui/data-table";
 import { Dialog } from "@/components/ui/dialog";
+import { Icon } from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
 import { ErrorState } from "@/components/ui/states";
 import { createLeave, reviewLeave } from "@/features/workflow/actions";
@@ -70,7 +71,7 @@ export function LeaveForm() {
             <textarea name="reason" required rows={3} className="rounded-lg border border-slate-300 px-3 py-2 font-normal" />
           </label>
         </div>
-        {error ? <p role="alert" className="text-sm text-red-600 sm:col-span-2">✕ {error}</p> : null}
+        {error ? <p role="alert" className="flex items-center gap-1 text-sm text-red-600 sm:col-span-2"><Icon name="x" size={14} /> {error}</p> : null}
         <div className="sm:col-span-2"><Button type="submit" loading={saving}>Gửi đơn</Button></div>
       </form>
     </Card>
@@ -78,9 +79,12 @@ export function LeaveForm() {
 }
 
 function leaveBadge(status: string) {
+  const tone = status === "approved" ? "success" as const : status === "rejected" ? "danger" as const : "warning" as const;
+  const icon = status === "approved" ? "check" as const : status === "rejected" ? "x" as const : "clock" as const;
+  const label = status === "pending" ? "Chờ duyệt" : status === "approved" ? "Đã duyệt" : "Từ chối";
   return (
-    <Badge tone={status === "approved" ? "success" : status === "rejected" ? "danger" : "warning"}>
-      {status === "pending" ? "⏳ Chờ duyệt" : status === "approved" ? "✓ Đã duyệt" : "✕ Từ chối"}
+    <Badge tone={tone}>
+      <Icon name={icon} size={14} /> {label}
     </Badge>
   );
 }

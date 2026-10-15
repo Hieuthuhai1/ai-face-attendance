@@ -4,6 +4,7 @@ import { useActionState, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
+import { Icon } from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
 import { signInPasswordAction, signInWithOAuth, type AuthResult } from "@/features/auth/actions";
 
@@ -34,8 +35,8 @@ export function LoginForm() {
       <CardTitle>Đăng nhập</CardTitle>
       <CardDescription>Web chấm công nội bộ. Liên hệ HR nếu chưa có tài khoản.</CardDescription>
       {oauthFailed ? (
-        <p role="alert" className="mt-2 text-sm text-red-600">
-          ✕ Đăng nhập Google thất bại hoặc bị hủy. Thử lại hoặc dùng email/mật khẩu.
+        <p role="alert" className="mt-2 flex items-center gap-1 text-sm text-red-600">
+          <Icon name="x" size={14} /> Đăng nhập Google thất bại hoặc bị hủy. Thử lại hoặc dùng email/mật khẩu.
         </p>
       ) : null}
       <div className="mt-4">
@@ -52,8 +53,8 @@ export function LoginForm() {
         <Input label="Email công việc" name="email" type="email" autoComplete="email" required />
         <Input label="Mật khẩu" name="password" type="password" autoComplete="current-password" required />
         {error || formError ? (
-          <p role="alert" className="text-sm text-red-600">
-            ✕ {error ?? formError}
+          <p role="alert" className="flex items-center gap-1 text-sm text-red-600">
+            <Icon name="x" size={14} /> {error ?? formError}
           </p>
         ) : null}
         <Button type="submit" loading={pending}>

@@ -25,10 +25,9 @@ describe("lib utils", () => {
     expect(cn("a", false, null, undefined, "b")).toBe("a b");
   });
 
-  it("mọi UiStatus đều có label + icon (không chỉ màu)", () => {
+  it("mọi UiStatus đều có label text (icon do StatusIndicator quyết định)", () => {
     for (const meta of Object.values(UI_STATUS)) {
       expect(meta.label.length).toBeGreaterThan(0);
-      expect(meta.icon.length).toBeGreaterThan(0);
     }
   });
 });

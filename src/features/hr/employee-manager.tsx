@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { DataTable } from "@/components/ui/data-table";
+import { Icon } from "@/components/ui/icon";
 import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { ErrorState } from "@/components/ui/states";
@@ -131,7 +132,7 @@ export function EmployeeManager(props: Props) {
         </Button>
       </form>
       {props.freeProfiles.length === 0 ? (
-        <p className="text-sm text-slate-500">○ Hết tài khoản chưa gán mã nhân viên — HR tạo tài khoản đăng nhập trước (Phase 3 chưa có mời tài khoản).</p>
+        <p className="text-sm text-slate-500">Hết tài khoản chưa gán mã nhân viên — HR tạo tài khoản đăng nhập trước khi thêm mới (chưa có luồng mời tài khoản).</p>
       ) : null}
 
       {error ? <ErrorState title="Không lưu được" description={error} /> : null}
@@ -153,9 +154,9 @@ export function EmployeeManager(props: Props) {
               header: "Trạng thái",
               render: (r) =>
                 r.employment_status === "active" && r.profile_active ? (
-                  <Badge tone="success">✓ Đang hoạt động</Badge>
+                  <Badge tone="success"><Icon name="check" size={14} /> Đang hoạt động</Badge>
                 ) : (
-                  <Badge tone="danger">✕ Vô hiệu</Badge>
+                  <Badge tone="danger"><Icon name="x" size={14} /> Vô hiệu</Badge>
                 ),
             },
             {
@@ -176,9 +177,9 @@ export function EmployeeManager(props: Props) {
           cardTitle={(r) => `${r.employee_code} — ${r.display_name || r.email}`}
           cardStatus={(r) =>
             r.employment_status === "active" && r.profile_active ? (
-              <Badge tone="success">✓ Đang hoạt động</Badge>
+              <Badge tone="success"><Icon name="check" size={14} /> Đang hoạt động</Badge>
             ) : (
-              <Badge tone="danger">✕ Vô hiệu</Badge>
+              <Badge tone="danger"><Icon name="x" size={14} /> Vô hiệu</Badge>
             )
           }
           cardMeta={(r) => `${r.department_name} · QL: ${r.manager_code}`}

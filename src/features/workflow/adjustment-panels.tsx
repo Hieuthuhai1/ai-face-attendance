@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { DataTable } from "@/components/ui/data-table";
 import { Dialog } from "@/components/ui/dialog";
+import { Icon } from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
 import { ErrorState } from "@/components/ui/states";
 import { createAdjustment, reviewAdjustment } from "@/features/workflow/actions";
@@ -54,7 +55,9 @@ export function AdjustmentForm() {
   if (done) {
     return (
       <Card>
-        <p role="status" className="font-medium">✓ Đã gửi yêu cầu, chờ quản lý/HR duyệt.</p>
+        <p role="status" className="flex items-center gap-2 font-medium">
+          <Icon name="check" size={16} className="text-[var(--success)]" /> Đã gửi yêu cầu, chờ quản lý/HR duyệt.
+        </p>
         <div className="mt-2"><Button size="sm" variant="secondary" onClick={() => setDone(false)}>Gửi yêu cầu khác</Button></div>
       </Card>
     );
@@ -75,7 +78,7 @@ export function AdjustmentForm() {
             <textarea name="reason" required rows={3} className="rounded-lg border border-slate-300 px-3 py-2 font-normal" />
           </label>
         </div>
-        {error ? <p role="alert" className="text-sm text-red-600 sm:col-span-2">✕ {error}</p> : null}
+        {error ? <p role="alert" className="flex items-center gap-1 text-sm text-red-600 sm:col-span-2"><Icon name="x" size={14} /> {error}</p> : null}
         <div className="sm:col-span-2"><Button type="submit" loading={saving}>Gửi yêu cầu</Button></div>
       </form>
     </Card>
@@ -90,9 +93,12 @@ function proposalText(r: AdjustmentRow): string {
 }
 
 function statusBadge(status: string) {
+  const tone = status === "approved" ? "success" as const : status === "rejected" ? "danger" as const : "warning" as const;
+  const icon = status === "approved" ? "check" as const : status === "rejected" ? "x" as const : "clock" as const;
+  const label = status === "pending" ? "Chờ duyệt" : status === "approved" ? "Đã duyệt" : "Từ chối";
   return (
-    <Badge tone={status === "approved" ? "success" : status === "rejected" ? "danger" : "warning"}>
-      {status === "pending" ? "⏳ Chờ duyệt" : status === "approved" ? "✓ Đã duyệt" : "✕ Từ chối"}
+    <Badge tone={tone}>
+      <Icon name={icon} size={14} /> {label}
     </Badge>
   );
 }

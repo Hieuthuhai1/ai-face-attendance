@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import { DataTable } from "@/components/ui/data-table";
+import { Icon } from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
 import { Dialog } from "@/components/ui/dialog";
 import { ErrorState } from "@/components/ui/states";
@@ -108,7 +109,7 @@ export function EnrollmentQueue(props: { rows: EnrollmentQueueRow[]; filter: str
             cardTitle={(r) => `${r.employee_code} — ${r.display_name}`}
             cardStatus={(r) =>
               r.status === "pending" ? (
-                <Badge tone="warning">⏳ Chờ duyệt</Badge>
+                <Badge tone="warning"><Icon name="clock" size={14} /> Chờ duyệt</Badge>
               ) : (
                 <Badge tone={r.status === "active" ? "success" : "neutral"}>{r.status}</Badge>
               )

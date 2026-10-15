@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { DemoBanner } from "@/components/ui/demo-banner";
+import { Icon, type IconName } from "@/components/ui/icon";
 import { CameraCapture } from "@/features/face-enrollment/camera-capture";
 import { CONSENT_SECTIONS, CONSENT_VERSION } from "@/features/face-enrollment/consent";
 import { revokeMyEnrollment, submitEnrollment } from "@/features/face-enrollment/actions";
@@ -14,12 +15,12 @@ import type { FaceFixture } from "@/server/face/types";
 
 export type EnrollmentState = "none" | "pending" | "active" | "rejected" | "revoked";
 
-const STATE_META: Record<EnrollmentState, { label: string; tone: "neutral" | "success" | "warning" | "danger" | "info" }> = {
-  none: { label: "○ Chưa đăng ký", tone: "neutral" },
-  pending: { label: "⏳ Chờ HR xác minh", tone: "warning" },
-  active: { label: "✓ Đang hoạt động", tone: "success" },
-  rejected: { label: "✕ Bị từ chối", tone: "danger" },
-  revoked: { label: "— Đã thu hồi", tone: "neutral" },
+const STATE_META: Record<EnrollmentState, { label: string; icon: IconName; tone: "neutral" | "success" | "warning" | "danger" | "info" }> = {
+  none: { label: "Chưa đăng ký", icon: "info", tone: "neutral" },
+  pending: { label: "Chờ HR xác minh", icon: "clock", tone: "warning" },
+  active: { label: "Đang hoạt động", icon: "check", tone: "success" },
+  rejected: { label: "Bị từ chối", icon: "x", tone: "danger" },
+  revoked: { label: "Đã thu hồi", icon: "x", tone: "neutral" },
 };
 
 export function EnrollmentFlow(props: { initialState: EnrollmentState; providerDemo: boolean }) {
@@ -71,7 +72,7 @@ export function EnrollmentFlow(props: { initialState: EnrollmentState; providerD
       <Card>
         <div className="flex items-center justify-between gap-2">
           <CardTitle>Trạng thái đăng ký</CardTitle>
-          <Badge tone={meta.tone}>{meta.label}</Badge>
+          <Badge tone={meta.tone}><Icon name={meta.icon} size={14} /> {meta.label}</Badge>
         </div>
         <CardDescription>
           {props.initialState === "active"
@@ -130,11 +131,15 @@ export function EnrollmentFlow(props: { initialState: EnrollmentState; providerD
               <CameraCapture onCapture={onCapture} disabled={!consent || submitting} />
             </div>
             {!consent ? (
-              <p className="mt-2 text-sm text-slate-500">○ Tick đồng ý ở trên để bật nút chụp.</p>
+              <p className="mt-2 text-sm text-slate-500">Tick đồng ý ở trên để bật nút chụp.</p>
             ) : null}
-            {submitting ? <p role="status" className="mt-2 text-sm">◌ Đang gửi đăng ký…</p> : null}
+            {submitting ? (
+              <p role="status" className="mt-2 flex items-center gap-2 text-sm">
+                <span className="animate-spin text-[var(--info)]"><Icon name="refresh" size={16} /></span> Đang gửi đăng ký…
+              </p>
+            ) : null}
             {error ? (
-              <p role="alert" className="mt-2 text-sm text-red-600">✕ {error}</p>
+              <p role="alert" className="mt-2 flex items-center gap-1 text-sm text-red-600"><Icon name="x" size={14} /> {error}</p>
             ) : null}
           </Card>
         </>
@@ -149,7 +154,7 @@ export function EnrollmentFlow(props: { initialState: EnrollmentState; providerD
               Thu hồi mẫu khuôn mặt
             </Button>
           </div>
-          {error ? <p role="alert" className="mt-2 text-sm text-red-600">✕ {error}</p> : null}
+          {error ? <p role="alert" className="mt-2 flex items-center gap-1 text-sm text-red-600"><Icon name="x" size={14} /> {error}</p> : null}
           <ConfirmDialog
             open={confirmingRevoke}
             title="Thu hồi mẫu khuôn mặt"
