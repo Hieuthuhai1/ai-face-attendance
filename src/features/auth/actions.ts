@@ -8,8 +8,7 @@ import { loginSchema } from "@/lib/validation";
 
 export type AuthResult = { ok: true } | { ok: false; message: string };
 
-export async function signInWithPassword(email: string, password: string): Promise<AuthResult> {
-  const parsed = loginSchema.safeParse({ email, password });
+export async function signInWithPassword(email: string, password: string): Promise<AuthResult> {  const parsed = loginSchema.safeParse({ email, password });
   if (!parsed.success) {
     return { ok: false, message: parsed.error.issues[0]?.message ?? "Dữ liệu không hợp lệ." };
   }
@@ -20,6 +19,17 @@ export async function signInWithPassword(email: string, password: string): Promi
   });
   if (error) return { ok: false, message: "Email hoặc mật khẩu chưa đúng." };
   redirect("/dashboard");
+}
+
+/**
+ * Wrapper cho <form action> (progressive enhancement): submit hoạt động ngay cả
+ * trước khi hydrate, credentials đi bằng POST — không bao giờ lọt vào URL.
+ */
+export async function signInPasswordAction(
+  _prev: AuthResult | null,
+  formData: FormData,
+): Promise<AuthResult> {
+  return signInWithPassword(String(formData.get("email") ?? ""), String(formData.get("password") ?? ""));
 }
 
 export async function signInWithOAuth(provider: string): Promise<AuthResult> {

@@ -1,31 +1,20 @@
 "use client";
 
-import { useState } from "react";
+import { useActionState, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { signInWithOAuth, signInWithPassword } from "@/features/auth/actions";
+import { signInPasswordAction, signInWithOAuth, type AuthResult } from "@/features/auth/actions";
 
 export function LoginForm() {
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
   const [oauthLoading, setOauthLoading] = useState(false);
   const oauthFailed = useSearchParams().get("error") === "oauth";
-
-  async function onSubmit(formData: FormData) {
-    setLoading(true);
-    setError(null);
-    const res = await signInWithPassword(
-      String(formData.get("email") ?? ""),
-      String(formData.get("password") ?? ""),
-    );
-    // signIn thành công thì redirect (không tới dòng này).
-    if (res && !res.ok) {
-      setError(res.message);
-      setLoading(false);
-    }
-  }
+  const [state, formAction, pending] = useActionState<AuthResult | null, FormData>(
+    signInPasswordAction,
+    null,
+  );
 
   async function onGoogle() {
     setOauthLoading(true);
@@ -37,6 +26,8 @@ export function LoginForm() {
       setOauthLoading(false);
     }
   }
+
+  const formError = state && !state.ok ? state.message : null;
 
   return (
     <Card className="w-full max-w-sm">
@@ -57,21 +48,15 @@ export function LoginForm() {
         <span>Hoặc</span>
         <span className="h-px flex-1 bg-slate-200" />
       </div>
-      <form
-        className="mt-4 flex flex-col gap-3"
-        onSubmit={(e) => {
-          e.preventDefault();
-          void onSubmit(new FormData(e.currentTarget));
-        }}
-      >
+      <form action={formAction} className="flex flex-col gap-3">
         <Input label="Email công việc" name="email" type="email" autoComplete="email" required />
         <Input label="Mật khẩu" name="password" type="password" autoComplete="current-password" required />
-        {error ? (
+        {error || formError ? (
           <p role="alert" className="text-sm text-red-600">
-            ✕ {error}
+            ✕ {error ?? formError}
           </p>
         ) : null}
-        <Button type="submit" loading={loading}>
+        <Button type="submit" loading={pending}>
           Đăng nhập
         </Button>
       </form>

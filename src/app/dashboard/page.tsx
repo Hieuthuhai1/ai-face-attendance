@@ -5,7 +5,6 @@ import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { UI_STATUS } from "@/lib/status";
 import { hasRole, REVIEW_ROLES } from "@/lib/roles";
 import { requireUser } from "@/server/auth";
-import { signOut } from "@/features/auth/actions";
 import { LoadingState } from "@/components/ui/states";
 
 export default function DashboardPage({
@@ -33,18 +32,11 @@ async function DashboardContent({
 
   return (
     <>
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <p className="text-lg font-semibold">Xin chào, {profile.display_name || profile.email}</p>
-          <p className="mt-1 text-sm text-slate-500">
-            {UI_STATUS.pending.icon} Vai trò: {profile.role}
-          </p>
-        </div>
-        <form action={signOut}>
-          <Button variant="secondary" size="sm" type="submit">
-            Đăng xuất
-          </Button>
-        </form>
+      <div>
+        <p className="text-lg font-semibold">Xin chào, {profile.display_name || profile.email}</p>
+        <p className="mt-1 text-sm text-slate-500">
+          {UI_STATUS.pending.icon} Vai trò: {profile.role}
+        </p>
       </div>
 
       {params.forbidden ? (

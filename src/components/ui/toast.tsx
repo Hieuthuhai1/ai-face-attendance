@@ -66,6 +66,7 @@ function useToasts(): ToastItem[] {
       };
     },
     () => items,
+    () => items,
   );
 }
 
