@@ -71,7 +71,7 @@ test("contrast: chữ body và nút primary đạt WCAG AA (≥4.5)", async ({ p
       const b = lum(bg);
       return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
     }
-    const body = getComputedStyle(document.body);
+    // Contrast tính từ tokens (ổn định, không phụ thuộc runtime).
     return {
       // #0f172a trên #f6f7f9 (tokens), trắng trên brand #1d4ed8
       bodyText: ratio("#0f172a", "#f6f7f9"),
