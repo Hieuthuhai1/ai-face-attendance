@@ -1,30 +1,84 @@
 @import "tailwindcss";
 
+/*
+ * Design tokens — UX/UI Redesign R1 (light-only có chủ đích).
+ * Toàn app ép light (`color-scheme: light`, không media query dark) để tránh
+ * vỡ giao diện với components dùng màu cứng. Muốn dark đầy đủ phải làm task riêng.
+ */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-  /* Brand tokens (Phase 1) */
+  color-scheme: light;
+
+  /* Brand (họ xanh dương hiện tại, chờ duyệt navy ở task sau) */
   --brand: #1d4ed8;
+  --brand-strong: #1e3a8a;
   --brand-contrast: #ffffff;
+  --brand-soft: #eff6ff;
+  --teal-accent: #0d9488;
+
+  /* Surface & text */
+  --background: #f6f7f9;
+  --foreground: #0f172a;
+  --surface: #ffffff;
+  --surface-muted: #f1f5f9;
+  --text-1: #0f172a;
+  --text-2: #475569;
+  --text-3: #94a3b8;
+  --border: #e2e8f0;
+
+  /* Semantic */
+  --success: #15803d;
+  --success-bg: #f0fdf4;
+  --warning: #b45309;
+  --warning-bg: #fffbeb;
+  --danger: #b91c1c;
+  --danger-bg: #fef2f2;
+  --info: #1d4ed8;
+  --info-bg: #eff6ff;
+
+  /* Shape & depth */
+  --radius-card: 12px;
+  --radius-control: 8px;
+  --shadow-card: 0 1px 2px rgb(15 23 42 / 0.06);
+  --shadow-dialog: 0 8px 24px rgb(15 23 42 / 0.12);
+  --focus-ring: 0 0 0 3px rgb(37 99 235 / 0.25);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
   --color-brand: var(--brand);
+  --color-brand-strong: var(--brand-strong);
+  --color-brand-soft: var(--brand-soft);
+  --color-border: var(--border);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Số liệu/giờ dùng tabular-nums để không nhảy layout */
+.tnum {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Focus rõ ràng, nhất quán toàn app */
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/* Tôn trọng reduced-motion: tắt transition/animation trang trí */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }
