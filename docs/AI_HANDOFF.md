@@ -212,6 +212,8 @@ smoke 9/9 routes 307 + headers đầy đủ.
 - Bài học: verify authorize URL ngay sau khi đổi env (pattern `/auth/v1/authorize`
   đơn, không `/rest/v1`).
 
+## Incident — login crash production (2026-10-09, đã fix)
+
 - Triệu chứng: `/login` hiện error boundary. Log Vercel:
   `Your project's URL and Key are required to create a Supabase client!`
 - Root cause: env var gõ sai tên `EXT_PUBLIC_SUPABASE_URL` (thiếu `N`),
