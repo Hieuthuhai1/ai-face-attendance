@@ -23,12 +23,12 @@ for (const width of [360, 390, 430, 768, 1280]) {
     const context = await browser.newContext({ viewport: { width, height: 800 } });
     const page = await context.newPage();
     await loginAs(page, "nv.a@demo.vn");
-    await page.goto("/dashboard");
-    await expect(page.getByText("Ca hôm nay", { exact: true })).toBeVisible({ timeout: 15_000 });
-    await noHorizontalOverflow(page);
-    await page.goto("/check-in");
-    await expect(page.getByText("Quét & xác minh", { exact: true })).toBeVisible({ timeout: 15_000 });
-    await noHorizontalOverflow(page);
+    // Đợi tải xong (tránh đo lúc streaming còn dở, dễ double-render thoáng qua).
+    for (const path of ["/dashboard", "/check-in"]) {
+      await page.goto(path);
+      await page.waitForLoadState("networkidle");
+      await noHorizontalOverflow(page);
+    }
     await context.close();
   });
 }

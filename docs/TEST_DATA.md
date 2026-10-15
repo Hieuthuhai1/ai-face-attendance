@@ -125,7 +125,19 @@ Events seed: A in/out success 09/10, B in success ca đêm 08/10, 1 failed (live
 | G-05 | User Google mới chưa có employee record | "Không đủ điều kiện", HR link sau | flow đã có (verify ở G-04) |
 | S-01/02/03/04/05/08 | Enroll revoked, camera, liveness, low-conf, checkout | Theo đặc tả §11 | 5–6 |
 
-## 5. Seed / reset
+## 6. E2E browser (Playwright — chạy trên production build)
+
+```bash
+npm run build
+npx next start -p 3100   # terminal riêng
+npm run test:e2e
+```
+
+- `e2e/shell.spec.ts`: anon guard, HR login + sidebar + logout, check-in stepper/camera states, mobile bottom-bar.
+- `e2e/responsive-a11y.spec.ts`: 5 viewports không overflow, nav mobile/desktop, keyboard Tab, contrast AA, reduced-motion, employee bị chặn trang HR.
+- Camera dùng fake device (`--use-fake-device-for-media-stream`); không bấm chụp thật để tránh ghi event vào DB dev.
+
+## 7. Seed / reset
 
 `supabase db reset` chạy lại toàn bộ migrations + seed (upsert theo id cố định nên idempotent).
 Tuyệt đối không chạy `db reset`/`db push` lên project đã link cloud khi chưa được duyệt.

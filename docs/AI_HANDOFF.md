@@ -257,6 +257,13 @@ smoke 9/9 routes 307 + headers đầy đủ.
 - E2E browser: NOT RUN (chưa Playwright). Smoke login staging: đang chờ bạn.
 - Tuyệt đối không `db reset`/push seed lên production.
 
+## UX/UI Redesign (branch `ui/redesign`, chưa merge — xem Preview)
+
+- R1 tokens + light-only · R2 design system (Icon, Skeleton, Tooltip, Select, DropdownMenu, Toast, Pagination, DataTable) · R3 AppShell + nav theo role + route group `(protected)` · R4 dashboard dữ liệu thật + StatCard · R5/R6 check-in stepper + states trung thực · R7/R8 tables responsive + audit key-value · states/feedback (ConfirmDialog loading, bỏ `confirm()` native, toast) · visual pass (home thành router, icons SVG, spacing `py-6`).
+- E2E mở rộng: shell 4/4 + responsive-a11y 10/10 (5 viewports, keyboard, contrast AA, reduced-motion, employee bị chặn).
+- Preview mới nhất: `https://ai-face-attendance-n6gcp3h2b-hieu-98a8.vercel.app` (Ready).
+- Ghi nhận: warning `Date.now()` khi prerender là noise Next 16 PPR (build xanh, 200, E2E xanh); E2E chỉ chạy trên `next start` (dev không hydrate đủ).
+
 ## Next task — Phase 9 (E2E browser) / Phase 10 (Production)
 
 ## Google OAuth (added 2026-10-15, chưa kích hoạt provider)
