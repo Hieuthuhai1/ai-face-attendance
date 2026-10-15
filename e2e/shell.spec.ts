@@ -12,6 +12,7 @@ test("HR login thấy sidebar + topbar + đăng xuất được", async ({ page 
   await page.getByLabel("Mật khẩu").fill("Passw0rd!");
   await page.getByRole("button", { name: "Đăng nhập", exact: true }).click();
   await expect(page).toHaveURL(/\/dashboard/, { timeout: 15_000 });
+  await expect(page.getByText("Ca hôm nay")).toBeVisible({ timeout: 15_000 });
   await expect(page.getByRole("navigation", { name: "Điều hướng chính" })).toBeVisible({ timeout: 15_000 });
   const sidebar = page.getByRole("navigation", { name: "Điều hướng chính" });
   await expect(sidebar.getByRole("link", { name: "Nhân viên", exact: true })).toBeVisible();
