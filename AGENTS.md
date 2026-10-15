@@ -44,6 +44,13 @@ tests/             fixtures (KHÔNG dữ liệu sinh trắc thật)
   `VALIDATION_ERROR`, `PROVIDER_UNAVAILABLE`, `DUPLICATE_EVENT`, ...).
 - UI: responsive mobile-first; mọi trạng thái có text + icon (không chỉ màu);
   primary action rõ; label/focus cho accessibility.
+- UI system (`src/components/ui`, `src/components/app`): tái sử dụng, không tạo
+  bộ thứ hai. Icons dùng `Icon` (SVG), không ký tự unicode rời rạc.
+- Bảng dùng `DataTable` (desktop table + mobile card). Phân trang dùng `Pagination`.
+- Toast chỉ cho feedback fire-and-forget (export/duyệt/vô hiệu); form giữ inline
+  error + loading; ConfirmDialog cho hành động nguy hiểm (có loading).
+- E2E chạy trên production build (`npm run build` → `next start -p 3100` →
+  `npm run test:e2e`); không chạy trên `next dev` (hydrate không đầy đủ).
 - Ngưỡng verify/liveness là config (`src/config`), không hardcode.
 
 ## Lệnh
