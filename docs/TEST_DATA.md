@@ -123,6 +123,11 @@ Events seed: A in/out success 09/10, B in success ca đêm 08/10, 1 failed (live
 | G-03 | Provider chưa bật → bấm nút Google | báo "chưa được cấu hình", không crash | code path (verify khi có credentials) |
 | G-04 | Login Google thật local/staging | về `/dashboard`, profile auto-tạo | browser thủ công (cần bạn bật provider theo `GOOGLE_OAUTH_SETUP.md`) |
 | G-05 | User Google mới chưa có employee record | "Không đủ điều kiện", HR link sau | flow đã có (verify ở G-04) |
+| S-01 | Gmail mới nộp enrollment (chưa có employee) | tự tạo employee `G-*` + org mặc định, enrollment pending chờ HR | SQL `test_self_enrollment.sql` |
+| S-02 | Gọi lại ensure (idempotent) | trả đúng id cũ, không trùng | SQL |
+| S-03 | Employee tự đổi organization | 42501 (mở rộng role guard) | SQL |
+| S-04 | Anon gọi ensure_self_employee | 42501 | SQL |
+| S-05 | Gmail mới check-in khi chưa phân ca | `NO_SHIFT` + hướng dẫn gặp HR (HR vẫn giữ cửa gán ca) | flow (E2E khi có browser) |
 | S-01/02/03/04/05/08 | Enroll revoked, camera, liveness, low-conf, checkout | Theo đặc tả §11 | 5–6 |
 
 ## 6. E2E browser (Playwright — chạy trên production build)

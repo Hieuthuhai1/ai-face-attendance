@@ -79,7 +79,17 @@ export async function submitEnrollment(input: {
 }): Promise<EnrollmentResult> {
   const { userId } = await requireUser();
   const supabase = await createClient();
-  const employee = await myActiveEmployee(supabase, userId);
+  let employee = await myActiveEmployee(supabase, userId);
+  if (!employee) {
+    // Tự đăng ký: user chưa có hồ sơ (vd: login Google lần đầu) được tự tạo
+    // employee + gán org mặc định; enrollment vẫn pending chờ HR duyệt.
+    const { error: rpcError } = await supabase.rpc("ensure_self_employee");
+    if (rpcError) {
+      logger.warn("ensure_self_employee failed", { code: rpcError.code });
+      return { ok: false, code: "NOT_ELIGIBLE", message: "Chưa tạo được hồ sơ nhân viên, liên hệ HR." };
+    }
+    employee = await myActiveEmployee(supabase, userId);
+  }
   if (!employee) {
     return { ok: false, code: "NOT_ELIGIBLE", message: "Tài khoản chưa phải nhân viên đang làm việc." };
   }
