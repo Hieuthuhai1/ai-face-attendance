@@ -73,6 +73,27 @@ body {
   box-shadow: var(--focus-ring);
 }
 
+/* Skeleton shimmer (tắt dưới reduced-motion bởi rule chung) */
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: var(--surface-muted);
+  border-radius: var(--radius-control);
+}
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.7), transparent);
+  animation: skeleton-shimmer 1.4s infinite;
+}
+@keyframes skeleton-shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
 /* Tôn trọng reduced-motion: tắt transition/animation trang trí */
 @media (prefers-reduced-motion: reduce) {
   *,

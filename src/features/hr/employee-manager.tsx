@@ -9,6 +9,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { EmptyState, ErrorState } from "@/components/ui/states";
+import { Pagination } from "@/components/ui/pagination";
 import { Td, Th, Table } from "@/components/ui/table";
 import { createEmployee, deactivateEmployee, updateEmployee } from "@/features/hr/actions";
 
@@ -174,21 +175,13 @@ export function EmployeeManager(props: Props) {
             </tbody>
           </Table>
         )}
-        <div className="mt-3 flex items-center justify-between text-sm text-slate-500">
-          <span>Tổng {props.total} · trang {props.page}/{totalPages}</span>
-          <div className="flex gap-1">
-            {props.page > 1 ? (
-              <a href={`?q=${encodeURIComponent(props.q)}&status=${props.status}&page=${props.page - 1}`}>
-                <Button size="sm" variant="secondary">Trước</Button>
-              </a>
-            ) : null}
-            {props.page < totalPages ? (
-              <a href={`?q=${encodeURIComponent(props.q)}&status=${props.status}&page=${props.page + 1}`}>
-                <Button size="sm" variant="secondary">Sau</Button>
-              </a>
-            ) : null}
-          </div>
-        </div>
+        <Pagination
+          page={props.page}
+          totalPages={totalPages}
+          total={props.total}
+          label="nhân viên"
+          hrefFor={(p) => `?q=${encodeURIComponent(props.q)}&status=${props.status}&page=${p}`}
+        />
       </Card>
 
       <Dialog open={creating || editing !== null} title={editing ? "Sửa nhân viên" : "Thêm nhân viên"} onClose={() => { setCreating(false); setEditing(null); }}>

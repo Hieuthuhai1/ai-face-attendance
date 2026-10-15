@@ -22,7 +22,7 @@ export function Dialog({ open, title, children, onClose }: DialogProps) {
       onClick={onClose}
     >
       <div
-        className="w-full max-w-md rounded-xl bg-white p-5 shadow-lg"
+        className="w-full max-w-md rounded-xl bg-white p-5 shadow-md"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-3 flex items-center justify-between">

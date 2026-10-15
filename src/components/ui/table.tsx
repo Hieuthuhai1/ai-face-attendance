@@ -12,7 +12,7 @@ export function Table({ className, ...rest }: TableHTMLAttributes<HTMLTableEleme
 export function Th({ className, ...rest }: ThHTMLAttributes<HTMLTableCellElement>) {
   return (
     <th
-      className={cn("bg-slate-50 px-3 py-2 font-medium text-slate-600", className)}
+      className={cn("bg-[var(--surface-muted)] px-3 py-2 font-medium text-slate-600", className)}
       scope="col"
       {...rest}
     />
