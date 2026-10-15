@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Dialog } from "@/components/ui/dialog";
 import { ErrorState } from "@/components/ui/states";
 import { approveEnrollment, rejectEnrollment } from "@/features/face-enrollment/actions";
+import { toast } from "@/components/ui/toast";
 
 export interface EnrollmentQueueRow {
   id: string;
@@ -34,6 +35,7 @@ export function EnrollmentQueue(props: { rows: EnrollmentQueueRow[]; filter: str
     const res = await approveEnrollment(id);
     setBusy(false);
     if (!res.ok) setError(`${res.code}: ${res.message}`);
+    else toast.success("Đã kích hoạt enrollment.");
     router.refresh();
   }
 
@@ -47,6 +49,7 @@ export function EnrollmentQueue(props: { rows: EnrollmentQueueRow[]; filter: str
       setError(`${res.code}: ${res.message}`);
       return;
     }
+    toast.success("Đã từ chối enrollment.");
     setRejecting(null);
     setReason("");
     router.refresh();

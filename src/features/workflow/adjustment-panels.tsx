@@ -10,6 +10,7 @@ import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { ErrorState } from "@/components/ui/states";
 import { createAdjustment, reviewAdjustment } from "@/features/workflow/actions";
+import { toast } from "@/components/ui/toast";
 
 export interface AdjustmentRow {
   id: string;
@@ -139,6 +140,7 @@ export function AdjustmentQueue({ rows }: { rows: AdjustmentRow[] }) {
       setError(`${res.code}: ${res.message}`);
       return;
     }
+    toast.success(target.decision === "approved" ? "Đã duyệt chỉnh công." : "Đã từ chối chỉnh công.");
     setTarget(null);
     setNote("");
     router.refresh();

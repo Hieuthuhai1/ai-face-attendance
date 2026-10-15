@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { DemoBanner } from "@/components/ui/demo-banner";
 import { CameraCapture } from "@/features/face-enrollment/camera-capture";
 import { CONSENT_SECTIONS, CONSENT_VERSION } from "@/features/face-enrollment/consent";
@@ -28,6 +29,8 @@ export function EnrollmentFlow(props: { initialState: EnrollmentState; providerD
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
+  const [confirmingRevoke, setConfirmingRevoke] = useState(false);
+  const [revoking, setRevoking] = useState(false);
 
   async function onCapture(frameDataUrl: string) {
     setSubmitting(true);
@@ -48,9 +51,11 @@ export function EnrollmentFlow(props: { initialState: EnrollmentState; providerD
   }
 
   async function onRevoke() {
-    if (!confirm("Thu hồi mẫu khuôn mặt? Bạn sẽ phải đăng ký lại để chấm công bằng khuôn mặt.")) return;
+    setConfirmingRevoke(false);
+    setRevoking(true);
     setError(null);
     const res = await revokeMyEnrollment();
+    setRevoking(false);
     if (!res.ok) {
       setError(`${res.code}: ${res.message}`);
       return;
@@ -140,9 +145,21 @@ export function EnrollmentFlow(props: { initialState: EnrollmentState; providerD
           <CardTitle>Thu hồi</CardTitle>
           <CardDescription>Rút đồng ý — mẫu khuôn mặt bị xóa ở cả provider trong 72h.</CardDescription>
           <div className="mt-3">
-            <Button variant="danger" size="sm" onClick={onRevoke}>Thu hồi mẫu khuôn mặt</Button>
+            <Button variant="danger" size="sm" onClick={() => setConfirmingRevoke(true)} loading={revoking}>
+              Thu hồi mẫu khuôn mặt
+            </Button>
           </div>
           {error ? <p role="alert" className="mt-2 text-sm text-red-600">✕ {error}</p> : null}
+          <ConfirmDialog
+            open={confirmingRevoke}
+            title="Thu hồi mẫu khuôn mặt"
+            message="Bạn sẽ phải đăng ký lại để chấm công bằng khuôn mặt. Tiếp tục thu hồi?"
+            confirmLabel="Thu hồi"
+            danger
+            loading={revoking}
+            onConfirm={onRevoke}
+            onCancel={() => setConfirmingRevoke(false)}
+          />
         </Card>
       ) : null}
     </div>

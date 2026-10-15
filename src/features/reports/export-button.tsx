@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { exportCsv, type ReportFilters } from "@/features/reports/actions";
+import { toast } from "@/components/ui/toast";
 
 export function ExportButton({ filters }: { filters: ReportFilters }) {
   const [loading, setLoading] = useState(false);
@@ -17,6 +18,7 @@ export function ExportButton({ filters }: { filters: ReportFilters }) {
       setError(res.message);
       return;
     }
+    toast.success(`Đã xuất ${res.count} dòng CSV (đã ghi audit).`);
     const blob = new Blob(["\uFEFF" + res.csv], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");

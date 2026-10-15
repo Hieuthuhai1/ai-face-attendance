@@ -263,7 +263,7 @@ export function CheckInFlow(props: { status: TodayStatus; providerDemo: boolean 
           <CardDescription>Ghi nhận kèm lý do, chờ HR xác nhận. Không tự ý dùng khi camera vẫn tốt.</CardDescription>
           <form onSubmit={onFallback} className="mt-2 flex flex-col gap-2">
             <Input label="Lý do" value={reason} onChange={(e) => setReason(e.target.value)} required hint="VD: camera hỏng, mất mạng, nhận diện lỗi liên tục." />
-            <div><Button type="submit">Gửi ghi nhận thay thế</Button></div>
+            <div><Button type="submit" loading={ui.kind === "verifying"}>Gửi ghi nhận thay thế</Button></div>
           </form>
         </Card>
       ) : null}

@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { ErrorState } from "@/components/ui/states";
 import { Pagination } from "@/components/ui/pagination";
 import { createEmployee, deactivateEmployee, updateEmployee } from "@/features/hr/actions";
+import { toast } from "@/components/ui/toast";
 
 export interface EmployeeRow {
   id: string;
@@ -48,6 +49,7 @@ export function EmployeeManager(props: Props) {
   const [editing, setEditing] = useState<EmployeeRow | null>(null);
   const [creating, setCreating] = useState(false);
   const [deactivating, setDeactivating] = useState<EmployeeRow | null>(null);
+  const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -101,9 +103,12 @@ export function EmployeeManager(props: Props) {
 
   async function onDeactivate() {
     if (!deactivating) return;
+    setConfirming(true);
     const res = await deactivateEmployee(deactivating.id);
+    setConfirming(false);
     setDeactivating(null);
     if (!res.ok) setError(res.message);
+    else toast.success(`Đã vô hiệu hóa ${deactivating?.employee_code ?? ""}.`);
     router.refresh();
   }
 
@@ -242,6 +247,7 @@ export function EmployeeManager(props: Props) {
         message={`Vô hiệu ${deactivating?.employee_code}? Lịch sử chấm công được giữ lại, tài khoản không đăng nhập được nữa.`}
         confirmLabel="Vô hiệu hóa"
         danger
+        loading={confirming}
         onConfirm={onDeactivate}
         onCancel={() => setDeactivating(null)}
       />

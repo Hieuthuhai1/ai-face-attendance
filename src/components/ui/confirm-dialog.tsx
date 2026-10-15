@@ -9,6 +9,7 @@ export interface ConfirmDialogProps {
   message: string;
   confirmLabel?: string;
   danger?: boolean;
+  loading?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
 }
@@ -20,6 +21,7 @@ export function ConfirmDialog({
   message,
   confirmLabel = "Xác nhận",
   danger = false,
+  loading = false,
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
@@ -27,10 +29,10 @@ export function ConfirmDialog({
     <Dialog open={open} title={title} onClose={onCancel}>
       <p className="text-sm text-slate-600">{message}</p>
       <div className="mt-4 flex justify-end gap-2">
-        <Button variant="secondary" onClick={onCancel}>
+        <Button variant="secondary" onClick={onCancel} disabled={loading}>
           Hủy
         </Button>
-        <Button variant={danger ? "danger" : "primary"} onClick={onConfirm} autoFocus>
+        <Button variant={danger ? "danger" : "primary"} onClick={onConfirm} loading={loading} autoFocus>
           {confirmLabel}
         </Button>
       </div>

@@ -11,6 +11,7 @@ import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { ErrorState } from "@/components/ui/states";
 import { createAssignment, createShift, deleteAssignment, updateShift } from "@/features/hr/actions";
+import { toast } from "@/components/ui/toast";
 
 export interface ShiftRow {
   id: string;
@@ -44,6 +45,7 @@ export function ShiftManager(props: {
   const [shiftOpen, setShiftOpen] = useState(false);
   const [assignForm, setAssignForm] = useState({ employee_id: "", shift_id: "", effective_from: "", effective_to: "" });
   const [deletingAssign, setDeletingAssign] = useState<AssignmentRow | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -207,11 +209,15 @@ export function ShiftManager(props: {
         message={`Xóa phân ca ${deletingAssign?.employee_code} – ${deletingAssign?.shift_name}? Lịch sử chấm công đã ghi không bị ảnh hưởng.`}
         confirmLabel="Xóa"
         danger
+        loading={deleting}
         onConfirm={async () => {
           if (!deletingAssign) return;
+          setDeleting(true);
           const res = await deleteAssignment(deletingAssign.id);
+          setDeleting(false);
           setDeletingAssign(null);
           if (!res.ok) setError(res.message);
+          else toast.success("Đã xóa phân ca.");
           router.refresh();
         }}
         onCancel={() => setDeletingAssign(null)}

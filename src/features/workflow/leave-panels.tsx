@@ -10,6 +10,7 @@ import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { ErrorState } from "@/components/ui/states";
 import { createLeave, reviewLeave } from "@/features/workflow/actions";
+import { toast } from "@/components/ui/toast";
 
 export interface LeaveRow {
   id: string;
@@ -114,6 +115,7 @@ export function LeaveList({ rows, reviewable }: { rows: LeaveRow[]; reviewable: 
       setError(`${res.code}: ${res.message}`);
       return;
     }
+    toast.success(target.decision === "approved" ? "Đã duyệt đơn nghỉ." : "Đã từ chối đơn nghỉ.");
     setTarget(null);
     setNote("");
     router.refresh();
