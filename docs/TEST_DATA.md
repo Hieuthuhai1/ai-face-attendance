@@ -109,6 +109,11 @@ Events seed: A in/out success 09/10, B in success ca đêm 08/10, 1 failed (live
 | W-04 | Employee/HR ngoài phạm vi duyệt | 42501 | 7 ✅ SQL §11 + integration |
 | W-05 | Leave tạo + duyệt team | approved qua RLS + stamp | 7 ✅ SQL §11 + integration |
 | W-06 | Routes `/adjustments` `/leave` `/audit` anon | 307 `/login` | 7 (smoke, như R-05) |
+| G-01 | Provider allowlist + chống open-redirect | chỉ `google`, next lạ → `/dashboard` | ✅ unit |
+| G-02 | Trigger map tên OAuth (`full_name`/`name`) | profile display_name đúng | SQL `test_oauth_profile.sql` |
+| G-03 | Provider chưa bật → bấm nút Google | báo "chưa được cấu hình", không crash | code path (verify khi có credentials) |
+| G-04 | Login Google thật local/staging | về `/dashboard`, profile auto-tạo | browser thủ công (cần bạn bật provider theo `GOOGLE_OAUTH_SETUP.md`) |
+| G-05 | User Google mới chưa có employee record | "Không đủ điều kiện", HR link sau | flow đã có (verify ở G-04) |
 | S-01/02/03/04/05/08 | Enroll revoked, camera, liveness, low-conf, checkout | Theo đặc tả §11 | 5–6 |
 
 ## 5. Seed / reset
