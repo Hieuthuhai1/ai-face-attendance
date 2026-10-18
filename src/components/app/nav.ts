@@ -40,6 +40,7 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { href: "/approval", label: "Trung tâm duyệt", icon: "clipboard-check", roles: REVIEW },
       { href: "/reports", label: "Báo cáo", icon: "flag", roles: REVIEW },
+      { href: "/settings", label: "Cài đặt", icon: "shield", roles: HR },
       { href: "/admin/employees", label: "Nhân viên", icon: "users", roles: HR },
       { href: "/admin/shifts", label: "Ca làm", icon: "calendar", roles: HR },
       { href: "/admin/enrollments", label: "Xác minh khuôn mặt", icon: "shield", roles: HR },

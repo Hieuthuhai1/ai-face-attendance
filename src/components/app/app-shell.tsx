@@ -317,6 +317,7 @@ export function AppShell({
 
         // Admin (HR only)
         ...(["hr_admin", "system_admin"].includes(user.role) ? [
+          { key: "admin-settings", label: "Cài đặt tổ chức", description: "Chính sách, ngày lễ, vai trò, audit", icon: <Icon name="shield" size={16} />, group: "Quản trị", action: () => window.location.href = "/settings" },
           { key: "admin-employees", label: "Quản lý nhân viên", description: "CRUD nhân viên, import", icon: <Icon name="users" size={16} />, group: "Quản trị", action: () => window.location.href = "/admin/employees" },
           { key: "admin-shifts", label: "Quản lý ca làm", description: "Tạo ca, phân ca, lịch", icon: <Icon name="calendar" size={16} />, group: "Quản trị", action: () => window.location.href = "/admin/shifts" },
           { key: "admin-enrollments", label: "Xác minh khuôn mặt", description: "Duyệt/từ chối đăng ký", icon: <Icon name="shield" size={16} />, group: "Quản trị", action: () => window.location.href = "/admin/enrollments" },
