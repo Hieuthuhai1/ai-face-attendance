@@ -155,7 +155,7 @@ async function RequestsData() {
         <Card>
           <CardTitle>Hàng đợi duyệt</CardTitle>
           <div className="mt-3">
-            <ApprovalQueue rows={queueRows} isManager={profile.role === "manager"} myEmpId={empId} />
+            <ApprovalQueue rows={queueRows} />
           </div>
         </Card>
       ) : null}

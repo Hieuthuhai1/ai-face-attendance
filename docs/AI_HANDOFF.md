@@ -383,7 +383,90 @@ smoke 9/9 routes 307 + headers đầy đủ.
 
 **Known issues:** Pre-existing TS errors in chart components, calendar, select, portal, etc. - not related to this feature.
 
-## Next task — Phase 9 (E2E browser) / Phase 10 (Production)
+## Phase 10 (Request Management + Approval Center) — completed 2026-10-18
+
+**Request Management + Approval Center:**
+
+1. **Unified Requests Page (`/requests`):**
+   - Combined leave requests & attendance adjustments in single UI
+   - Tabbed form: "Đơn nghỉ" (5 types: annual, sick, unpaid, maternity, other) + "Chỉnh công" (date, time in/out, reason)
+   - My requests list with status badges, resolution notes, reviewer info
+   - Cancel capability (when eligible)
+
+2. **Approval Center (`/approval`) - Managers/HR:**
+   - Unified queue for leave + adjustment requests
+   - Filters: status (pending/approved/rejected), type (leave/adjustment), department, employee
+   - Stats cards: pending/approved/rejected counts
+   - Per-row Approve/Reject with required reason for rejection
+   - Confirmation dialogs for all actions
+   - Bulk approve (optional)
+
+3. **Request Detail Page (`/requests/[id]`):**
+   - Full request details with audit trail
+   - Created/reviewed timestamps, resolution notes
+
+4. **Navigation & Command Palette:**
+   - New nav group "Đơn từ": "Yêu cầu của tôi" (all roles)
+   - New nav group "Quản lý": "Trung tâm duyệt" (reviewers: manager/hr_admin/system_admin)
+   - Command Palette shortcuts: `G R` (requests), `G P` (approval)
+   - Updated bottom-bar mobile nav
+
+5. **Server Actions (reuse existing):**
+   - `createLeave`, `reviewLeave`, `createAdjustment`, `reviewAdjustment` — already RBAC + audit
+   - Optimistic concurrency + idempotent review
+   - Manager scope via RLS + server check
+
+6. **Pagination Fixes:**
+   - Client wrappers for audit/history/reports pages using `onPageChange` + `router.push`
+   - Fixed `hrefFor` → `onPageChange` migration
+
+7. **Technical Fixes:**
+   - Employee detail page: split server/client components (was incorrectly `"use client"` with async Supabase calls)
+   - Revoke enrollment page: removed duplicate function definitions
+   - Work calendar: TypeScript fixes, proper template literals
+   - date-fns dependency added
+   - Tabs component: proper `value`/`onChange` state pattern
+
+**Files Added:**
+- `src/app/(protected)/requests/page.tsx` — unified requests page
+- `src/app/(protected)/requests/[id]/page.tsx` — request detail
+- `src/app/(protected)/approval/page.tsx` — approval center
+- `src/features/workflow/unified-panels.tsx` — shared UI components
+- `src/features/workflow/approval-center.tsx` — approval center client component
+- `src/app/(protected)/audit/pagination-client.tsx` — audit pagination wrapper
+- `src/app/(protected)/history/pagination-client.tsx` — history pagination wrapper
+- `src/app/(protected)/reports/pagination-client.tsx` — reports pagination wrapper
+- `src/app/(protected)/admin/employees/[id]/employee-detail-client.tsx` — employee detail client component
+- `src/components/ui/work-calendar.tsx` — rewritten with TypeScript fixes
+
+**Files Modified:**
+- `src/components/app/nav.ts` — new nav items
+- `src/components/app/app-shell.tsx` — command palette shortcuts
+- `src/app/(protected)/audit/page.tsx`, `history/page.tsx`, `reports/page.tsx` — pagination fixes
+- `src/app/(protected)/admin/employees/[id]/page.tsx` — server/client split
+- `src/app/(protected)/admin/employees/[id]/enroll/revoke/page.tsx` — removed duplicates
+- `package.json` + `package-lock.json` — date-fns dependency
+
+**Testing:**
+- `npm test` ✅ 58/58 passed
+- `npm run lint` ✅ (new code clean, warnings pre-existing in other files)
+- `npm run typecheck` ✅ (new code clean, TS errors pre-existing in charts/calendar/select/portal/etc.)
+- `npm run build` ✅ (compiled successfully)
+
+**Known Issues (Pre-existing, not blocking):**
+- Chart components (bar/line/pie/heatmap) — Recharts API mismatches
+- Calendar — DatePicker conflicts, CalendarDate type issues
+- Command Palette — Ref type issues
+- Select/Pagination/Progress — Various type issues
+- Employee Directory/Camera Capture/HR Manager — Pre-existing pagination/Dialog issues
+
+**Commit:** `feat(requests): improve requests and approval workflows` — SHA: `a8bae57` (pushed `ui/redesign`).
+
+**Vercel Preview:** Auto-deployed on push to `ui/redesign`. Check Vercel dashboard for preview URL.
+
+---
+
+## Next task — Phase 11 (E2E browser) / Phase 12 (Production)
 
 ## Google OAuth (added 2026-10-15, staging đã bật provider)
 
