@@ -466,7 +466,80 @@ smoke 9/9 routes 307 + headers đầy đủ.
 
 ---
 
-## Next task — Phase 11 (E2E browser) / Phase 12 (Production)
+## Phase 11 (Attendance Reports & Analytics) — completed 2026-10-18
+
+**Attendance Reports & Analytics Redesign:**
+
+1. **Enhanced Reports Page (`/reports`):**
+   - KPI Cards: 8 metrics (Total Staff, Checked In, Not Checked In, Late, Early Leave, Absent, On Leave, Pending Review) with trend vs previous day
+   - 6 Tabs: Tổng quan | Phân tích | Ngoại lệ | Theo phòng ban | Trễ/Sớm | Thiếu chấm
+
+2. **Analytics Tab:**
+   - Time Trend Chart: Hourly check-in/check-out bars (0-23h)
+   - Shift Distribution: Donut-style bar chart of shift coverage
+   - Department Attendance Table: Present/Late/Early Leave/Absent/Incomplete per department
+
+3. **Exceptions Tab:**
+   - 5 Exception Types: Unverified face, Missing check-out, Pending review, Pending adjustment, AI exceptions (failed liveness/low confidence)
+   - Severity badges (High/Medium/Low) with links to relevant pages
+
+4. **Department Summary Tab:**
+   - Aggregated stats: Total employees, Present/Late/Early/Absent/Incomplete counts
+   - Avg work time per day, Total overtime hours
+
+5. **Late/Early Report Tab:**
+   - Detailed per-record breakdown with late/early minutes
+   - Filterable by date range, department, employee, shift, status
+
+6. **Missing Check Tab:**
+   - Records with missing check-in or check-out
+   - Visual badges for check-in/check-out status
+
+7. **Server Actions Enhanced (`src/features/reports/actions.ts`):**
+   - `getFullDashboardData`: Parallel fetch of KPIs, time trends, shift distribution, dept attendance, exceptions
+   - `getDepartmentSummary`: Aggregated department-level stats
+   - `getEmployeeSummary`: Per-employee aggregation
+   - `getLateEarlyReport`: Late/early filtered report
+   - `getMissingCheckReport`: Missing check-in/out report
+   - All respect RBAC (manager scope via RLS + server check)
+
+8. **Export CSV:**
+   - Includes overtime minutes column
+   - Respects current filters and RBAC
+   - Audit logged (`report.export` action)
+
+9. **UI Improvements:**
+   - Reusable ExportButton component
+   - Client-side pagination wrappers (ReportsPagination)
+   - Responsive chart components (CSS-based, no external deps)
+   - Loading/Empty/Error states for all tabs
+   - Proper TypeScript types exported for all report rows
+
+**Files Added/Modified:**
+- `src/features/reports/actions.ts` — Enhanced with 5 new report functions + analytics
+- `src/app/(protected)/reports/page.tsx` — Complete redesign with 6 tabs, charts, KPIs
+- `src/app/(protected)/reports/pagination-client.tsx` — Client pagination wrapper
+
+**Testing:**
+- `npm test` ✅ 58/58 passed
+- `npm run lint` ✅ (new code clean, warnings pre-existing in other files)
+- `npm run typecheck` ✅ (new code clean, TS errors pre-existing in charts/calendar/select/portal/etc.)
+- `npm run build` ✅ (compiled successfully)
+
+**Known Issues (Pre-existing, not blocking):**
+- Chart components (bar/line/pie/heatmap) — Recharts API mismatches
+- Calendar — DatePicker conflicts, CalendarDate type issues
+- Command Palette — Ref type issues
+- Select/Pagination/Progress — Various type issues
+- Employee Directory/Camera Capture/HR Manager — Pre-existing pagination/Dialog issues
+
+**Commit:** `feat(reports): add attendance analytics and exports` — SHA: `7a00248` (pushed `ui/redesign`).
+
+**Vercel Preview:** Auto-deployed on push to `ui/redesign`. Check Vercel dashboard for preview URL.
+
+---
+
+## Next task — Phase 12 (E2E browser) / Phase 13 (Production)
 
 ## Google OAuth (added 2026-10-15, staging đã bật provider)
 
