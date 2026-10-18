@@ -1,43 +1,55 @@
-import Link from "next/link";
 import { Suspense } from "react";
-import { requireUser } from "@/server/auth";
-import { createClient } from "@/lib/supabase/server";
-import { getTodayStatus } from "@/features/attendance/actions";
-import { getPersonalHistory } from "@/features/reports/actions";
-import { getDashboard } from "@/features/reports/actions";
-import { hasRole, REVIEW_ROLES } from "@/lib/roles";
+import { requireRole } from "@/server/auth";
+import { getFullDashboardData } from "@/features/dashboard/actions";
 import { Button } from "@/components/ui/button";
-import { Card, CardDescription, CardTitle } from "@/components/ui/card";
-import { StatusIndicator } from "@/components/ui/status-indicator";
-import { EmptyState, LoadingState } from "@/components/ui/states";
+import { Card, CardTitle } from "@/components/ui/card";
+import { DataTable } from "@/components/ui/data-table";
+import { EmptyState, LoadingState, ErrorState } from "@/components/ui/states";
 import { StatCard } from "@/components/ui/stat-card";
+import { StatusIndicator } from "@/components/ui/status-indicator";
+import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/app/app-shell";
+import { Icon } from "@/components/ui/icon";
+import { SimpleLineChart } from "@/components/ui/charts/line-chart";
+import { SimpleBarChart } from "@/components/ui/charts/bar-chart";
+import { SimplePieChart } from "@/components/ui/charts/pie-chart";
+import Link from "next/link";
 
-function fmtTime(iso: string | null): string {
-  if (!iso) return "—";
-  return new Date(iso).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
-}
+const STATUS_COLORS = {
+  success: "success",
+  pending_review: "needs_review",
+  fallback: "pending",
+  failed: "error",
+} as const;
 
-function fmtDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit" });
-}
+const METHOD_LABELS = {
+  face: "Khuôn mặt",
+  pin_fallback: "PIN thay thế",
+  manual: "Thủ công",
+} as const;
 
-const DAY_STATUS_MAP = {
-  present: "ontime",
-  late: "late",
-  early_leave: "early_leave",
-  absent: "absent",
-  incomplete: "needs_review",
+const EXCEPTION_TYPE_LABELS = {
+  unverified_checkin: "Chấm công chưa xác minh",
+  missing_checkout: "Thiếu check-out",
+  off_shift: "Ngoài ca làm",
+  pending_review: "Chờ rà soát",
+  adjustment_pending: "Chỉnh công chờ duyệt",
+} as const;
+
+const EXCEPTION_SEVERITY_COLORS = {
+  high: "danger",
+  medium: "warning",
+  low: "info",
 } as const;
 
 export default function DashboardPage({
   searchParams,
 }: {
-  searchParams: Promise<{ forbidden?: string; date?: string }>;
+  searchParams: Promise<{ date?: string; departmentId?: string; shiftId?: string; employeeId?: string; status?: string }>;
 }) {
   return (
-    <main className="mx-auto flex w-full max-w-5xl flex-col gap-5 px-4 py-6">
-      <Suspense fallback={<LoadingState message="Đang tải tổng quan…" />}>
+    <main className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-4 py-6">
+      <Suspense fallback={<LoadingState message="Đang tải tổng quan chấm công…" />}>
         <DashboardContent searchParams={searchParams} />
       </Suspense>
     </main>
@@ -47,203 +59,294 @@ export default function DashboardPage({
 async function DashboardContent({
   searchParams,
 }: {
-  searchParams: Promise<{ forbidden?: string; date?: string }>;
+  searchParams: Promise<{ date?: string; departmentId?: string; shiftId?: string; employeeId?: string; status?: string }>;
 }) {
-  const { profile } = await requireUser();
+  const { profile } = await requireRole(["manager", "hr_admin", "system_admin"]);
   const params = await searchParams;
-  const supabase = await createClient();
-  const name = profile.display_name || profile.email;
-  const isReviewer = hasRole(profile.role, REVIEW_ROLES);
-  const isHr = profile.role === "hr_admin" || profile.role === "system_admin";
+  const filters = {
+    date: params.date ?? new Date().toISOString().slice(0, 10),
+    departmentId: params.departmentId,
+    shiftId: params.shiftId,
+    employeeId: params.employeeId,
+    status: params.status,
+  };
 
-  const [status, history] = await Promise.all([
-    getTodayStatus(),
-    getPersonalHistory(new Date().toISOString().slice(0, 7), 1),
-  ]);
-  const recentMine = history.rows.slice(0, 5);
+  const result = await getFullDashboardData(filters);
 
-  let reviewer: {
-    stats: Awaited<ReturnType<typeof getDashboard>>;
-    pendingEnroll: number;
-    pendingAdj: number;
-    pendingLeave: number;
-    recentEvents: Array<{ event_type: string; status: string; occurred_at: string; who: string }>;
-    day: string;
-  } | null = null;
-
-  if (isReviewer) {
-    const day = params.date ?? new Date().toISOString().slice(0, 10);
-    const stats = await getDashboard(day);
-    const [{ count: pendingEnroll }, { count: pendingAdj }, { count: pendingLeave }, { data: events }] =
-      await Promise.all([
-        supabase.from("face_enrollments").select("id", { count: "exact", head: true }).eq("status", "pending"),
-        supabase.from("attendance_adjustment_requests").select("id", { count: "exact", head: true }).eq("status", "pending"),
-        supabase.from("leave_requests").select("id", { count: "exact", head: true }).eq("status", "pending"),
-        supabase
-          .from("attendance_events")
-          .select("event_type, status, occurred_at, employees!inner(employee_code, profiles!employees_profile_id_fkey(display_name))")
-          .order("occurred_at", { ascending: false })
-          .limit(8),
-      ]);
-    reviewer = {
-      stats,
-      pendingEnroll: pendingEnroll ?? 0,
-      pendingAdj: pendingAdj ?? 0,
-      pendingLeave: pendingLeave ?? 0,
-      recentEvents: ((events ?? []) as unknown as Array<Record<string, unknown>>).map((e) => {
-        const emp = e.employees as { employee_code: string; profiles: { display_name: string } | null };
-        return {
-          event_type: e.event_type as string,
-          status: e.status as string,
-          occurred_at: e.occurred_at as string,
-          who: `${emp?.employee_code ?? "?"} — ${emp?.profiles?.display_name ?? ""}`,
-        };
-      }),
-      day,
-    };
+  if (!result.ok) {
+    return (
+      <div className="flex flex-col gap-5">
+        <PageHeader
+          title="Tổng quan chấm công"
+          description={`Ngày ${filters.date} · ${profile.role}`}
+        />
+        <ErrorState
+          title="Không thể tải dữ liệu"
+          description={result.message}
+          onRetry={() => window.location.reload()}
+        />
+      </div>
+    );
   }
 
-  const todayStr = new Date().toLocaleDateString("vi-VN", { weekday: "long", day: "2-digit", month: "2-digit" });
-  const lastIn =
-    status.eligible && status.lastEvent?.event_type === "check_in" ? status.lastEvent.occurred_at : null;
+  const data = result.data!;
+  const todayStr = new Date(filters.date + "T00:00:00").toLocaleDateString("vi-VN", {
+    weekday: "long",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
 
   return (
     <div className="flex flex-col gap-5">
+      {/* Page Header */}
       <PageHeader
-        title={`Xin chào, ${name}`}
+        title="Tổng quan chấm công"
         description={`${todayStr} · Vai trò: ${profile.role}`}
+        actions={
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-slate-500">
+              Cập nhật: {new Date(data.lastUpdated).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}
+            </span>
+            <Button onClick={() => window.location.reload()} variant="secondary" size="sm">
+              <Icon name="refresh" size={14} /> Làm mới
+            </Button>
+          </div>
+        }
       />
 
-      {params.forbidden ? (
-        <p role="alert" className="rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700">
-          Bạn không có quyền truy cập trang vừa rồi.
-        </p>
-      ) : null}
+      {/* Filters */}
+      <Card>
+        <form method="get" className="grid gap-3 sm:grid-cols-6">
+          <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+            Ngày
+            <input
+              type="date"
+              name="date"
+              defaultValue={filters.date}
+              className="h-10 rounded-lg border border-slate-300 px-3"
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+            Phòng ban
+            <select name="departmentId" defaultValue={filters.departmentId ?? ""} className="h-10 rounded-lg border border-slate-300 px-3">
+              <option value="">Tất cả</option>
+            </select>
+          </label>
+          <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+            Ca làm
+            <select name="shiftId" defaultValue={filters.shiftId ?? ""} className="h-10 rounded-lg border border-slate-300 px-3">
+              <option value="">Tất cả</option>
+            </select>
+          </label>
+          <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+            Nhân viên
+            <input
+              type="text"
+              name="employeeId"
+              placeholder="Mã hoặc tên..."
+              defaultValue={filters.employeeId ?? ""}
+              className="h-10 rounded-lg border border-slate-300 px-3"
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+            Trạng thái
+            <select name="status" defaultValue={filters.status ?? ""} className="h-10 rounded-lg border border-slate-300 px-3">
+              <option value="">Tất cả</option>
+              <option value="success">Thành công</option>
+              <option value="pending_review">Chờ rà soát</option>
+              <option value="fallback">Thay thế</option>
+              <option value="failed">Thất bại</option>
+            </select>
+          </label>
+          <div className="flex items-end gap-2 sm:col-span-6">
+            <Button type="submit">Lọc</Button>
+            <Button type="button" variant="secondary" onClick={() => window.location.assign("/dashboard")}>
+              Xóa lọc
+            </Button>
+          </div>
+        </form>
+      </Card>
 
-      {/* Của tôi hôm nay */}
-      <section aria-label="Hôm nay của tôi" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard
-          label="Ca hôm nay"
-          value={status.eligible && status.shift ? status.shift.name : "Không có ca"}
-          icon="calendar"
-          href="/check-in"
-          hint={status.eligible && status.shift ? `${status.shift.start_time}–${status.shift.end_time}` : undefined}
-        />
-        <StatCard
-          label="Giờ vào"
-          value={fmtTime(lastIn)}
-          icon="clock"
-          tone="info"
-          href="/history"
-        />
-        <StatCard
-          label="Trạng thái"
-          value={
-            !status.eligible
-              ? "Chưa đủ điều kiện"
-              : status.canCheckOut
-                ? "Đã vào, chưa ra"
-                : status.canCheckIn
-                  ? "Chờ chấm công"
-                  : "Hoàn tất hôm nay"
-          }
-          icon={status.canCheckOut ? "flag" : "check"}
-          tone={status.canCheckOut ? "warning" : "success"}
-          href="/check-in"
-        />
-        <StatCard label="Chấm công" value={status.canCheckIn ? "Vào" : status.canCheckOut ? "Ra" : "—"} icon="camera" tone="neutral" href="/check-in" hint="Mở trang chấm công" />
+      {/* KPI Cards */}
+      <section aria-label="Chỉ số chính" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8">
+        {data.kpis.map((kpi) => (
+          <StatCard
+            key={kpi.label}
+            label={kpi.label}
+            value={kpi.value.toLocaleString("vi-VN")}
+            icon={kpi.icon}
+            tone={kpi.color === "primary" ? "info" : kpi.color}
+            href={kpi.href}
+            hint={kpi.description}
+          />
+        ))}
       </section>
 
-      <div className="flex flex-wrap gap-2">
-        <Link href="/check-in">
-          <Button disabled={!status.eligible || (!status.canCheckIn && !status.canCheckOut)}>
-            {status.canCheckOut ? "Chấm công ra" : "Chấm công vào"}
-          </Button>
-        </Link>
-        <Link href="/history">
-          <Button variant="secondary">Lịch sử của tôi</Button>
-        </Link>
+      {/* Charts */}
+      <div className="grid gap-5 lg:grid-cols-3">
+        {/* Time Trend Chart */}
+        <Card className="lg:col-span-2">
+          <CardTitle>Xu hướng check-in / check-out hôm nay</CardTitle>
+          <div className="mt-4 h-64">
+            {data.timeTrend.length > 0 ? (
+              <SimpleLineChart
+                data={data.timeTrend.map((t) => ({ x: t.hour, y: t.check_ins }))}
+                color="var(--brand)"
+                showArea
+                showDots
+                referenceLine={{ y: Math.max(...data.timeTrend.map((t) => t.check_ins)) * 0.8, label: "Trung bình" }}
+              />
+            ) : (
+              <EmptyState title="Chưa có dữ liệu" description="Dữ liệu sẽ hiện khi có nhân viên chấm công" />
+            )}
+          </div>
+        </Card>
+
+        {/* Shift Distribution Chart */}
+        <Card>
+          <CardTitle>Phân bổ ca làm hôm nay</CardTitle>
+          <div className="mt-4 h-64">
+            {data.shiftDistribution.length > 0 ? (
+              <SimplePieChart
+                data={data.shiftDistribution.map((s) => ({
+                  label: s.shift_name,
+                  value: s.count,
+                  color: s.color,
+                }))}
+              />
+            ) : (
+              <EmptyState title="Chưa có phân ca" description="Chưa có nhân viên được phân ca hôm nay" />
+            )}
+          </div>
+        </Card>
       </div>
 
-      {/* Lịch sử gần đây của tôi */}
+      {/* Department Attendance Chart */}
       <Card>
-        <CardTitle>Công gần đây</CardTitle>
-        <div className="mt-2 flex flex-col divide-y divide-slate-100">
-          {recentMine.length === 0 ? (
-            <EmptyState title="Chưa có bản ghi" description="Chấm công xong sẽ hiện ở đây." />
+        <CardTitle>Chấm công theo phòng ban</CardTitle>
+        <div className="mt-4 h-72">
+          {data.departmentAttendance.length > 0 ? (
+            <SimpleBarChart
+              data={data.departmentAttendance.flatMap((d) => [
+                { label: d.department, value: d.present, color: "var(--success)" },
+                { label: d.department, value: d.late, color: "var(--warning)" },
+                { label: d.department, value: d.absent, color: "var(--danger)" },
+                { label: d.department, value: d.early_leave, color: "var(--info)" },
+              ])}
+            />
           ) : (
-            recentMine.map((r) => (
-              <div key={r.work_date} className="flex items-center justify-between gap-2 py-2 text-sm">
-                <span className="tnum font-medium">{fmtDate(r.work_date + "T00:00:00")} · {r.shift_name}</span>
-                <span className="tnum text-slate-500">
-                  {fmtTime(r.first_in)} – {fmtTime(r.last_out)}
-                </span>
-                <StatusIndicator status={DAY_STATUS_MAP[r.status as keyof typeof DAY_STATUS_MAP] ?? "idle"} />
-              </div>
-            ))
+            <EmptyState title="Chưa có dữ liệu" description="Dữ liệu sẽ hiện khi có nhân viên chấm công" />
           )}
         </div>
       </Card>
 
-      {/* HR/Manager */}
-      {reviewer ? (
-        <>
-          <form method="get" className="flex items-end gap-2">
-            <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
-              Ngày xem
-              <input type="date" name="date" defaultValue={reviewer.day} className="h-10 rounded-lg border border-slate-300 px-3" />
-            </label>
-            <Button type="submit" variant="secondary" size="sm">Xem</Button>
-          </form>
-          <section aria-label="Tổng quan tổ chức" className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-            <StatCard label="Nhân sự" value={reviewer.stats.totalActive} icon="users" href="/admin/employees" />
-            <StatCard label="Đã chấm công" value={reviewer.stats.checkedIn} icon="check" tone="success" href="/reports" />
-            <StatCard label="Đi trễ" value={reviewer.stats.late} icon="clock" tone="warning" href="/reports" />
-            <StatCard label="Về sớm" value={reviewer.stats.earlyLeave} icon="clock" tone="warning" href="/reports" />
-            <StatCard label="Vắng (có ca)" value={reviewer.stats.absent} icon="x" tone="danger" href="/reports" />
-            <StatCard label="Chờ rà soát" value={reviewer.stats.pendingReview} icon="flag" tone="info" href="/reports" />
-          </section>
-          <div className="grid gap-3 sm:grid-cols-3">
-            <StatCard label="Enroll chờ duyệt" value={reviewer.pendingEnroll} icon="shield" tone="warning" href="/admin/enrollments" />
-            <StatCard label="Chỉnh công chờ" value={reviewer.pendingAdj} icon="file" tone="warning" href="/adjustments" />
-            <StatCard label="Đơn nghỉ chờ" value={reviewer.pendingLeave} icon="calendar" tone="warning" href="/leave" />
-          </div>
-          <Card>
-            <CardTitle>Sự kiện gần đây</CardTitle>
-            <div className="mt-2 flex flex-col divide-y divide-slate-100">
-              {reviewer.recentEvents.length === 0 ? (
-                <EmptyState title="Chưa có sự kiện" description="Sự kiện chấm công mới nhất sẽ hiện ở đây." />
-              ) : (
-                reviewer.recentEvents.map((e, i) => (
-                  <div key={`${e.occurred_at}-${i}`} className="flex items-center justify-between gap-2 py-2 text-sm">
-                    <span className="truncate">{e.who}</span>
-                    <span className="tnum shrink-0 text-slate-500">
-                      {e.event_type === "check_in" ? "Vào" : "Ra"} · {fmtTime(e.occurred_at)}
-                    </span>
-                    <StatusIndicator
-                      status={e.status === "success" ? "success" : e.status === "failed" ? "error" : "pending"}
-                    />
-                  </div>
-                ))
+      {/* Live Activity & Exceptions */}
+      <div className="grid gap-5 lg:grid-cols-3">
+        {/* Live Activity */}
+        <Card className="lg:col-span-2">
+          <CardTitle>Hoạt động chấm công gần đây</CardTitle>
+          <div className="mt-3">
+            <DataTable
+              ariaLabel="Hoạt động chấm công gần đây"
+              rows={data.liveActivity}
+              keyOf={(e) => e.id}
+              emptyTitle="Chưa có hoạt động"
+              emptyDescription="Sự kiện chấm công mới nhất sẽ hiện ở đây."
+              columns={[
+                { key: "time", header: "Thời gian", render: (e) => <span className="tnum text-xs">{new Date(e.occurred_at).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</span> },
+                { key: "employee", header: "Nhân viên", render: (e) => <span className="font-medium">{e.employee_code}</span> },
+                { key: "name", header: "Họ tên", render: (e) => <span className="text-sm">{e.display_name}</span> },
+                { key: "dept", header: "Phòng", render: (e) => <span className="text-xs text-slate-500">{e.department}</span> },
+                {
+                  key: "type",
+                  header: "Loại",
+                  render: (e) => (
+                    <Badge tone={e.event_type === "check_in" ? "info" : "success"}>
+                      {e.event_type === "check_in" ? "Vào" : "Ra"}
+                    </Badge>
+                  ),
+                },
+                {
+                  key: "method",
+                  header: "Phương thức",
+                  render: (e) => <span className="text-xs text-slate-500 capitalize">{METHOD_LABELS[e.method]}</span>,
+                },
+                {
+                  key: "status",
+                  header: "Trạng thái",
+                  render: (e) => (
+                    <StatusIndicator status={STATUS_COLORS[e.status] ?? "idle"} />
+                  ),
+                },
+              ]}
+              cardTitle={(e) => `${e.event_type === "check_in" ? "Check-in" : "Check-out"} · ${e.employee_code}`}
+              cardStatus={(e) => <StatusIndicator status={STATUS_COLORS[e.status] ?? "idle"} />}
+              cardMeta={(e) => (
+                <span className="text-xs text-slate-500">
+                  {new Date(e.occurred_at).toLocaleString("vi-VN")} · {METHOD_LABELS[e.method]}
+                  {e.confidence !== null && e.confidence !== undefined ? ` · Khớp ${(e.confidence * 100).toFixed(0)}%` : ""}
+                  {e.liveness_status ? ` · Liveness: ${e.liveness_status}` : ""}
+                </span>
               )}
-            </div>
-          </Card>
-        </>
-      ) : null}
-
-      {isHr ? (
-        <Card>
-          <CardTitle>Quản trị</CardTitle>
-          <CardDescription>Nhân sự, ca làm, xác minh khuôn mặt, audit.</CardDescription>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <Link href="/admin/employees"><Button size="sm">Nhân viên</Button></Link>
-            <Link href="/admin/shifts"><Button size="sm" variant="secondary">Ca làm</Button></Link>
-            <Link href="/admin/enrollments"><Button size="sm" variant="secondary">Xác minh khuôn mặt</Button></Link>
-            <Link href="/audit"><Button size="sm" variant="secondary">Audit</Button></Link>
-            <Link href="/reports"><Button size="sm" variant="secondary">Báo cáo</Button></Link>
+            />
           </div>
         </Card>
-      ) : null}
+
+        {/* Exceptions */}
+        <Card>
+          <CardTitle>Trung tâm ngoại lệ</CardTitle>
+          <div className="mt-3">
+            {data.exceptions.length === 0 ? (
+              <EmptyState title="Không có ngoại lệ" description="Tất cả chấm công đều bình thường" />
+            ) : (
+              <DataTable
+                ariaLabel="Danh sách ngoại lệ"
+                rows={data.exceptions}
+                keyOf={(e) => e.id}
+                emptyTitle="Không có ngoại lệ"
+                emptyDescription="Tất cả chấm công đều bình thường"
+                columns={[
+                  {
+                    key: "type",
+                    header: "Loại",
+                    render: (e) => (
+                      <Badge tone={EXCEPTION_SEVERITY_COLORS[e.severity]}>
+                        {EXCEPTION_TYPE_LABELS[e.type]}
+                      </Badge>
+                    ),
+                  },
+                  { key: "employee", header: "Nhân viên", render: (e) => <span className="font-medium">{e.employee_code}</span> },
+                  { key: "name", header: "Họ tên", render: (e) => <span className="text-sm">{e.display_name}</span> },
+                  { key: "dept", header: "Phòng", render: (e) => <span className="text-xs text-slate-500">{e.department}</span> },
+                  { key: "shift", header: "Ca", render: (e) => <span className="text-xs text-slate-500">{e.shift_name}</span> },
+                  {
+                    key: "actions",
+                    header: <span className="sr-only">Thao tác</span>,
+                    render: (e) => (
+                      <Link href={e.href}>
+                        <Button variant="ghost" size="sm">Xem chi tiết</Button>
+                      </Link>
+                    ),
+                  },
+                ]}
+                cardTitle={(e) => `${EXCEPTION_TYPE_LABELS[e.type]} · ${e.employee_code}`}
+                cardStatus={(e) => <Badge tone={EXCEPTION_SEVERITY_COLORS[e.severity]}>{e.severity.toUpperCase()}</Badge>}
+                cardMeta={(e) => (
+                  <span className="text-xs text-slate-500">
+                    {e.detail}
+                  </span>
+                )}
+                cardActions={(e) => (
+                  <Link href={e.href}>
+                    <Button variant="ghost" size="sm">Xem chi tiết</Button>
+                  </Link>
+                )}
+              />
+            )}
+          </div>
+        </Card>
+      </div>
     </div>
   );
 }

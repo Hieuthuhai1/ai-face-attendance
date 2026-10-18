@@ -1,184 +1,482 @@
-# UX/UI Redesign Plan — AI Face Attendance (Plan Mode)
+# AI Face Attendance — UX/UI Redesign Plan
 
-Ngày lập: 2026-10-15. Phạm vi: **chỉ frontend** (routes/components/CSS).
-Không migration, không đổi DB/auth/AI backend, không commit/deploy ở bước này.
-Tham khảo EasyHRM ở mức **nguyên tắc tổ chức thông tin** (nhóm chức năng rõ,
-hành động chính nổi bật, trạng thái minh bạch, hàng đợi ngoại lệ, duyệt mobile);
-không sao chép thương hiệu/nội dung/thiết kế của họ.
-
-## 1. Audit giao diện hiện tại
-
-| # | Màn hình (route) | Hiện trạng | Vấn đề chính |
-|---|---|---|---|
-| 1 | `/` home | Trang showcase components + text Phase | Không phải landing cũng không phải app home; user lạc sau login |
-| 2 | `/login` | Card email/pass + nút Google + divider | Đạt cơ bản; thiếu logo/brand, thiếu link quên mật khẩu (ngoài phạm vi — Auth chưa có reset) |
-| 3 | `/dashboard` | Chào tên + grid cards theo role | Không nav chung; cards chữ nhiều, thiếu số liệu hôm nay của chính user |
-| 4 | `/check-in` | Nút In/Out + camera + states + fallback | Luồng tốt; trọng tâm camera chưa đủ lớn trên mobile; thiếu stepper/checklist trước chụp |
-| 5 | `/history` | Lọc tháng + bảng + StatusIndicator | Bảng 7 cột chật mobile; không sort; phân trang chỉ text |
-| 6 | `/enrollment` | Consent + fixture DEMO + camera + status | Dài, nhiều Card nối nhau; thiếu stepper (1 Thông báo → 2 Chụp → 3 Chờ duyệt) |
-| 7 | `/admin/employees` | Tìm kiếm + bảng + dialog CRUD + confirm | Bảng 6 cột khó mobile; select manager theo mã khó đọc; thiếu avatar/tên nổi bật |
-| 8 | `/admin/shifts` | Bảng ca + form phân ca + bảng assignment | Form 5 cột dồn mobile; thiếu view lịch theo tuần |
-| 9 | `/admin/enrollments` | Lọc + bảng queue + approve/reject dialog | Không hiện ảnh/template (đúng privacy); thiếu SLA/bộ đếm chờ duyệt |
-| 10 | `/reports` | 6 thẻ + form lọc 6 cột + bảng + export | Form lọc dồn mobile; thẻ số chưa có so sánh/kỳ trước; bảng 6 cột |
-| 11 | `/adjustments`, `/leave` | Form + của tôi + queue duyệt | Tốt; thiếu badge đếm pending trên tiêu đề/tab |
-| 12 | `/audit` | Filter + bảng read-only | Đạt; metadata JSON thô khó đọc |
-| 13 | `/auth/callback` | Route kỹ thuật (không UI) | Ngoài phạm vi redesign |
-
-**Vấn đề xuyên suốt (đã verify trong code):**
-- U1. Không có AppShell/navigation chung — mỗi page là đảo riêng, không breadcrumb, không biết đang ở đâu.
-- U2. Dark mode vỡ: `globals.css` đổi `--background/--foreground` theo `prefers-color-scheme`
-  nhưng components dùng màu cứng (`bg-white`, `text-slate-*`) → nền đen chữ khó đọc. Chưa có chính sách theme.
-- U3. Icons = ký tự unicode (◌ ✓ ✕ ⏳ ⚑) — thiếu nhất quán, khó kiểm soát a11y/kích thước.
-- U4. Không skeleton — mọi Suspense dùng spinner chữ; bảng dài gây layout shift.
-- U5. Bảng chỉ `overflow-x` + sort không có + phân trang text thuần.
-- U6. Tokens sơ khai: chỉ `--brand` (+contrast); thiếu semantic palette (success/warning/danger/info),
-  radius/shadow/spacing/focus-ring chuẩn.
-- U7. Form lọc reports/shifts là grid cố định, dồn trên mobile; chưa có SearchInput chuẩn.
-- U8. Audit metadata hiển thị JSON thô.
-- U9. Home `/` không có vai trò trong app — nên thành redirect theo session (login ↔ dashboard).
-
-## 2. Vấn đề UX/UI theo mức ưu tiên
-
-| Ưu tiên | Vấn đề | Tác động |
-|---|---|---|
-| P0 | AppShell + navigation theo role (desktop sidebar / mobile bottom-bar + topbar) | User lạc, thao tác thừa; HR khó chuyển module |
-| P0 | Design tokens đầy đủ + sửa dark mode (quyết định: light-only có chủ đích HOẶC dark đầy đủ) | Vỡ giao diện người dùng dark OS |
-| P0 | Màn hình check-in mobile-first: viewfinder lớn, stepper, kết quả + giờ + hành động tiếp theo | Đây là màn hình dùng nhiều nhất |
-| P1 | DataTable chuẩn (sort, pagination số trang, responsive card-mode) + SearchInput + Pagination | Mọi bảng HR |
-| P1 | Skeleton + Empty có hướng dẫn hành động | Giảm cảm giác chờ, giảm ticket "trang trắng" |
-| P1 | Stepper enrollment (consent → chụp → chờ duyệt) + badge pending cho reviewer | Giảm bỏ dở enrollment |
-| P2 | StatCard dashboard (số hôm nay của tôi; HR: tồn đọng duyệt) + PageHeader chuẩn mọi trang | Nhận biết trạng thái nhanh |
-| P2 | Icon set SVG nội bộ thay unicode rời rạc | Nhất quán, a11y |
-| P3 | Audit metadata render dạng key-value gọn | Đọc được |
-| P3 | Home `/` thành router theo session | Không còn trang showcase lạc lõng |
-
-## 3. Design direction mới — "Enterprise SaaS calm"
-
-- Nền trung tính ấm (`#f6f7f9`), surface trắng, text slate-900/500, border slate-200.
-- Thương hiệu: giữ họ xanh dương (đang `#1d4ed8`) — đổi sang **navy `#1e3a8a` primary + blue `#2563eb` action + teal `#0d9488` accent thành công-phụ** sau khi bạn duyệt (không tự đổi brand khi chưa confirm).
-- Radius 12px card / 8px control; shadow-sm card, shadow-md dialog; spacing 4px base.
-- Typography: Geist (đã có) + tabular-nums cho giờ/số liệu.
-- Không gradient/glass/cute illustration; icon outline 1.5px đồng bộ.
-- Motion: transition 150ms cho hover/focus; Skeleton shimmer tắt khi `prefers-reduced-motion`.
-
-## 4. Design tokens (mở rộng `globals.css` + `@theme`)
-
-```css
---brand-900:#1e3a8a; --brand-600:#2563eb; --brand-50:#eff6ff;
---teal-600:#0d9488;
---bg:#f6f7f9; --surface:#ffffff; --surface-muted:#f1f5f9;
---text-1:#0f172a; --text-2:#475569; --text-3:#94a3b8;
---border:#e2e8f0;
---success:#15803d; --success-bg:#f0fdf4;
---warning:#b45309; --warning-bg:#fffbeb;
---danger:#b91c1c; --danger-bg:#fef2f2;
---info:#1d4ed8; --info-bg:#eff6ff;
---radius-card:12px; --radius-control:8px;
---shadow-card:0 1px 2px rgb(15 23 42 / .06);
---focus-ring:0 0 0 3px rgb(37 99 235 / .25);
-```
-
-## 5. Sơ đồ navigation (theo role, server render theo `profile.role`)
-
-- Employee: Chấm công (`/check-in`) • Hôm nay (`/dashboard`) • Lịch sử (`/history`) • Đơn từ (`/adjustments`, `/leave`) • Đăng ký khuôn mặt (`/enrollment`)
-- Manager: + Báo cáo (`/reports`) • Duyệt (badges pending trên Đơn từ)
-- HR/Admin: + Nhân sự • Ca làm • Xác minh khuôn mặt • Audit • (Báo cáo)
-- Desktop: sidebar trái 240px (icon + label, badge count). Mobile: topbar gọn (logo + avatar/menu) + bottom-bar 5 mục chính. Không sidebar trên `/login`.
-
-## 6. Đề xuất bố cục từng màn hình (giữ nguyên backend/actions)
-
-1. **Login:** card giữa, logo + tên app, nút Google trước (primary use), divider "Hoặc", form email/pass, lỗi gần trường + alert tóm tắt; giữ thông báo cấu hình thiếu.
-2. **Dashboard:** PageHeader (chào + ngày + ca hôm nay) → employee: thẻ "Hôm nay" (giờ vào/ra, tổng giờ, trạng thái) + actions; HR: hàng đợi (enrollments/adjustments/leave pending counts) + link.
-3. **Check-in:** stepper (1 Chọn In/Ra → 2 Xác minh → 3 Kết quả); viewfinder 4:3 lớn, khung căn mặt bằng CSS (không overlay ML), checklist ánh sáng/nhìn thẳng; kết quả: icon lớn + giờ server + ca + nút "Chấm tiếp/Chụp lại/Dùng thay thế".
-4. **History:** PageHeader + month picker + StatCards mini (ngày công, trễ, sớm) + DataTable responsive.
-5. **Employees/Shifts/Enrollments/Reports/Adjustments/Leave/Audit:** PageHeader (title + description + primary action) + filter bar chuẩn + DataTable + pagination; reports giữ export + ghi chú vắng-có-ca.
-
-## 7. Component tái sử dụng (giữ nguyên)
-
-`button, input, card, dialog, badge, confirm-dialog, demo-banner, status-indicator`
-(logic + API giữ, chỉ restyle qua tokens).
-
-## 8. Component sửa/thay/thêm
-
-- Sửa: `table` → `DataTable` (sort client-side trong trang, card-mode mobile); `states` (thêm Skeleton + Empty có action); `input` (thêm SearchInput, DateInput style); `badge` (thêm dot + count).
-- Thêm: `AppShell/Sidebar/BottomBar/Topbar/PageHeader/StatCard/Stepper/Avatar/Pagination/Tabs/EmptyIllustration(css)/Icon(svg set)/Toast(nhẹ, cho copy/export)` .
-- Xóa ý định: không thêm chart lib/charts ở đợt này (dùng StatCard + bảng).
-
-## 9. Responsive strategy
-
-- Breakpoints Tailwind: `sm:640 lg:1024`. Mobile-first: check-in/enrollment/login ưu tiên một cột, viewfinder full-width, nút chính sticky-bottom trong flow chụp.
-- Bảng → card-mode dưới `md` (mỗi row thành 1 card, cột chính + 2 meta + actions).
-- Sidebar → bottom-bar dưới `lg`; topbar thu gọn; filter bar cuộn ngang có snap.
-- Touch target ≥ 44px cho primary/danger; bảng chữ ≥ 14px.
-
-## 10. Accessibility checklist
-
-- Mọi icon có `aria-hidden` + text đi kèm (kế thừa quy ước hiện tại).
-- Focus-visible dùng `--focus-ring`; thứ tự tab logic trong Dialog (giữ autoFocus nút an toàn).
-- Form: label thật, `aria-describedby` lỗi, lỗi gần trường (Input đã có).
-- Tương phản text ≥ 4.5:1 (palette trên đạt với slate trên trắng).
-- Không chỉ dùng màu: giữ icon+chữ mọi status.
-- `prefers-reduced-motion`: tắt shimmer/transition.
-- Test keyboard-only cho login → check-in → duyệt (ghi trong kế hoạch kiểm thử).
-
-## 11. Trạng thái & tương tác (áp cho mọi trang)
-
-Loading (skeleton theo hình trang) • Empty (minh họa CSS + 1 primary action) •
-Error (mã lỗi + Thử lại) • Success • Warning/Review • Disabled (kèm lý do qua title/hint) •
-Retry (giữ idempotency key như hiện tại). Form: validate sát trường, disable submit khi đang gửi.
-
-## 12. File dự kiến thay đổi
-
-- `src/app/globals.css` (tokens + theme policy), `src/app/layout.tsx` (lồng AppShell).
-- Mới: `src/components/app/*` (shell/nav/header), `src/components/ui/{data-table,pagination,skeleton,avatar,stepper,stat-card,tabs,search-input,icon,empty-illustration}.tsx`.
-- Sửa UI (không đổi actions/RLS): 12 `page.tsx` + 5 `features/*` panels + `login-form`.
-- Xóa/sửa: `src/app/page.tsx` thành router session (server redirect).
-- Docs: cập nhật `AGENTS.md` (quy ước UI mới) khi xong.
-
-## 13. Kế hoạch kiểm thử
-
-- `lint/typecheck/build` sau mỗi task; unit cho tokens? (không cần) + giữ 48 unit hiện tại xanh.
-- Visual smoke: dev server + curl mã trạng thái + screenshot từng route (bạn duyệt bằng mắt).
-- Regression chức năng: integration suite + RLS suite chạy lại cuối (không đổi backend nhưng đề phòng import/CSS vỡ build).
-- A11y: checklist keyboard + tab order + contrast spot-check.
-- Không merge task nào làm vỡ test hiện có.
-
-## 14. Acceptance criteria (toàn redesign)
-
-- Mọi route cũ hoạt động y hệt (actions/RLS/validations không đổi — diff chứng minh).
-- Không còn trang trắng/lỗi dark mode ở cấu hình đã chọn.
-- Mobile 360px: check-in chụp được bằng 1 tay (nút trong tầm ngón cái), bảng đọc được.
-- Lighthouse a11y ≥ 90 các trang chính (đo thủ công, ghi số liệu).
-- Bạn duyệt visual từng nhóm màn hình.
-
-## 15. Git/Vercel workflow
-
-- Branch `ui/redesign` từ `main`; mỗi task 1 commit conventional; PR Preview Vercel để bạn duyệt visual (không merge khi chưa duyệt).
-- Không push thẳng `main`; không migration; secret scan như thường lệ.
-
-## 16. Rủi ro với chức năng hiện có & giảm thiểu
-
-- Restyle làm vỡ layout logic (dialog focus, form grid) → giữ nguyên component API, chỉ đổi class/tokens; smoke từng dialog.
-- Dark-mode: chọn 1 trong 2 (khuyến nghị **light-only có chủ đích**: xóa media query, ép light) — quyết định của bạn trước Task 1.
-- Icon SVG mới thiếu nghĩa → mỗi icon có label mapping review cùng bạn.
-- Scope creep sang backend → cấm trong plan này; mọi thiếu dữ liệu ghi backlog, không tự thêm API.
+> **Ngày tạo**: 2026-10-18  
+> **Branch**: `ui/redesign` (tạo mới từ `main`)  
+> **Mục tiêu**: Cải thiện UX/UI toàn diện hướng tới SaaS HR chuyên nghiệp, hiện đại, triển khai thực tế.  
+> **Tham khảo**: 1Office.vn (chỉ ý tưởng chức năng & nguyên tắc UX/UI, **KHÔNG** copy giao diện/code).
 
 ---
 
-## Task list (dependency order)
+## 1. TRẠNG THÁI UX/UI HIỆN TẠI (Current State)
 
-| Task | Việc | Phụ thuộc | Files chính |
-|---|---|---|---|
-| R0 | Chốt: light-only vs dark đầy đủ + duyệt brand navy (bạn quyết) | — | (quyết định, không code) |
-| R1 | Tokens + theme policy + sửa dark | R0 | `globals.css` |
-| R2 | Icon set SVG + restyle Badge/StatusIndicator | R1 | `ui/icon*`, badge, status |
-| R3 | AppShell + nav theo role + PageHeader + `/` router | R1,R2 | `components/app/*`, layout, `app/page` |
-| R4 | DataTable + Pagination + SearchInput + Skeleton/Empty | R1,R2 | `ui/*` mới |
-| R5 | Login + Dashboard + History (áp shell + components) | R3,R4 | 3 routes |
-| R6 | Check-in + Enrollment (mobile-first + stepper) | R3,R4 | 2 routes + camera panels (UI only) |
-| R7 | Admin tables (employees/shifts/enrollments) | R4,R5 | 3 routes |
-| R8 | Reports/Adjustments/Leave/Audit | R4,R5 | 4 routes |
-| R9 | A11y pass + visual QA + regression suite + docs | R5–R8 | toàn bộ + AGENTS.md |
+### ✅ Đã có (Phases 1–9 hoàn thành)
+| Hạng mục | Trạng thái | Chi tiết |
+|----------|------------|----------|
+| **Design System** | Cơ bản | Button, Card, Icon, Input, DataTable, Pagination, Dialog, ConfirmDialog, Toast, Badge, StatusIndicator, Skeleton, Tooltip, Select, DropdownMenu, DemoBanner |
+| **AppShell** | Hoàn thiện | Sidebar desktop (có thu gọn) + Topbar + Mobile Bottom-bar (5 mục), phân quyền 4 role |
+| **Navigation** | Hoàn thiện | Route groups `(protected)`, role-based nav, breadcrumb, command palette ready |
+| **Routes** | 12 routes | login, dashboard, check-in, history, enrollment, adjustments, leave, reports, admin/employees, admin/shifts, admin/enrollments, audit |
+| **Camera Capture** | Hoàn thiện | Preview, quality gate (sáng/mờ/size), permission handling, fallback states |
+| **Face Enrollment** | Hoàn thiện | Consent v1 → Camera (3-5 captures) → Submit → Pending → HR Approve/Reject |
+| **Check-in/Out** | Hoàn thiện | Stepper (Chọn → Quét → Kết quả), states: idle/verifying/result/failed, fallback PIN, offline queue |
+| **DataTable** | Hoàn thiện | Desktop table + Mobile cards (cùng 1 nguồn), sort/filter/paginate |
+| **Responsive** | Tested | 5 viewports (360, 390, 430, 768, 1280), no horizontal overflow |
+| **Accessibility** | Cơ bản | Focus-visible, ARIA labels, keyboard nav, contrast AA, reduced-motion |
+| **E2E Tests** | 14/14 pass | Shell (4) + Responsive/A11y (10) trên production build |
 
-**Task đầu tiên (Build): R1 — Tokens + theme policy.**
-Acceptance R1: `globals.css` có đủ tokens mục 4; dark mode hoặc bị xóa hẳn (theo R0) hoặc render đúng cả app ở cả 2 theme (smoke 3 routes mỗi theme); `lint/typecheck/build` xanh; không đổi bất kỳ logic nào (diff chỉ CSS/tokens); commit `style(ui): add design tokens and theme policy`.
+### 🎨 Design Tokens (globals.css)
+```css
+:root {
+  --brand: #1d4ed8; --brand-strong: #1e3a8a; --brand-soft: #eff6ff;
+  --background: #f6f7f9; --surface: #ffffff; --surface-muted: #f1f5f9;
+  --success: #15803d; --warning: #b45309; --danger: #b91c1c; --info: #1d4ed8;
+  --radius-card: 12px; --radius-control: 8px;
+  --shadow-card: 0 1px 2px rgb(15 23 42 / 0.06);
+  --focus-ring: 0 0 0 3px rgb(37 99 235 / 0.25);
+}
+```
+> Light-only có chủ đích (tránh vỡ components dùng màu cứng).
+
+---
+
+## 2. CÁC VẤN ĐỀ ƯU TIÊN (Priority Issues)
+
+| # | Vấn đề | Mức độ | Mô tả |
+|---|--------|--------|-------|
+| 1 | **Dashboard thiếu trực quan** | 🔴 Cao | Chỉ stat cards, thiếu charts, heatmap, calendar view, team overview |
+| 2 | **Check-in UX chưa mượt** | 🔴 Cao | Camera guide cơ bản, thiếu liveness guidance rõ ràng, recovery flow chưa tốt |
+| 3 | **Quản lý nhân viên đơn giản** | 🟡 Trung bình | Thiếu bulk actions, import/export, avatar, org chart, search nâng cao |
+| 4 | **Đăng ký khuôn mặt** | 🟡 Trung bình | Flow có sẵn nhưng thiếu progress indicator, better consent UX, re-enroll flow |
+| 5 | **Lịch sử chấm công** | 🟡 Trung bình | Chỉ table, thiếu calendar view, heatmap, filter nâng cao, quick stats |
+| 6 | **Quản lý ca làm** | 🟡 Trung bình | Thiếu visual calendar, drag-drop assignment, shift templates, conflict warning |
+| 7 | **Đơn từ (Leave/OT/Shift Change)** | 🔴 Cao | Chỉ có Leave + Adjustments. **Thiếu**: Overtime requests, Shift change requests |
+| 8 | **Approval Center** | 🔴 Cao | Chỉ queue cơ bản. Thiếu: Unified dashboard, bulk actions, SLA tracking, delegation |
+| 9 | **Reports & Analytics** | 🔴 Cao | Chỉ xuất CSV. Thiếu: Charts, scheduled reports, dashboard widgets, drill-down |
+| 10 | **Settings/Profile** | 🔴 Cao | **Hoàn toàn thiếu**: User profile, notifications, org settings, security, 2FA |
+| 11 | **Mobile UX** | 🟡 Trung bình | Bottom bar có nhưng chưa tối ưu (touch targets, gestures, offline banner) |
+| 12 | **Design System gaps** | 🟡 Trung bình | Thiếu: Tabs, Avatar, Calendar, Charts, FormWizard, Stepper component |
+| 13 | **Loading/Empty/Error states** | 🟢 Thấp | Cơ bản, cần polish: skeleton chuyên biệt, empty state có illustration |
+
+---
+
+## 3. HƯỚNG THIẾT KẾ (Design Direction)
+
+| Yếu tố | Quy chuẩn |
+|--------|-----------|
+| **Style** | Modern Enterprise SaaS, Clean, Professional |
+| **Theme** | Light-only (có chủ đích) |
+| **Typography** | Geist Sans/Mono, Tabular-nums cho số liệu/giờ |
+| **Spacing** | 4px base, Card radius 12px, Control radius 8px |
+| **Color** | Brand tokens + Semantic colors (success/warning/danger/info) |
+| **Hierarchy** | Card > Section > Element, Shadow depth nhất quán |
+| **Icon** | SVG stroke=currentColor 1.5px (không unicode rời rạc) |
+| **Responsive** | Mobile-first, Breakpoints: sm(640), md(768), lg(1024), xl(1280) |
+| **States** | Loading (Skeleton), Empty (illustration + action), Error (inline + toast), Success, Warning, Disabled |
+| **Accessibility** | Focus-visible ring, ARIA labels, Keyboard navigation, Contrast AA, Reduced-motion |
+
+---
+
+## 4. KIẾN TRÚC MÀN HÌNH (Screen Architecture)
+
+```
+1. Login                    → Đã có (polish: social login, remember me, forgot password)
+2. Main Dashboard           → REDISIGN hoàn toàn (charts, widgets, team view)
+3. AI Face Attendance       → POLISH (liveness guide, better states, offline handling)
+4. Employee Management      → NÂNG CẤP (bulk, import, avatar, org chart)
+5. Employee Details         → MỚI (modal/drawer chi tiết, timeline, face status)
+6. Face Enrollment          → POLISH (progress, consent UX, re-enroll flow)
+7. Attendance Records       → NÂNG CẤP (calendar view, heatmap, filters)
+8. Shift Management         → NÂNG CẤP (visual calendar, drag-drop, templates)
+9. Work Calendar            → MỚI (unified calendar view cho employee/manager)
+10. Leave Requests          → POLISH (balance, calendar, types)
+11. Overtime Requests       → MỚI (chưa có)
+12. Shift Change Requests   → MỚI (chưa có)
+13. Approval Center         → NÂNG CẤP (unified, bulk, SLA, delegation)
+14. Reports & Analytics     → REDISIGN (charts, scheduled, widgets, drill-down)
+15. Departments             → MỚI (CRUD + org chart)
+16. Attendance Policies     → MỚI (grace, rounding, OT rules, holiday calendar)
+17. User & Role Management  → MỚI (RBAC UI, invitation, 2FA)
+18. Security & Audit Logs   → POLISH (filter, export, real-time)
+19. Profile & Settings      → MỚI (profile, notifications, security, preferences)
+```
+
+> **Chỉ triển khai màn hình có liên quan phạm vi thực tế** (ưu tiên 1–14 trước, 15–19 phase sau).
+
+---
+
+## 5. KẾ HOẠCH BUILD CHI TIẾT (10 Phases)
+
+### Phase 1: Design System + Application Shell ⏱️ ~3-4 ngày
+**Dependencies**: Không
+
+**Files mới/cập nhật**:
+```
+src/components/ui/
+├── avatar.tsx, tabs.tsx, stepper.tsx, form-wizard.tsx
+├── calendar.tsx, charts/ (bar, line, pie, heatmap)
+├── tooltip.tsx, dropdown-menu.tsx, select.tsx (improve)
+├── table.tsx (column resize, sort, frozen), pagination.tsx (page size, jump)
+├── empty-state.tsx, loading-state.tsx, error-state.tsx (improve)
+
+src/components/app/
+├── app-shell.tsx (keyboard shortcuts, command palette Cmd+K)
+├── user-menu.tsx (NEW: profile dropdown)
+└── nav.ts (update routes)
+```
+
+**Acceptance**: 100% unit tests utils, 80% components, a11y audit pass, bundle +<15KB.
+
+---
+
+### Phase 2: Main Dashboard Redesign ⏱️ ~4-5 ngày
+**Dependencies**: Phase 1
+
+**Files**:
+```
+src/app/(protected)/dashboard/
+├── page.tsx (rewrite), components/ (stat-grid, attendance-chart, team-heatmap,
+│   today-shifts, quick-actions, pending-approvals, upcoming-leaves, alerts-banner)
+├── loading.tsx, error.tsx
+src/features/reports/ (dashboard-actions.ts, dashboard-queries.ts)
+src/lib/attendance/ (dashboard-stats.ts, heatmap-data.ts)
+```
+
+**Views theo Role**:
+- **Employee**: Personal stats + today shift + upcoming leaves + trend chart
+- **Manager**: Team stats + heatmap + pending approvals + team trend
+- **HR/Admin**: Org stats + all pending + system alerts + compliance
+
+---
+
+### Phase 3: AI Face Attendance Experience (Check-in/Out) ⏱️ ~5-6 ngày
+**Dependencies**: Phase 1
+
+**Files**:
+```
+src/features/attendance/
+├── checkin-flow.tsx (rewrite), components/ (camera-guide, verification-stepper,
+│   checkin-result, fallback-form, offline-banner, provider-status)
+├── camera-overlay.tsx, liveness-indicator.tsx, pulse-ring.tsx (NEW UI components)
+```
+
+**UX cải tiến**:
+- Camera guide: Animated overlay (face oval, eye line, distance)
+- Liveness: Progress ring + instructions (blink, turn head, smile)
+- Stepper: 1.Sẵn sàng → 2.Định vị → 3.Xác minh → 4.Hoàn tất
+- States real-time feedback (quá gần/xa, tối, sáng, lệch)
+- Offline queue với auto-sync, conflict resolution
+- Provider status badge (Online/Degraded/Offline) + latency
+
+---
+
+### Phase 4: Employee Management + Face Enrollment ⏱️ ~5-6 ngày
+**Dependencies**: Phase 1
+
+**Files**:
+```
+src/features/hr/
+├── employee-manager.tsx (rewrite), employee-detail.tsx, employee-import.tsx
+├── employee-avatar.tsx, org-chart.tsx, actions.ts (bulk, import, avatar)
+
+src/features/face-enrollment/
+├── enrollment-flow.tsx (rewrite: multi-step wizard)
+├── components/ (consent-step, capture-step, quality-review, enrollment-status, re-enroll-flow)
+```
+
+**Employee Management**:
+- DataTable + Avatar + Status badge + Quick actions
+- Bulk: Activate/Deactivate/Assign Shift/Export/Delete
+- Import Wizard: Template → Upload → Validate → Confirm → Result
+- Employee Detail (Drawer): Tabs Overview|Attendance|Face|Shifts|Leave|Audit
+- Org Chart: Interactive, zoom/pan, search, export PNG
+
+**Face Enrollment Wizard**:
+1. Consent: Interactive sections, versioned, checkbox per section
+2. Capture: 3-5 captures, progress ring, quality feedback per capture
+3. Review: Grid captures + quality scores, retake individual
+4. Submit: Confirmation, estimated review time, reference number
+
+---
+
+### Phase 5: Attendance Records + Correction Requests ⏱️ ~4-5 ngày
+**Dependencies**: Phase 1, 2
+
+**Files**:
+```
+src/features/reports/
+├── attendance-records.tsx (rewrite), components/
+│   calendar-view.tsx, timeline-view.tsx, record-filters.tsx
+│   record-detail.tsx, correction-request.tsx, export-dialog.tsx
+```
+
+**Views**: Table (default) | Calendar (heatmap) | Timeline (daily shift bars)
+**Record Detail Drawer**: Event timeline, verification details, correction history, quick actions
+**Correction Request**: Inline form pre-filled, reason templates, attachment support
+
+---
+
+### Phase 6: Shift Management + Work Calendar ⏱️ ~5-6 ngày
+**Dependencies**: Phase 1, 4
+
+**Files**:
+```
+src/features/hr/
+├── shift-manager.tsx (rewrite), shift-calendar.tsx, shift-templates.tsx
+├── components/ (shift-form, assignment-grid, shift-conflict, recurring-pattern, shift-preview)
+```
+
+**Features**:
+- Shift Templates Library (reusable patterns)
+- Visual Calendar: Drag-drop, color-coded, conflict detection real-time
+- Assignment Grid: Employee × Date matrix, bulk range assign
+- Recurring Pattern Wizard: Complex patterns (Mon/Wed/Fri night shift 3 months)
+- Conflict Detection: Overlaps, 11h rest rule, max hours/week, auto-resolve suggestions
+
+---
+
+### Phase 7: Leave/Overtime/Shift Change + Approval Center ⏱️ ~6-7 ngày
+**Dependencies**: Phase 1, 4, 5, 6
+
+**Files**:
+```
+src/features/workflow/
+├── leave-requests.tsx (rewrite), overtime-requests.tsx (NEW)
+├── shift-change-requests.tsx (NEW), approval-center.tsx (NEW)
+├── components/ (request-form wizard, request-card, request-detail,
+│   approval-actions bulk, sla-tracker, leave-balance, overtime-calculator, shift-change-preview)
+```
+
+**3 Loại đơn mới**:
+| Loại | Fields | Rules |
+|------|--------|-------|
+| Leave | Type, Date range, Reason, Attachment | Balance check, overlap, max days |
+| Overtime | Date, Hours, Reason, Project, Attachment | Pre-approval, max hours/month, rate |
+| Shift Change | From/To shift, Date range, Reason, Replacement | Coverage check, max changes/month |
+
+**Approval Center (Unified)**:
+- Tabs: All | Pending | Approved | Rejected | Delegated
+- Bulk actions: Approve/Reject/Delegate với reason
+- SLA Tracker: Color-coded (Green/Yellow/Red), overdue alerts
+- Delegation: Set deputy, date range, auto-forward
+- Keyboard shortcuts: `a` approve, `r` reject, `d` delegate, `j/k` navigate
+
+---
+
+### Phase 8: Reports & Analytics ⏱️ ~5-6 ngày
+**Dependencies**: Phase 1, 2, 5
+
+**Files**:
+```
+src/features/reports/
+├── analytics-dashboard.tsx, report-builder.tsx, scheduled-reports.tsx
+├── components/ (metric-cards, trend-charts, department-comparison,
+│   employee-ranking, leave-analytics, overtime-analytics, shift-coverage,
+│   report-filters, export-options, schedule-form)
+```
+
+**Analytics Dashboard (Role-based)**:
+- Employee: Personal trends, leave balance, OT history, team comparison
+- Manager: Team metrics, coverage, top issues, drill-down
+- HR/Admin: Org-wide, dept comparison, compliance, cost analysis
+
+**Visualizations**: Attendance trend, Late/early/absent distribution, Leave utilization, OT hours & cost, Shift coverage heatmap, Employee ranking
+
+**Custom Report Builder**: Drag-drop fields, filter builder (AND/OR), visualization picker, save as template, share
+
+**Scheduled Reports**: Daily/Weekly/Monthly/Custom cron, recipients (email/in-app), format (CSV/Excel/PDF), history
+
+---
+
+### Phase 9: Settings + Security + Permissions ⏱️ ~4-5 ngày
+**Dependencies**: Phase 1, 7
+
+**Files**:
+```
+src/features/settings/
+├── profile-settings.tsx, notification-settings.tsx, security-settings.tsx
+├── organization-settings.tsx, attendance-policies.tsx
+├── components/ (profile-form, avatar-upload, notification-prefs,
+│   two-factor-setup, session-list, password-change, org-form,
+│   policy-editor, holiday-calendar, role-manager)
+```
+
+**Settings Hub Tabs**: Profile | Notifications | Security | Organization* (HR/Admin)
+
+**Security**: 2FA TOTP (QR + backup codes), Active sessions (device, location, revoke), Password change (strength meter), Login history
+
+**Organization (HR/Admin)**: Details, Branding (color, logo), Attendance Policies (grace, rounding, overnight buffer, max OT, leave types), Holidays (CRUD, recurring, ICS import), Roles (assignment, custom permissions future)
+
+**Audit Log Enhanced**: Real-time (Supabase Realtime), advanced filters, metadata search, export audit logged
+
+---
+
+### Phase 10: Full QA + Vercel Production Deployment ⏱️ ~3-4 ngày
+**Dependencies**: All previous phases
+
+**Hoạt động QA**:
+| Loại | Tool/Method |
+|------|-------------|
+| E2E Full Suite | Playwright trên production build |
+| Visual Regression | Chromatic/Percy so sánh baseline |
+| Accessibility Audit | axe-core + manual (WCAG 2.1 AA) |
+| Performance Audit | Lighthouse CI (Perf>90, A11y>95, BP>90) |
+| Security Scan | Snyk/OWASP ZAP, secret scan, dep audit |
+| Load Testing | k6: 100 concurrent, p95<2s, error<0.1% |
+| Cross-browser | Chrome, Firefox, Safari, Edge (latest 2) |
+| Device Testing | iOS Safari, Android Chrome, iPad, Desktop |
+| Production Smoke | Deploy staging → smoke → promote |
+| Rollback Drill | Vercel instant rollback + DB fix-forward |
+
+**Vercel Strategy**:
+1. **Preview**: Every PR → unique URL, Supabase staging, `FACE_PROVIDER=mock`
+2. **Staging**: `main` branch → staging URL, Supabase staging, mock provider
+3. **Production**: Tagged release (`v1.x.x`) → production URL, Supabase production, **real provider**
+4. **Rollback**: Vercel instant rollback + DB migration fix-forward
+
+---
+
+## 6. MODULE DEPENDENCIES (Dependency Graph)
+
+```
+Phase 1 (Design System + Shell)
+    │
+    ├── Phase 2 (Dashboard) ──────────────────┐
+    │                                         │
+    ├── Phase 3 (Check-in/Out) ◄──────────────┤
+    │        │                                │
+    ├── Phase 4 (Employee + Enrollment) ──────┤
+    │        │                                │
+    ├── Phase 5 (Attendance Records) ─────────┤
+    │        │                                │
+    ├── Phase 6 (Shifts + Calendar) ──────────┤
+    │        │                                │
+    ├── Phase 7 (Workflow + Approvals) ◄──────┤
+    │        │                                │
+    ├── Phase 8 (Reports + Analytics) ◄───────┤
+    │        │                                │
+    ├── Phase 9 (Settings + Security) ◄───────┤
+    │        │                                │
+    └── Phase 10 (QA + Deploy) ◄──────────────┘
+```
+
+**Critical Path**: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10
+
+**Parallelizable**: 
+- Phase 2 & 3 song song sau Phase 1
+- Phase 4 & 5 song song sau Phase 1
+- Phase 6 sau Phase 1 + 4
+- Phase 7 cần Phase 4, 5, 6
+- Phase 8 cần Phase 2, 5, 7
+- Phase 9 sau Phase 1, 7
+
+---
+
+## 7. RỦI RO & VẤN ĐỀ CẦN XÁC MINH (Risks & Open Questions)
+
+| # | Rủi ro/Vấn đề | Mức độ | Mitigation |
+|---|---------------|--------|------------|
+| 1 | **Face Provider thật chưa có** | 🔴 Cao | Mock dev/test, fail-closed prod, Phase 10 integration |
+| 2 | **Supabase Realtime notifications** | 🟡 Trung bình | Test scaling, fallback polling, rate limits |
+| 3 | **Large dataset performance** | 🟡 Trung bình | Materialized views, pagination, background jobs, caching |
+| 4 | **Mobile camera permissions** | 🔴 Cao | Clear rationale, fallback PIN, PWA install prompt |
+| 5 | **Offline check-in sync conflicts** | 🟡 Trung bình | Idempotency keys, server-wins, conflict UI |
+| 6 | **Multi-tenant data isolation** | 🔴 Cao | RLS testing every PR, integration tests matrix |
+| 7 | **Bundle size growth** (charts, calendar) | 🟡 Trung bình | Code splitting, dynamic imports, tree shaking |
+| 8 | **Vercel cold starts** | 🟢 Thấp | Warm functions, edge middleware for auth |
+| 9 | **Timezone handling** (overnight shifts) | 🔴 Cao | Comprehensive test fixtures, server-side tz |
+| 10 | **Privacy compliance** (biometric data) | 🔴 Cao | Policy review, DPA với provider, retention jobs |
+| 11 | **Google OAuth production config** | 🟡 Trung bình | Verified redirect URLs, error handling |
+| 12 | **Self-enrollment flow** (OAuth users) | 🟡 Trung bình | Test G-* employee creation, HR approval gate |
+| 13 | **E2E flakiness** (camera, timing) | 🟡 Trung bình | Fake media stream, deterministic mocks, retries |
+| 14 | **Migration rollback strategy** | 🔴 Cao | Fix-forward only, PITR enabled, tested drill |
+
+**Cần bạn xác minh**:
+1. **Face Provider production**: Đã chọn provider nào? Có credentials/staging chưa?
+2. **Notification channels**: Email (SendGrid/Resend), Push (FCM/OneSignal), Slack webhook?
+3. **Leave types & policies**: Danh sách loại nghỉ, quy đổi, carry-over rules?
+4. **Overtime rates**: Hệ số OT (1.5x, 2x, 3x), cap giờ/tháng, project costing?
+5. **Holiday calendar**: Năm 2025-2026, recurring rules, regional differences?
+6. **2FA enforcement**: Bắt buộc cho tất cả role hay chỉ HR/Admin?
+7. **Data retention**: Thời gian giữ events/days/enrollments/audit logs?
+8. **Multi-language**: Chỉ tiếng Việt hay có i18n roadmap?
+
+---
+
+## 8. PROMPT BUILD ĐẦU TIÊN (First Build Prompt)
+
+Sau khi bạn xác nhận các vấn đề ở mục 7, chạy lệnh sau để bắt đầu **Phase 1**:
+
+```bash
+# 1. Tạo branch redesign
+git checkout -b ui/redesign
+
+# 2. Cài dependencies mới (nếu cần cho charts)
+npm install recharts @radix-ui/react-tabs @radix-ui/react-avatar
+# Hoặc chart.js + react-chartjs-2 tùy chọn lựa
+
+# 3. Tạo cấu trúc components mới
+mkdir -p src/components/ui/charts
+mkdir -p src/components/app
+
+# 4. Chạy lệnh kiểm tra baseline
+npm run lint && npm run typecheck && npm test && npm run build
+
+# 5. Bắt đầu implement Phase 1:
+# - Avatar component
+# - Tabs component  
+# - Stepper component
+# - FormWizard component
+# - Calendar component
+# - Chart components (Bar, Line, Pie, Heatmap)
+# - Cải tiến: Tooltip, DropdownMenu, Select, DataTable, Pagination
+# - EmptyState, LoadingState, ErrorState variants
+# - AppShell: Command Palette (Cmd+K), Keyboard shortcuts
+# - UserMenu dropdown
+
+# 6. Commit theo convention
+git add -A
+git commit -m "feat(design-system): add avatar, tabs, stepper, form-wizard, calendar, charts
+feat(ui): improve tooltip, dropdown-menu, select, data-table, pagination
+feat(shell): add command palette, keyboard shortcuts, user-menu
+chore: update states components with illustrations"
+```
+
+**Sau Phase 1 xong**: Chạy full test suite, deploy Vercel Preview, review visual → sang Phase 2.
+
+---
+
+## 9. CONVENTIONS TUÂN THỦ (Từ AGENTS.md)
+
+- ✅ TypeScript strict, không `any` trừ khi ép kiểu có kiểm tra
+- ✅ Validation mọi input ở biên (zod trong `src/lib/validation.ts`)
+- ✅ Logging qua `src/server/logger.ts` (auto redact sensitive fields)
+- ✅ Error handling: `{ error: { code, message } }` với mã ổn định
+- ✅ UI: Mobile-first, text+icon cho mọi trạng thái, primary action rõ
+- ✅ Icons: `Icon` (SVG), không unicode rời rạc
+- ✅ DataTable + Pagination cho bảng
+- ✅ Toast chỉ fire-and-forget, form giữ inline error+loading
+- ✅ ConfirmDialog cho hành động nguy hiểm (có loading)
+- ✅ E2E trên production build (`npm run build` → `next start -p 3100` → `npm run test:e2e`)
+- ✅ Ngưỡng verify/liveness là config (`src/config`), không hardcode
+- ✅ Secrets chỉ qua env, không commit `.env*`
+- ✅ `FACE_PROVIDER` production fail closed
+- ✅ Mock provider chỉ dev/test + UI gắn nhãn "DEMO"
+- ✅ Role do server quản lý, không tin client
+- ✅ Attendance event: server set timestamp + idempotency key
+- ✅ Thao tác đặc quyền ghi audit log
+
+---
+
+## 10. DEFINITION OF DONE (Từng Phase)
+
+- [ ] Acceptance criteria đạt
+- [ ] Tests xanh trên CI (unit + integration + RLS nếu chạm DB)
+- [ ] Không secret trong diff
+- [ ] Docs cập nhật (`docs/AI_HANDOFF.md`, README nếu cần)
+- [ ] Vercel Preview có link
+- [ ] Visual regression baseline cập nhật
+- [ ] Accessibility check pass
+
+---
+
+*Kết thúc kế hoạch. Sẵn sàng bắt đầu Phase 1 sau khi bạn xác nhận.*
