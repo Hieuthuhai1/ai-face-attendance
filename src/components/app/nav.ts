@@ -30,6 +30,7 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     title: "Đơn từ",
     items: [
+      { href: "/requests", label: "Yêu cầu của tôi", icon: "file-text", roles: ALL },
       { href: "/adjustments", label: "Chỉnh công", icon: "file", roles: ALL },
       { href: "/leave", label: "Đơn nghỉ", icon: "calendar", roles: ALL },
     ],
@@ -37,6 +38,7 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     title: "Quản lý",
     items: [
+      { href: "/approval", label: "Trung tâm duyệt", icon: "clipboard-check", roles: REVIEW },
       { href: "/reports", label: "Báo cáo", icon: "flag", roles: REVIEW },
       { href: "/admin/employees", label: "Nhân viên", icon: "users", roles: HR },
       { href: "/admin/shifts", label: "Ca làm", icon: "calendar", roles: HR },

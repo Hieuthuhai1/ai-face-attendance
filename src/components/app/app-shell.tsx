@@ -309,9 +309,11 @@ export function AppShell({
         { key: "nav-checkin", label: "Chấm công", description: "Check-in/Check-out bằng khuôn mặt", icon: <Icon name="camera" size={16} />, shortcut: "G C", group: "Điều hướng", action: () => window.location.href = "/check-in" },
         { key: "nav-history", label: "Lịch sử chấm công", description: "Xem lịch sử cá nhân", icon: <Icon name="clock" size={16} />, shortcut: "G H", group: "Điều hướng", action: () => window.location.href = "/history" },
         { key: "nav-enrollment", label: "Đăng ký khuôn mặt", description: "Quản lý mẫu khuôn mặt", icon: <Icon name="user" size={16} />, shortcut: "G E", group: "Điều hướng", action: () => window.location.href = "/enrollment" },
+        { key: "nav-requests", label: "Yêu cầu của tôi", description: "Tạo/xem đơn nghỉ & chỉnh công", icon: <Icon name="file-text" size={16} />, shortcut: "G R", group: "Điều hướng", action: () => window.location.href = "/requests" },
         { key: "nav-adjustments", label: "Chỉnh sửa công", description: "Tạo/yêu cầu chỉnh công", icon: <Icon name="file" size={16} />, shortcut: "G A", group: "Điều hướng", action: () => window.location.href = "/adjustments" },
         { key: "nav-leave", label: "Đơn nghỉ phép", description: "Tạo/xem đơn nghỉ", icon: <Icon name="calendar" size={16} />, shortcut: "G L", group: "Điều hướng", action: () => window.location.href = "/leave" },
-        { key: "nav-reports", label: "Báo cáo chấm công", description: "Xem báo cáo & xuất CSV", icon: <Icon name="flag" size={16} />, shortcut: "G R", group: "Điều hướng", action: () => window.location.href = "/reports" },
+        { key: "nav-reports", label: "Báo cáo chấm công", description: "Xem báo cáo & xuất CSV", icon: <Icon name="flag" size={16} />, shortcut: "G B", group: "Điều hướng", action: () => window.location.href = "/reports" },
+        { key: "nav-approval", label: "Trung tâm duyệt", description: "Duyệt đơn của team/tổ chức", icon: <Icon name="clipboard-check" size={16} />, shortcut: "G P", group: "Điều hướng", action: () => window.location.href = "/approval" },
 
         // Admin (HR only)
         ...(["hr_admin", "system_admin"].includes(user.role) ? [

@@ -4,8 +4,8 @@ import { createClient } from "@/lib/supabase/server";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/ui/data-table";
-import { Pagination } from "@/components/ui/pagination";
 import { LoadingState } from "@/components/ui/states";
+import { AuditPagination } from "./pagination-client";
 
 const PAGE_SIZE = 30;
 
@@ -108,17 +108,16 @@ async function AuditData({ searchParams }: { searchParams: Promise<{ action?: st
           )}
         />
         <div className="mt-3">
-          <Pagination
+          <AuditPagination
             page={page}
             totalPages={Math.max(1, Math.ceil((count ?? 0) / 30))}
             total={count ?? 0}
             label="bản ghi"
-            hrefFor={(p) =>
-              `?page=${p}` +
-              (params.action ? `&action=${encodeURIComponent(params.action)}` : "") +
-              (params.from ? `&from=${params.from}` : "") +
-              (params.to ? `&to=${params.to}` : "")
-            }
+            baseParams={{
+              ...(params.action ? { action: params.action } : {}),
+              ...(params.from ? { from: params.from } : {}),
+              ...(params.to ? { to: params.to } : {}),
+            }}
           />
         </div>
       </Card>

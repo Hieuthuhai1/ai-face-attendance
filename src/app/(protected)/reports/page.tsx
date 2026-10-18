@@ -7,9 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import { DataTable } from "@/components/ui/data-table";
 import { Icon } from "@/components/ui/icon";
-import { Pagination } from "@/components/ui/pagination";
 import { StatusIndicator } from "@/components/ui/status-indicator";
 import { LoadingState } from "@/components/ui/states";
+import { ReportsPagination } from "./pagination-client";
 
 const STATUS_MAP: Record<string, "ontime" | "late" | "early_leave" | "absent" | "needs_review" | "idle"> = {
   present: "ontime",
@@ -150,18 +150,18 @@ async function ReportsData({ searchParams }: { searchParams: Promise<Record<stri
               )}
             />
             <div className="mt-3">
-              <Pagination
+              <ReportsPagination
                 page={page ?? 1}
                 totalPages={Math.max(1, Math.ceil((total ?? 0) / 20))}
                 total={total ?? 0}
                 label="dòng"
-                hrefFor={(p) =>
-                  `?from=${filters.from}&to=${filters.to}` +
-                  (filters.departmentId ? `&departmentId=${filters.departmentId}` : "") +
-                  (filters.shiftId ? `&shiftId=${filters.shiftId}` : "") +
-                  (filters.status ? `&status=${filters.status}` : "") +
-                  `&page=${p}`
-                }
+                baseParams={{
+                  from: filters.from,
+                  to: filters.to,
+                  ...(filters.departmentId ? { departmentId: filters.departmentId } : {}),
+                  ...(filters.shiftId ? { shiftId: filters.shiftId } : {}),
+                  ...(filters.status ? { status: filters.status } : {}),
+                }}
               />
             </div>
           </>

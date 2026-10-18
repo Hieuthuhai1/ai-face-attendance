@@ -3,9 +3,9 @@ import { requireUser } from "@/server/auth";
 import { getPersonalHistory } from "@/features/reports/actions";
 import { Card } from "@/components/ui/card";
 import { DataTable } from "@/components/ui/data-table";
-import { Pagination } from "@/components/ui/pagination";
 import { StatusIndicator } from "@/components/ui/status-indicator";
 import { LoadingState } from "@/components/ui/states";
+import { HistoryPagination } from "./pagination-client";
 
 const STATUS_MAP: Record<string, "success" | "error" | "pending" | "approved" | "rejected" | "ontime" | "late" | "early_leave" | "absent" | "incomplete" | "needs_review" | "idle" | "loading"> = {
   present: "ontime",
@@ -90,7 +90,13 @@ async function HistoryData({ searchParams }: { searchParams: Promise<{ month?: s
           )}
         />
         <div className="mt-3">
-          <Pagination page={page} totalPages={totalPages} total={total} label="ngày công" hrefFor={(p) => `?month=${month}&page=${p}`} />
+          <HistoryPagination
+            page={page}
+            totalPages={totalPages}
+            total={total}
+            label="ngày công"
+            baseParams={{ month }}
+          />
         </div>
       </Card>
     </div>
