@@ -20,7 +20,7 @@ export { Icon, type IconName } from "./icon";
 export { DemoBanner } from "./demo-banner";
 export { Avatar, AvatarGroup, AvatarUpload, type AvatarProps } from "./avatar";
 export { Tabs, TabPanel, type TabsProps, type TabItem } from "./tabs";
-export { Stepper, CompactStepper, StepContent, StepperActions, type StepperProps, type Step, type ProgressStep } from "./stepper";
+export { Stepper, CompactStepper, StepContent, StepperActions, type StepperProps, type Step } from "./stepper";
 export { FormWizard, useFormWizard, type FormWizardProps, type WizardStep } from "./form-wizard";
 export { Calendar, DatePicker, type CalendarProps, type DatePickerProps } from "./calendar";
 export { Progress, ProgressSteps, ProgressSkeleton, type ProgressProps, type ProgressStep } from "./progress";

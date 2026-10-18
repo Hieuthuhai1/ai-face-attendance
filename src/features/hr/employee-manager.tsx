@@ -15,6 +15,23 @@ import { Pagination } from "@/components/ui/pagination";
 import { createEmployee, deactivateEmployee, updateEmployee } from "@/features/hr/actions";
 import { toast } from "@/components/ui/toast";
 
+// Client-side pagination wrapper
+import { Pagination as PaginationComp, type PaginationProps } from "@/components/ui/pagination";
+
+function EmployeeManagerPagination(props: Omit<PaginationProps, "onPageChange" | "hrefFor"> & {
+  baseParams: Record<string, string>;
+}) {
+  const router = useRouter();
+
+  const onPageChange = (page: number) => {
+    const params = new URLSearchParams(props.baseParams);
+    params.set("page", String(page));
+    router.push(`?${params.toString()}`);
+  };
+
+  return <PaginationComp {...props} onPageChange={onPageChange} />;
+}
+
 export interface EmployeeRow {
   id: string;
   employee_code: string;
@@ -195,12 +212,15 @@ export function EmployeeManager(props: Props) {
           )}
         />
         <div className="mt-3">
-          <Pagination
+          <EmployeeManagerPagination
             page={props.page}
             totalPages={totalPages}
             total={props.total}
             label="nhân viên"
-            hrefFor={(p) => `?q=${encodeURIComponent(props.q)}&status=${props.status}&page=${p}`}
+            baseParams={{
+              q: props.q,
+              status: props.status,
+            }}
           />
         </div>
       </Card>

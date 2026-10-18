@@ -10,13 +10,29 @@ import { DataTable } from "@/components/ui/data-table";
 import { Icon } from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import { Pagination } from "@/components/ui/pagination";
 import { Avatar, AvatarGroup } from "@/components/ui/avatar";
 import { ErrorState } from "@/components/ui/states";
-import { PaginationProps } from "@/components/ui/pagination";
 import { EmployeeRow } from "@/features/hr/employee-manager";
 import { deactivateEmployee, updateEmployee, createEmployee } from "@/features/hr/actions";
 import { toast } from "@/components/ui/toast";
+
+// Client-side pagination wrapper for employee directory
+import { Pagination as PaginationComp, type PaginationProps } from "@/components/ui/pagination";
+
+function EmployeeDirectoryPagination(props: Omit<PaginationProps, "onPageChange" | "hrefFor"> & {
+  baseParams: Record<string, string>;
+}) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const onPageChange = (page: number) => {
+    const params = new URLSearchParams(props.baseParams);
+    params.set("page", String(page));
+    router.push(`?${params.toString()}`);
+  };
+
+  return <PaginationComp {...props} onPageChange={onPageChange} />;
+}
 
 interface Props {
   rows: EmployeeRow[];
@@ -282,12 +298,15 @@ export function EmployeeDirectory(props: Props) {
             onRowClick={(r) => toggleRowSelection(r.id)}
           />
           <div className="mt-3">
-            <Pagination
+            <EmployeeDirectoryPagination
               page={props.page}
               totalPages={totalPages}
               total={props.total}
               label="nhân viên"
-              hrefFor={(p) => `?q=${encodeURIComponent(searchParams.get("q") || "")}&status=${searchParams.get("status") || "all"}&page=${p}`}
+              baseParams={{
+                q: searchParams.get("q") || "",
+                status: searchParams.get("status") || "all",
+              }}
             />
           </div>
         </Card>
@@ -331,12 +350,15 @@ export function EmployeeDirectory(props: Props) {
 
       {/* Pagination */}
       <div className="mt-3">
-        <Pagination
+        <EmployeeDirectoryPagination
           page={props.page}
           totalPages={Math.max(1, Math.ceil(props.total / props.pageSize))}
           total={props.total}
           label="nhân viên"
-          hrefFor={(p) => `?q=${encodeURIComponent(searchParams.get("q") || "")}&status=${searchParams.get("status") || "all"}&page=${p}`}
+          baseParams={{
+            q: searchParams.get("q") || "",
+            status: searchParams.get("status") || "all",
+          }}
         />
       </div>
 

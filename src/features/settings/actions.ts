@@ -412,7 +412,7 @@ export async function listUsersWithRoles(): Promise<SettingsResult> {
   }
 
   const users = (data ?? []).map((p) => {
-    const emp = p.employees as { employee_code: string | null; department_id: string | null; departments: { name: string } | null } | null;
+    const emp = (p.employees as { employee_code: string | null; department_id: string | null; departments: { name: string } | null }[])?.[0] ?? null;
     return {
       id: p.id,
       email: p.email,
