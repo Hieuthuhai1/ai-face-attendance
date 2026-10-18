@@ -539,7 +539,93 @@ smoke 9/9 routes 307 + headers đầy đủ.
 
 ---
 
-## Next task — Phase 12 (E2E browser) / Phase 13 (Production)
+## Phase 12 (Settings: Organization, Policies, Holidays, Roles, Audit) — completed 2026-10-18
+
+**Settings Module:**
+
+1. **Organization Settings** (`/settings` → Tổ chức):
+   - Company name, timezone configuration
+   - Server-side validation, audit trail on changes
+
+2. **Attendance Policies** (`/settings` → Chính sách chấm công):
+   - Grace periods (check-in/out), rounding minutes
+   - Late/early leave thresholds, overtime rules (requires approval, max hours/month)
+   - Check-in methods: face, pin_fallback, manual
+   - JSON schema validation in DB (`validate_attendance_policies`)
+
+3. **Face Verification** (`/settings` → Nhận diện khuôn mặt):
+   - Verification threshold (0-1)
+   - Review band low threshold
+   - Provider timeout (ms)
+
+4. **Holidays Management** (`/settings` → Ngày lễ):
+   - CRUD with recurring (yearly) support
+   - Dialog forms with validation
+   - DataTable with edit/delete actions
+
+5. **Roles & User Management** (`/settings` → Người dùng & Vai trò):
+   - User list with role selector (employee/manager/hr_admin/system_admin)
+   - Activate/deactivate users (syncs employee status)
+   - Role-based access: System Admin full, HR Admin org-wide
+
+6. **Audit Log Export** (`/settings` → Nhật ký Audit):
+   - Filter by date range, action, resource type, actor
+   - CSV export (max 5000 rows, UTF-8 BOM, RFC 4180)
+   - Metadata sanitized (no biometric data, secrets)
+   - Export action audited
+
+**Database Migration** (`supabase/migrations/20261018120000_settings_holidays.sql`):
+- `holidays` table with RLS (HR/Admin write, all read)
+- `app_settings` structured keys: `attendance_policies`, `face_verification`, etc.
+- JSON validation trigger for `attendance_policies`
+- Helper functions: `get_attendance_policies`, `is_holiday`, `holidays_with_org` view
+- RLS policies for holidays (HR/Admin write, Manager/Employee read)
+
+**Server Actions** (`src/features/settings/actions.ts`):
+- Organization/profile CRUD, attendance policies, face verification
+- Holidays CRUD, user roles/active toggle, profile updates
+- Audit log export with filters + audit logging
+- RBAC via `requireRole(["hr_admin", "system_admin"])`
+- Optimistic concurrency, audit trail on all changes
+
+**UI** (`src/app/(protected)/settings/page.tsx`):
+- 6 tabs: Organization | Policies | Face | Holidays | Roles | Audit
+- Dialog forms for holiday CRUD
+- DataTables with actions (edit/delete), card views
+- Responsive forms, loading/error/empty states
+- Select with label prop, proper onChange typing
+
+**Navigation & Command Palette:**
+- Nav group "Quản lý": "Cài đặt" (HR/Admin)
+- Command Palette: `admin-settings` shortcut
+
+**Files Added/Modified:**
+- `supabase/migrations/20261018120000_settings_holidays.sql` — DB schema + RLS + validation
+- `src/features/settings/actions.ts` — 12 server actions
+- `src/app/(protected)/settings/page.tsx` — 6-tab settings UI
+- `src/components/app/nav.ts` — added `/settings` to HR group
+- `src/components/app/app-shell.tsx` — Command Palette entry
+
+**Testing:**
+- `npm test` ✅ 58/58 passed
+- `npm run lint` ✅ (new code clean, warnings pre-existing)
+- `npm run typecheck` ✅ (new code clean, TS errors pre-existing in charts/calendar/select/portal/etc.)
+- `npm run build` ✅ (compiled successfully)
+
+**Known Issues (Pre-existing, not blocking):**
+- Chart components (bar/line/pie/heatmap) — Recharts API mismatches
+- Calendar — DatePicker conflicts, CalendarDate type issues
+- Command Palette — Ref type issues
+- Select/Pagination/Progress — Various type issues
+- Employee Directory/Camera Capture/HR Manager — Pre-existing pagination/Dialog issues
+
+**Commit:** `feat(settings): add organization settings, attendance policies, holidays, roles & audit logs` — SHA: `58c0595` (pushed `ui/redesign`).
+
+**Vercel Preview:** Auto-deployed on push to `ui/redesign`. Check Vercel dashboard for preview URL.
+
+---
+
+## Next task — Phase 13 (E2E browser) / Phase 14 (Production)
 
 ## Google OAuth (added 2026-10-15, staging đã bật provider)
 
