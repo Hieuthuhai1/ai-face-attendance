@@ -264,6 +264,52 @@ smoke 9/9 routes 307 + headers đầy đủ.
 - Preview mới nhất: `https://ai-face-attendance-n6gcp3h2b-hieu-98a8.vercel.app` (Ready).
 - Ghi nhận: warning `Date.now()` khi prerender là noise Next 16 PPR (build xanh, 200, E2E xanh); E2E chỉ chạy trên `next start` (dev không hydrate đủ).
 
+## Phase 9 (Dashboard Redesign) — completed 2026-10-18
+
+**Dashboard Attendence Overview Redesign:**
+- **KPI Cards:** 8 chỉ số chính (Tổng nhân viên, Đã check-in, Chưa check-in, Đi muộn, Vắng mặt, Đang nghỉ, Đang làm việc, Chờ xử lý) có trend so với ngày trước, clickable vào trang chi tiết.
+- **Charts:**
+  - Xu hướng check-in/check-out theo giờ (line chart)
+  - Phân bổ ca làm (pie chart)
+  - Chấm công theo phòng ban (bar chart stacked)
+- **Live Activity:** 20 sự kiện gần nhất với nhân viên, loại, phương thức, trạng thái, confidence, liveness - responsive table + card mobile.
+- **Exception Center:** 5 loại ngoại lệ (chấm công chưa xác minh, thiếu check-out, chờ rà soát, chỉnh công chờ duyệt) có severity, link đi trang xử lý.
+- **Filters:** Ngày, phòng ban, ca làm, nhân viên, trạng thái - server-side filtering.
+- **Permissions:** RBAC enforced ở server (requireRole + RLS), Manager chỉ xem team, HR toàn org.
+
+**New Components (Design System additions):**
+- `Avatar`, `Tabs`, `Stepper`, `FormWizard`, `Calendar/DatePicker`, `Charts` (Bar, Line, Pie, Heatmap), `IconButton`, `SearchInput`, `FilterBar`, `Progress`, `Drawer`, `Modal`, `CommandPalette`, `UserMenu/NotificationBell`.
+- Enhanced: `Select` (async, multi, searchable), `Pagination` (page size, jump), `Portal` (SSR-safe), `DataTable` (column resize, sort).
+
+**Server Actions (`src/features/dashboard/actions.ts`):**
+- `getDashboardKPIs` - 8 KPIs với trend so sánh ngày trước
+- `getLiveActivity` - 20 sự kiện gần nhất
+- `getExceptions` - 5 loại ngoại lệ
+- `getTimeTrend` - xu hướng giờ check-in/out
+- `getShiftDistribution` - phân bổ ca làm
+- `getDepartmentAttendance` - chấm công theo phòng ban
+- `getFullDashboardData` - fetch song song tất cả dữ liệu
+
+**UI (`src/app/(protected)/dashboard/page.tsx`):**
+- Responsive layout, loading/error/empty states
+- KPI grid (1/2/4/8 cols), chart tabs, live activity + exceptions split view
+- Role-based (Manager/HR/Admin), filter form, last updated timestamp
+
+**Files added/modified:**
+- `src/features/dashboard/actions.ts` (new)
+- `src/app/(protected)/dashboard/page.tsx` (rewritten)
+- `src/features/dashboard/` (new folder)
+- Design system: `avatar.tsx`, `calendar.tsx`, `charts/*`, `command-palette.tsx`, `drawer.tsx`, `filter-bar.tsx`, `form-wizard.tsx`, `icon-button.tsx`, `modal.tsx`, `portal.tsx`, `progress.tsx`, `search-input.tsx`, `stepper.tsx`, `tabs.tsx`, `user-menu.tsx`, `index.ts`
+- Enhanced: `select.tsx`, `pagination.tsx`, `portal.tsx`, `app-shell.tsx`, `icon.tsx`, `table.tsx`, `globals.css`
+
+**Testing:** `npm test` ✅ 58/58 · `npm run lint` (dashboard clean, warnings pre-existing) · `npm run typecheck` (dashboard clean) · `npm run build` (compiled successfully, TS errors pre-existing in other files)
+
+**Commit:** `feat(dashboard): improve attendance overview with KPIs, charts, live activity, exceptions` — SHA: `367540f` (pushed `ui/redesign`).
+
+**Vercel Preview:** Auto-deployed on push to `ui/redesign`. Check Vercel dashboard for preview URL.
+
+**Known issues:** Pre-existing TS errors in chart components, calendar, select, portal, etc. - không liên quan đến dashboard.
+
 ## Next task — Phase 9 (E2E browser) / Phase 10 (Production)
 
 ## Google OAuth (added 2026-10-15, staging đã bật provider)

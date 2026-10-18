@@ -23,6 +23,9 @@ export type CheckResult =
       early_leave_min: number;
       duplicate?: boolean;
       message: string;
+      verification_ref: string | null;
+      confidence: number | null;
+      liveness: string | null;
     }
   | { ok: false; code: string; message: string };
 
@@ -286,6 +289,9 @@ export async function verifyCheck(input: {
           status: ex.status as "success" | "pending_review" | "fallback",
           late_min: 0, early_leave_min: 0, duplicate: true,
           message: "Yêu cầu đã được ghi nhận trước đó (chống trùng).",
+          verification_ref: null,
+          confidence: null,
+          liveness: null,
         };
       }
     }
@@ -298,6 +304,9 @@ export async function verifyCheck(input: {
       ok: true, direction: input.direction, occurred_at: (data as { occurred_at: string }).occurred_at,
       status: "pending_review", late_min: late, early_leave_min: early,
       message: "Độ khớp thấp — đã ghi nhận và chuyển HR rà soát (không coi là gian lận).",
+      verification_ref: ref,
+      confidence,
+      liveness,
     };
   }
   return {
@@ -306,6 +315,9 @@ export async function verifyCheck(input: {
     message: input.direction === "check_in"
       ? (late > 0 ? `Check-in thành công (trễ ${late}′).` : "Check-in thành công, đúng giờ.")
       : (early > 0 ? `Check-out thành công (về sớm ${early}′).` : "Check-out thành công."),
+    verification_ref: ref,
+    confidence,
+    liveness,
   };
 }
 
@@ -363,5 +375,8 @@ export async function fallbackCheck(input: {
     ok: true, direction: input.direction, occurred_at: (data as { occurred_at: string }).occurred_at,
     status: "fallback", late_min: 0, early_leave_min: 0,
     message: "Đã ghi nhận phương thức thay thế, chờ HR xác nhận.",
+    verification_ref: null,
+    confidence: null,
+    liveness: null,
   };
 }

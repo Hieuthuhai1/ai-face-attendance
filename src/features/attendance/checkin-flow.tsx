@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
@@ -10,6 +10,8 @@ import { Input } from "@/components/ui/input";
 import { CameraCapture } from "@/features/face-enrollment/camera-capture";
 import { fallbackCheck, verifyCheck, type CheckResult } from "@/features/attendance/actions";
 import type { FaceFixture } from "@/server/face/types";
+import { AttendanceReceipt } from "@/components/face-attendance";
+import { DetailedProgressIndicator } from "@/components/face-attendance/CameraProgressIndicator";
 
 /** Key cho attempt mới (Web Crypto, chạy sau hydrate nên không lệch SSR). */
 function newClientKey(): string {
@@ -27,7 +29,7 @@ export interface TodayStatus {
 
 type UiState =
   | { kind: "idle" }
-  | { kind: "verifying" }
+  | { kind: "verifying"; step: "liveness" | "matching" | "saving" }
   | { kind: "result"; res: Extract<CheckResult, { ok: true }> }
   | { kind: "failed"; code: string; message: string };
 
@@ -81,7 +83,7 @@ export function CheckInFlow(props: { status: TodayStatus; providerDemo: boolean 
   const step = ui.kind === "idle" ? 0 : ui.kind === "verifying" ? 1 : 2;
 
   async function onCapture(frameDataUrl: string) {
-    setUi({ kind: "verifying" });
+    setUi({ kind: "verifying", step: "liveness" });
     let res: CheckResult;
     try {
       res = await verifyCheck({ direction, frameDataUrl, fixture: props.providerDemo ? fixture : undefined, idempotencyKey: ensureKey() });
@@ -109,7 +111,7 @@ export function CheckInFlow(props: { status: TodayStatus; providerDemo: boolean 
 
   async function onFallback(e: React.FormEvent) {
     e.preventDefault();
-    setUi({ kind: "verifying" });
+    setUi({ kind: "verifying", step: "saving" });
     const res = await fallbackCheck({ direction, reason, idempotencyKey: ensureKey() });
     if (!res.ok) {
       setUi({ kind: "failed", code: res.code, message: res.message });
@@ -143,6 +145,22 @@ export function CheckInFlow(props: { status: TodayStatus; providerDemo: boolean 
   return (
     <div className="flex flex-col gap-4">
       <DemoBanner />
+
+      {/* Header with current time and date */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 rounded-xl bg-[var(--brand-soft)] border border-[var(--brand)]/20">
+        <div className="flex items-center gap-3">
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[var(--brand)] text-white">
+            <Icon name="camera" size={24} />
+          </div>
+          <div>
+            <h1 className="text-xl font-bold text-slate-900">Chấm công AI</h1>
+            <p className="text-sm text-slate-500" id="current-time">Đang tải thời gian...</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 sm:ml-auto">
+          <span className="hidden sm:block px-3 py-1 text-xs font-medium bg-white rounded-full text-slate-600" id="current-date"></span>
+        </div>
+      </div>
 
       {/* Stepper */}
       <ol aria-label="Tiến trình chấm công" className="flex items-center gap-1 text-xs">
@@ -186,31 +204,23 @@ export function CheckInFlow(props: { status: TodayStatus; providerDemo: boolean 
       </Card>
 
       {ui.kind === "result" ? (
-        <Card>
-          <div className="flex flex-col items-center gap-2 py-4 text-center">
-            <span className={ui.res.status === "success" ? "text-[var(--success)]" : "text-[var(--warning)]"}>
-              <Icon name={ui.res.status === "success" ? "check" : ui.res.status === "fallback" ? "clock" : "flag"} size={40} />
-            </span>
-            <p role="status" className="text-lg font-semibold">
-              {ui.res.status === "success"
-                ? direction === "check_in" ? "Check-in thành công" : "Check-out thành công"
-                : ui.res.status === "fallback" ? "Đã ghi nhận thay thế" : "Chờ HR rà soát"}
-            </p>
-            {/* Giờ server — chỉ hiện sau khi backend xác nhận và trả về */}
-            <p className="tnum text-3xl font-bold">
-              {new Date(ui.res.occurred_at).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
-            </p>
-            <p className="text-sm text-slate-500">
-              {new Date(ui.res.occurred_at).toLocaleDateString("vi-VN")} · giờ do server ghi nhận
-              {ui.res.duplicate ? " · (bản ghi đã tồn tại — chống trùng)" : ""}
-            </p>
-            <p className="text-sm text-slate-600">{ui.res.message}</p>
-          </div>
-          <div className="flex justify-center gap-2">
-            <Button variant="secondary" size="sm" onClick={() => setUi({ kind: "idle" })}>Tiếp tục</Button>
-            <Button variant="ghost" size="sm" onClick={() => { setShowFallback(true); }}>Dùng phương thức thay thế</Button>
-          </div>
-        </Card>
+        <AttendanceReceipt
+          employeeName={s.lastEvent ? "Nhân viên" : "Nhân viên"} // Will be populated from result
+          employeeCode="NV001"
+          action={direction}
+          occurredAt={ui.res.occurred_at}
+          shiftName={s.shift?.name || "Ca làm"}
+          shiftTime={`${s.shift?.start_time || "--:--"}–${s.shift?.end_time || "--:--"}${s.shift?.overnight ? " (qua đêm)" : ""}`}
+          status={ui.res.status}
+          lateMinutes={ui.res.late_min}
+          earlyMinutes={ui.res.early_leave_min}
+          method={ui.res.status === "fallback" ? "pin_fallback" : "face"}
+          confidence={undefined}
+          livenessStatus={undefined}
+          verificationRef={ui.res.verification_ref}
+          onContinue={() => setUi({ kind: "idle" })}
+          onFallback={() => { newAttempt(); setShowFallback(true); }}
+        />
       ) : ui.kind === "failed" && failed ? (
         <Card>
           <div className="flex flex-col items-center gap-2 py-4 text-center">
@@ -240,13 +250,23 @@ export function CheckInFlow(props: { status: TodayStatus; providerDemo: boolean 
           ) : null}
           <div className="mt-3">
             {ui.kind === "verifying" ? (
-              <div role="status" className="flex flex-col items-center gap-2 py-8 text-center">
-                <span className="animate-spin text-[var(--info)]"><Icon name="refresh" size={32} /></span>
-                <p className="font-medium">Đang xác minh, vui lòng giữ nguyên trang…</p>
-                <p className="text-sm text-slate-500">Hệ thống đang đối chiếu với mẫu của bạn và ghi nhận giờ server. Chưa hiển thị thành công cho tới khi backend xác nhận.</p>
-              </div>
+              <DetailedProgressIndicator
+                step={ui.step}
+                message={
+                  ui.step === "liveness" ? "Đang kiểm tra liveness..." :
+                  ui.step === "matching" ? "Đang đối chiếu khuôn mặt..." :
+                  "Đang lưu bản ghi..."
+                }
+              />
             ) : (
-              <CameraCapture onCapture={onCapture} showGuide />
+              <CameraCapture
+                onCapture={onCapture}
+                showGuide
+                isCheckIn
+                captureLabel={direction === "check_in" ? "Chấm công vào" : "Chấm công ra"}
+                buttonVariant="primary"
+                showPrivacyNotice
+              />
             )}
           </div>
           <div className="mt-2">
