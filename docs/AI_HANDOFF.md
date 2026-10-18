@@ -310,6 +310,79 @@ smoke 9/9 routes 307 + headers đầy đủ.
 
 **Known issues:** Pre-existing TS errors in chart components, calendar, select, portal, etc. - không liên quan đến dashboard.
 
+## Phase 9 (AI Face Attendance UX) — completed 2026-10-18
+
+**AI Face Attendance UX Improvements:**
+
+**1. Enhanced Check-in Flow (`src/features/attendance/checkin-flow.tsx`):**
+- Header with current time, date, and shift info
+- Stepper UI (3 steps: Chọn thao tác → Quét & xác minh → Kết quả)
+- Real-time face detection feedback (centered, aligned, size, brightness, sharpness)
+- Detailed progress indicator during verification (detecting → liveness → matching → saving)
+- Rich success receipt with employee info, shift, time, method, confidence, liveness
+- Improved error states with specific guidance per error type
+- Fallback PIN with required reason
+
+**2. Enhanced Camera Capture (`src/features/face-enrollment/camera-capture.tsx`):**
+- Integrated `FaceDetectionProvider` for real-time face detection
+- Granular camera states: idle → requesting → ready → detecting → quality_check → capturing → denied/unavailable/error
+- Face guide overlay with alignment indicators (centered, aligned, size, brightness, sharpness)
+- Real-time quality feedback with specific guidance
+- Privacy notice banner
+- Detailed progress indicator during capture
+
+**3. New Face Attendance Components (`src/components/face-attendance/`):**
+- `FaceDetectionProvider` - Real-time face detection using `@vladmandic/face-api` (tinyFaceDetector, faceLandmark68Net, faceExpressionNet)
+- `FaceGuideOverlay` - Visual face alignment guide with status badges
+- `CameraProgressIndicator` - Step-by-step verification progress
+- `DetailedProgressIndicator` - Detailed verification progress with messages
+- `AttendanceReceipt` - Rich success receipt with all details
+- `PrivacyNotice` - Privacy notice with consent tracking
+- `FaceDetectionProvider` context for face detection state
+
+**3. Enhanced Check-in Page (`src/app/(protected)/check-in/page.tsx`):**
+- Real-time clock and date display
+- Improved header with current time/date
+- Better shift information display
+
+**4. Updated Server Actions (`src/features/attendance/actions.ts`):**
+- Added `verification_ref`, `confidence`, `liveness` to `CheckResult` type
+- All return paths updated with new fields
+
+**5. New Face Attendance Components (`src/components/face-attendance/`):**
+- `FaceDetectionProvider.tsx` - Real-time face detection context
+- `FaceGuideOverlay.tsx` - Visual face alignment guide
+- `CameraProgressIndicator.tsx` - Verification progress indicators
+- `AttendanceReceipt.tsx` - Rich success receipt
+- `PrivacyNotice.tsx` - Privacy notice with consent tracking
+- `FaceDetectionProvider.tsx` - Face detection context provider
+- `CameraProgressIndicator.tsx` - Progress indicators
+- `index.ts` - Exports
+
+**5. Face Models (`public/models/`):**
+- Downloaded face-api.js models (tiny_face_detector, face_landmark_68, face_expression)
+
+**Files Added/Modified:**
+- `src/features/attendance/checkin-flow.tsx` (rewritten)
+- `src/features/face-enrollment/camera-capture.tsx` (enhanced)
+- `src/app/(protected)/check-in/page.tsx` (enhanced)
+- `src/features/attendance/actions.ts` (updated CheckResult type)
+- `src/components/face-attendance/` (new folder with 7 new components)
+- `public/models/` (face-api.js models)
+- `package.json` (added `@vladmandic/face-api`)
+
+**Testing:**
+- `npm test` ✅ 58/58 passed
+- `npm run lint` (dashboard clean, warnings pre-existing)
+- `npm run typecheck` (dashboard clean, pre-existing TS errors in other files)
+- `npm run build` (compiled successfully, TS errors pre-existing in other files)
+
+**Commit:** `feat(attendance): improve ai face check-in experience with enhanced UX` — SHA: `659bc72` (pushed `ui/redesign`).
+
+**Vercel Preview:** Auto-deployed on push to `ui/redesign`. Check Vercel dashboard for preview URL.
+
+**Known issues:** Pre-existing TS errors in chart components, calendar, select, portal, etc. - not related to this feature.
+
 ## Next task — Phase 9 (E2E browser) / Phase 10 (Production)
 
 ## Google OAuth (added 2026-10-15, staging đã bật provider)

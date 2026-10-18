@@ -142,7 +142,73 @@ npm run test:e2e
 - `e2e/responsive-a11y.spec.ts`: 5 viewports không overflow, nav mobile/desktop, keyboard Tab, contrast AA, reduced-motion, employee bị chặn trang HR.
 - Camera dùng fake device (`--use-fake-device-for-media-stream`); không bấm chụp thật để tránh ghi event vào DB dev.
 
-## 7. Seed / reset
+## 7. Face Attendance UX Test Scenarios (Phase 9)
+
+### 7.1 Camera States & Face Detection
+| # | Scenario | Expected | Test Type |
+|---|---|---|---|
+| FA-01 | Camera denied | Show guidance + fallback option | E2E |
+| FA-02 | No camera hardware | Show fallback option | E2E |
+| FA-03 | Camera permission granted | Camera preview shows | E2E |
+| FA-04 | Face detected & centered | Green indicators, ready to capture | Unit + E2E |
+| FA-05 | Face off-center (left/right/up/down) | Yellow warning + guidance | Unit + E2E |
+| FA-06 | Face too close/far | Size warning + guidance | Unit + E2E |
+| FA-07 | Multiple faces detected | Warning badge with count | Unit + E2E |
+| FA-08 | No face detected | "Chưa phát hiện khuôn mặt" | Unit + E2E |
+| FA-09 | Poor lighting (dark) | "Thiếu sáng" warning | Unit + E2E |
+| FA-10 | Poor lighting (bright) | "Quá sáng" warning | Unit + E2E |
+| FA-11 | Blurry image | "Mờ" warning | Unit + E2E |
+| FA-12 | Multiple faces warning | Badge with count | Unit + E2E |
+
+### 7.2 Verification Flow
+| # | Scenario | Expected | Test Type |
+|---|---|---|---|
+| VF-01 | Liveness check pass | Progress to matching | E2E |
+| VF-02 | Liveness check fail | Show error + retry | E2E |
+| VF-03 | Face match success | Show success receipt | E2E |
+| VF-04 | Face match low confidence | Pending review status | E2E |
+| VF-05 | Face no match | Show error + retry + fallback | E2E |
+| VF-05 | Provider timeout | Error + retry + fallback | E2E |
+| VF-06 | Network error | Offline handling | E2E |
+| VF-07 | Duplicate submission | Idempotent - return existing | Unit + Integration |
+
+### 7.3 Success State
+| # | Scenario | Expected | Test Type |
+|---|---|---|---|
+| SS-01 | Check-in success | Receipt with time, shift, status | E2E |
+| SS-02 | Check-out success | Receipt with early/late info | E2E |
+| SS-03 | Pending review | Warning badge + HR queue link | E2E |
+| SS-06 | Fallback success | Fallback badge + HR queue link | E2E |
+
+### 7.4 Failure State
+| # | Scenario | Expected | Test Type |
+|---|---|---|---|
+| FS-01 | Liveness failed | Error + retry + guidance | E2E |
+| FS-02 | No match | Error + retry + fallback option | E2E |
+| FS-03 | Provider unavailable | Error + retry + fallback | E2E |
+| FS-04 | Network error | Offline banner + retry | E2E |
+| FS-05 | Already checked in | Error + guidance | E2E |
+| FS-06 | No active shift | Error + HR contact | E2E |
+| FS-07 | No enrollment | Error + enrollment link | E2E |
+
+### 7.4 Mobile Specific
+| # | Scenario | Expected | Test Type |
+|---|---|---|---|
+| MB-01 | Portrait camera preview | Full screen, correct aspect | E2E |
+| MB-02 | Large touch targets | Buttons ≥44px | E2E |
+| MB-03 | Handle orientation change | Preview adapts | E2E |
+| MB-04 | Insecure origin (HTTP) | HTTPS warning | E2E |
+| MB-05 | No camera hardware | Fallback option | E2E |
+
+### 7.5 Privacy & Compliance
+| # | Scenario | Expected | Test Type |
+|---|---|---|---|
+| PR-01 | Privacy notice shown | Banner displayed on first visit | E2E |
+| PR-02 | Consent stored | localStorage flag set | Unit |
+| PR-03 | No raw images in logs | Logger redacts image data | Unit |
+| PR-04 | Camera stream cleanup | Stream stopped on unmount | Unit |
+
+## 8. Seed / reset
 
 `supabase db reset` chạy lại toàn bộ migrations + seed (upsert theo id cố định nên idempotent).
 Tuyệt đối không chạy `db reset`/`db push` lên project đã link cloud khi chưa được duyệt.
