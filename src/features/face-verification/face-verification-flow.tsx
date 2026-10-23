@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { DemoBanner } from "@/components/ui/demo-banner";
 import { Icon } from "@/components/ui/icon";
-import { verifyCheck, fallbackCheck, type CheckResult, type AttendanceError } from "@/features/attendance/actions";
+import { verifyCheck, fallbackCheck, type CheckResult, type AttendanceError, getTodayStatus } from "@/features/attendance/actions";
 import type { FaceFixture } from "@/server/face/types";
 
 // CameraCapture uses browser APIs (navigator.mediaDevices) that can't run during static prerendering

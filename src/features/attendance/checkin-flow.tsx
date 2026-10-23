@@ -8,7 +8,7 @@ import { DemoBanner } from "@/components/ui/demo-banner";
 import { Icon } from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
 import { CameraCapture } from "@/features/face-enrollment/camera-capture";
-import { fallbackCheck, verifyCheck, type CheckResult } from "@/features/attendance/actions";
+import { fallbackCheck, verifyCheck, type CheckResult, type AttendanceError } from "@/features/attendance/actions";
 import type { FaceFixture } from "@/server/face/types";
 import { AttendanceReceipt } from "@/components/face-attendance";
 import { DetailedProgressIndicator } from "@/components/face-attendance/CameraProgressIndicator";
@@ -31,7 +31,7 @@ type UiState =
   | { kind: "idle" }
   | { kind: "verifying"; step: "liveness" | "matching" | "saving" }
   | { kind: "result"; res: Extract<CheckResult, { ok: true }> }
-  | { kind: "failed"; code: string; message: string };
+  | { kind: "failed"; error: AttendanceError };
 
 const STEPS = ["1. Chọn thao tác", "2. Quét & xác minh", "3. Kết quả"] as const;
 
@@ -88,11 +88,11 @@ export function CheckInFlow(props: { status: TodayStatus; providerDemo: boolean 
     try {
       res = await verifyCheck({ direction, frameDataUrl, fixture: props.providerDemo ? fixture : undefined, idempotencyKey: ensureKey() });
     } catch {
-      setUi({ kind: "failed", code: "NETWORK_ERROR", message: "Mất mạng khi gửi. Bấm Thử lại (dùng cùng mã, không tạo trùng)." });
+      setUi({ kind: "failed", error: { code: "NETWORK_ERROR", message: "Mất mạng khi gửi. Bấm Thử lại (dùng cùng mã, không tạo trùng).", category: "retryable", hint: "Kiểm tra mạng rồi bấm Thử lại (cùng mã).", showFallback: true } });
       return;
     }
     if (!res.ok) {
-      setUi({ kind: "failed", code: res.code, message: res.message });
+      setUi({ kind: "failed", error: res.error });
       return;
     }
     setUi({ kind: "result", res });
@@ -114,7 +114,7 @@ export function CheckInFlow(props: { status: TodayStatus; providerDemo: boolean 
     setUi({ kind: "verifying", step: "saving" });
     const res = await fallbackCheck({ direction, reason, idempotencyKey: ensureKey() });
     if (!res.ok) {
-      setUi({ kind: "failed", code: res.code, message: res.message });
+      setUi({ kind: "failed", error: res.error });
       return;
     }
     setUi({ kind: "result", res });
@@ -148,7 +148,7 @@ export function CheckInFlow(props: { status: TodayStatus; providerDemo: boolean 
     );
   }
 
-  const failed = ui.kind === "failed" ? (FAILED_META[ui.code] ?? { title: `Lỗi (${ui.code})`, hint: ui.message }) : null;
+  const failed = ui.kind === "failed" ? (FAILED_META[ui.error.code] ?? { title: `Lỗi (${ui.error.code})`, hint: ui.error.message }) : null;
 
   return (
     <div className="flex flex-col gap-4">
@@ -235,7 +235,7 @@ export function CheckInFlow(props: { status: TodayStatus; providerDemo: boolean 
             <span className="text-[var(--danger)]"><Icon name="x" size={36} /></span>
             <p role="alert" className="text-lg font-semibold">{failed.title}</p>
             <p className="text-sm text-slate-600">{failed.hint}</p>
-            <p className="text-xs text-slate-400">Mã lỗi: {ui.code} (để đối chiếu với HR/kỹ thuật)</p>
+            <p className="text-xs text-slate-400">Mã lỗi: {ui.error.code} (để đối chiếu với HR/kỹ thuật)</p>
           </div>
           <div className="flex flex-wrap justify-center gap-2">
             <Button size="sm" variant="secondary" onClick={retry}>Thử lại (cùng mã)</Button>
