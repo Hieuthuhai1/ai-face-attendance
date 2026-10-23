@@ -191,7 +191,46 @@ npm run test:e2e
 | FS-06 | No active shift | Error + HR contact | E2E |
 | FS-07 | No enrollment | Error + enrollment link | E2E |
 
-### 7.4 Mobile Specific
+### 7.4 Failure State
+| # | Scenario | Expected | Test Type |
+|---|---|---|---|
+| FS-01 | Liveness failed | Error + retry + guidance | E2E |
+| FS-02 | No match | Error + retry + fallback option | E2E |
+| FS-03 | Provider unavailable | Error + retry + fallback | E2E |
+| FS-04 | Network error | Offline banner + retry | E2E |
+| FS-05 | Already checked in | Error + guidance | E2E |
+| FS-06 | No active shift | Error + HR contact | E2E |
+| FS-07 | No enrollment | Error + enrollment link | E2E |
+| FS-08 | Low confidence | Pending review status + HR queue | E2E |
+| FS-09 | Provider timeout | Error + retry + fallback | E2E |
+| FS-10 | Poor image quality | Retry capture guidance | E2E |
+| FS-11 | Provider not configured | Config error + admin contact | E2E |
+| FS-12 | Unauthorized provider | Credentials error + admin contact | E2E |
+| FS-13 | Database failure | Retry with idempotency | E2E |
+
+### 7.5 Manual Fallback & Authorization
+| # | Scenario | Expected | Test Type |
+|---|---|---|---|
+| MF-01 | Employee requests fallback | Requires reason | E2E |
+| MF-02 | Fallback without reason | REASON_REQUIRED error | E2E |
+| MF-03 | Fallback creates attendance | method=pin_fallback, status=fallback | Unit + Integration |
+| MF-04 | Fallback requires HR approval | Goes to approval queue | Integration |
+| MF-05 | Employee cannot self-approve | 42501 on approve own | Integration |
+| MF-06 | Fallback audit trail | note=reason, verification_ref=null | Integration |
+| MF-07 | AI error not auto-absent | Failed event logged, not absent | Unit + Integration |
+
+### 7.6 Error Classification & Retry Logic
+| # | Scenario | Expected | Test Type |
+|---|---|---|---|
+| EC-01 | Retryable errors show Retry button | Liveness fail, no match, timeout | Unit + E2E |
+| EC-02 | Retryable errors show Fallback | When showFallback=true | Unit + E2E |
+| EC-03 | Permanent errors hide Retry | No shift, already checked in | Unit + E2E |
+| EC-04 | Config errors show admin notice | Provider not configured | Unit + E2E |
+| EC-05 | Duplicate returns existing | Same idempotency key | Integration |
+| EC-06 | Form state preserved on retry | Direction, shift, demo kept | E2E |
+| EC-07 | No fake success on failure | ok=false for all failures | Unit |
+
+### 7.7 Mobile Specific
 | # | Scenario | Expected | Test Type |
 |---|---|---|---|
 | MB-01 | Portrait camera preview | Full screen, correct aspect | E2E |

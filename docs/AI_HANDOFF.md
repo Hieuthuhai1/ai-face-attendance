@@ -1000,6 +1000,75 @@ smoke 9/9 routes 307 + headers đầy đủ.
 
 ---
 
+## Phase 19 — Face Recognition Failure Handling and Manual Fallback (completed 2026-10-23)
+
+**Mục tiêu:** Chuẩn hóa lỗi và fallback trong toàn bộ face attendance flow, cải thiện UX cho các trạng thái lỗi.
+
+**Hoàn thành:**
+- **Error Classification System** (`src/features/attendance/actions.ts`):
+  - `AttendanceError` interface với `code`, `message`, `category` (retryable/permanent/configuration/requires_fallback), `hint`, `showFallback`
+  - `mapVerifyCode` function map provider errors → standardized attendance errors với category và action hint
+  - 18 error codes: LIVENESS_FAILED, NO_MATCH, LOW_CONFIDENCE, POOR_IMAGE_QUALITY, ENROLLMENT_MISSING, PROVIDER_UNAVAILABLE, PROVIDER_TIMEOUT, NETWORK_ERROR, NO_SHIFT, OUT_WITHOUT_IN, ALREADY_CHECKED_IN, RATE_LIMITED, INVALID_IMAGE, NOT_ELIGIBLE, INVALID_KEY, RECORD_FAILED, PROVIDER_NOT_CONFIGURED, UNAUTHORIZED, REASON_REQUIRED, DUPLICATE
+  - Mỗi lỗi có: thông báo dễ hiểu, hint hành động tiếp theo, category để UI quyết định hiển thị Retry/Fallback, không reset form
+
+- **Enhanced verifyCheck & fallbackCheck**:
+  - Trả về `AttendanceError` object thay vì string code/message
+  - Provider timeout/unavailable → retryable + showFallback
+  - Liveness fail/no match/low confidence → retryable + showFallback
+  - Poor image quality → retryable (chụp lại), không showFallback ngay
+  - Configuration errors (not_configured, unauthorized) → permanent, không showFallback
+  - Database errors → retryable + showFallback
+  - Duplicate submission (idempotency) → trả bản ghi cũ, không trùng
+
+- **FaceVerificationFlow UI** (`src/features/face-verification/face-verification-flow.tsx`):
+  - `UiState.failed` giờ chứa toàn bộ `AttendanceError` object
+  - `FAILED_META` mở rộng với `category` và `showFallback`
+  - Failed state render: hiển thị title, hint, error code, category badge
+  - Conditional actions: chỉ hiện "Thử lại" cho retryable, "Phương thức thay thế" khi `showFallback=true`
+  - Configuration errors hiển thị warning đặc biệt (cần admin cấu hình)
+  - Không reset form khi retry - giữ direction, shift, providerDemo state
+
+- **Manual Fallback (PIN) Protection**:
+  - Chỉ employee tự yêu cầu (không tự approve)
+  - Bắt buộc lý do (REASON_REQUIRED validation)
+  - Ghi attendance với `method=pin_fallback`, `status=fallback`
+  - HR/Manager duyệt qua approval center (đã có từ Phase 7)
+  - Audit trail: `note` chứa lý do, `verification_ref=null`, `confidence=null`, `liveness=null`
+  - Phân biệt rõ AI verification vs manual verification trong receipt
+
+**UX States Supported:**
+- Loading (verifying steps: liveness → matching → saving)
+- Retryable error (có Retry + Chụp lại + Fallback nếu showFallback)
+- Permanent/configuration error (chỉ hướng dẫn, không Retry, không Fallback)
+- Pending review (warning badge, HR queue link)
+- Manual verification (fallback badge, HR queue link)
+- Success (receipt đầy đủ)
+- Cancelled (quay về idle state)
+
+**Kết quả kiểm tra:**
+- `npm test` ✅ 117/117 tests pass (15 test files)
+- `npm run typecheck` ✅ (chỉ pre-existing errors)
+- `npm run lint` ✅ (chỉ pre-existing warnings/errors)
+- `npm run build` ✅ (26 routes)
+- Secret scan: sạch
+
+**Files sửa đổi:**
+- `src/features/attendance/actions.ts` — `AttendanceError`, `mapVerifyCode`, `verifyCheck`, `fallbackCheck`
+- `src/features/face-verification/face-verification-flow.tsx` — `UiState`, `FAILED_META`, error handling UI
+
+**Commit:** `fix(face-ai): improve failure handling and manual fallback` — SHA: `46f87fd` (pushed `ui/redesign`)
+
+**Vercel Preview:** Auto-deployed on push to `ui/redesign`. Check Vercel dashboard for preview URL.
+
+**Known issues:**
+- Pre-existing TS errors trong chart/calendar/select/portal/components UI khác (không chặn build)
+- AWS Rekognition credentials chưa cấu hình trên Vercel (cần bạn set)
+- Migration enrollment security chưa chạy trên Supabase staging/production
+
+**Next:** Phase 20 — Cấu hình AWS credentials trên Vercel, apply migration Supabase, E2E browser tests, Production deploy.
+
+---
+
 ## Google OAuth (added 2026-10-15, staging đã bật provider)
 
 - Code: nút Google + `/auth/callback` (chống open-redirect, unit), trigger map tên
