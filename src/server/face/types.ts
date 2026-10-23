@@ -57,7 +57,8 @@ export type FaceResultCode =
   | "timeout"
   | "invalid_input"
   | "rate_limited"
-  | "not_configured";
+  | "not_configured"
+  | "unauthorized";
 
 /** Kết quả operation chuẩn hóa. */
 export interface FaceOperationResult<T = unknown> {

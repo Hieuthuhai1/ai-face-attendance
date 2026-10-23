@@ -693,6 +693,68 @@ smoke 9/9 routes 307 + headers đầy đủ.
 
 **Next:** Phase 14 — Cấu hình AWS Rekognition trên Vercel Production, tích hợp liveness thực tế, E2E browser tests.
 
+---
+
+## Phase 14 — Face Enrollment Data Model & Security (completed 2026-10-23)
+
+**Mục tiêu:** Cải thiện data model enrollment, thêm trạng thái failed/needs_review, bảo vệ dữ liệu sinh trắc học, RLS hardening.
+
+**Hoàn thành:**
+- **Migration** (`supabase/migrations/20261023120000_enrollment_security.sql`):
+  - Mở rộng status enum: thêm `failed`, `needs_review` (giữ `pending`, `active`, `rejected`, `revoked`)
+  - Thêm cột: `failed_reason` (text), `failed_at` (timestamptz), `disabled_at` (timestamptz, alias rõ nghĩa cho `revoked_at`)
+  - Unique constraint: 1 enrollment ở `active` hoặc `needs_review` per employee (`face_enrollments_one_active_or_review`)
+  - Index: `(employee_id, status)` cho query nhanh
+  - Migrate existing `revoked_at` → `disabled_at`
+- **RLS Hardening**:
+  - Policy `face_update_own`: nhân viên chỉ được chuyển sang `revoked` (tự thu hồi), không được tự set `active`, `needs_review`, `failed`
+  - Policy `face_insert`: chỉ cho `status = 'pending'` (đã có)
+  - Policy `face_write_hr`: HR/admin full access trong org (đã có)
+- **Server Functions (SECURITY DEFINER)**:
+  - `get_my_enrollment_status()` — helper an toàn cho UI
+  - `hr_approve_enrollment(enrollment_id, quality?)` — HR duyệt, tự stamp `verified_by`, ghi audit
+  - `hr_reject_enrollment(enrollment_id, reason)` — HR từ chối, ghi `failed_reason`, `failed_at`, audit
+  - `revoke_my_enrollment()` — employee tự thu hồi, ghi `disabled_at`, audit
+  - `mark_enrollment_failed(employee_id, reason, provider_subject_id?)` — server callback sau provider error
+  - `mark_enrollment_needs_review(employee_id, reason)` — server callback cho quality issues
+- **Seed Data** (`supabase/seed.sql`):
+  - Thêm enrollment `failed` (NV004: provider timeout)
+  - Thêm enrollment `needs_review` (NV005: quality below threshold)
+  - Cập nhật enrollment revoked có `disabled_at`
+- **RLS Tests** (`supabase/tests/test_rls.sql` - section 8b):
+  - Test HR approve/reject via functions
+  - Test employee revoke own
+  - Test service_role mark failed/needs_review
+  - Test unique constraint: 1 active + needs_review per employee
+  - Test employee không tự set active/needs_review/failed
+  - Test HR scope org isolation
+
+**Kết quả kiểm tra:**
+- `npm test` ✅ 101/101 tests pass
+- `npm run build` ✅ (compiled successfully)
+- `npm run lint` ✅ (chỉ pre-existing warnings/errors)
+- Secret scan: sạch
+
+**Files mới:**
+- `supabase/migrations/20261023120000_enrollment_security.sql` — Migration schema + functions + RLS
+
+**Files sửa đổi:**
+- `supabase/seed.sql` — Thêm enrollment failed, needs_review, disabled_at
+- `supabase/tests/test_rls.sql` — Section 8b test enrollment new statuses + functions
+
+**Commit:** `feat(face-ai): secure enrollment data model` — SHA: `f2930d4` (pushed `ui/redesign`)
+
+**Vercel Preview:** https://ai-face-attendance-ayhbbxjj6-hieu-98a8.vercel.app (Ready)
+
+**Known issues:**
+- Pre-existing TS errors trong chart/calendar/select/portal/components UI khác (không chặn build)
+- Migration chưa chạy trên Supabase staging/production (cần bạn duyệt và apply)
+- Docker Desktop cần chạy thủ công trước `supabase db reset`
+
+**Next:** Phase 15 — Apply migration lên Supabase Staging, E2E browser tests, Production deploy.
+
+---
+
 ## Google OAuth (added 2026-10-15, staging đã bật provider)
 
 - Code: nút Google + `/auth/callback` (chống open-redirect, unit), trigger map tên

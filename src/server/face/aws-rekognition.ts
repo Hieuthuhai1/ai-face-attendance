@@ -5,6 +5,7 @@ import {
   IndexFacesCommand,
   DeleteFacesCommand,
   DetectFacesCommand,
+  CreateFaceLivenessSessionCommand,
   GetFaceLivenessSessionResultsCommand,
   ListCollectionsCommand,
 } from "@aws-sdk/client-rekognition";
@@ -26,7 +27,7 @@ import type {
 /**
  * AwsRekognitionProvider — Production face recognition provider.
  * Yêu cầu: FACE_PROVIDER=aws-rekognition, FACE_PROVIDER_API_KEY, FACE_PROVIDER_SECRET_KEY, FACE_PROVIDER_REGION, FACE_COLLECTION_ID
- * Capabilities: enroll, verify1to1, liveness (passive), deleteSubject, qualityAssessment (via DetectFaces)
+ * Capabilities: enroll, verify1to1, liveness (passive + active), deleteSubject, qualityAssessment (via DetectFaces)
  * Không hỗ trợ: verify1toN (có thể thêm sau nếu cần)
  */
 export class AwsRekognitionProvider implements FaceRecognitionProvider {
@@ -84,12 +85,62 @@ export class AwsRekognitionProvider implements FaceRecognitionProvider {
     throw new Error("Invalid image data format");
   }
 
+  /** Map AWS error codes to standardized FaceResultCode. */
+  private mapAwsError(error: unknown, operation: string): FaceOperationResult<never> {
+    const msg = error instanceof Error ? error.message : String(error);
+    const name = error instanceof Error ? error.name : "UnknownError";
+
+    // Credentials/authorization errors
+    if (name === "UnauthorizedException" || name === "AccessDeniedException" || msg.includes("InvalidAccessKeyId") || msg.includes("SignatureDoesNotMatch")) {
+      return { ok: false, code: "unauthorized", message: `AWS credentials invalid: ${msg}` };
+    }
+
+    // Resource not found
+    if (name === "ResourceNotFoundException" || msg.includes("ResourceNotFoundException")) {
+      return { ok: false, code: "enrollment_missing", message: `Resource not found: ${msg}` };
+    }
+
+    // Invalid parameter / quality issues
+    if (name === "InvalidParameterException" || msg.includes("InvalidParameterException")) {
+      if (msg.includes("quality") || msg.includes("QualityFilter")) {
+        return { ok: false, code: "poor_image_quality", message: `Image quality rejected by provider: ${msg}` };
+      }
+      if (msg.includes("FaceId") || msg.includes("CollectionId")) {
+        return { ok: false, code: "enrollment_missing", message: `Invalid resource reference: ${msg}` };
+      }
+      return { ok: false, code: "invalid_input", message: `Invalid request parameter: ${msg}` };
+    }
+
+    // Throttling / rate limit
+    if (name === "ThrottlingException" || name === "ProvisionedThroughputExceededException" || msg.includes("Throttling") || msg.includes("RateExceeded")) {
+      return { ok: false, code: "rate_limited", message: `Provider rate limit exceeded: ${msg}` };
+    }
+
+    // Service unavailable
+    if (name === "ServiceUnavailableException" || name === "InternalServerError" || msg.includes("ServiceUnavailable") || msg.includes("InternalFailure")) {
+      return { ok: false, code: "provider_unavailable", message: `Provider temporarily unavailable: ${msg}` };
+    }
+
+    // Request timeout
+    if (name === "RequestTimeoutException" || msg.includes("RequestTimeout") || msg.includes("timeout")) {
+      return { ok: false, code: "timeout", message: `Provider request timeout: ${msg}` };
+    }
+
+    // Limit exceeded (collection full, etc.)
+    if (name === "LimitExceededException" || msg.includes("LimitExceeded")) {
+      return { ok: false, code: "provider_unavailable", message: `Provider limit exceeded: ${msg}` };
+    }
+
+    // Generic fallback
+    return { ok: false, code: "provider_unavailable", message: `${operation} failed: ${msg}` };
+  }
+
   async checkAvailability(): Promise<FaceOperationResult<{ available: boolean }>> {
     try {
       await this.client.send(new ListCollectionsCommand({ MaxResults: 1 }));
       return { ok: true, code: "success", message: "AWS Rekognition available", data: { available: true } };
     } catch (error) {
-      return { ok: false, code: "provider_unavailable", message: `AWS Rekognition unavailable: ${error instanceof Error ? error.message : String(error)}`, data: { available: false } };
+      return this.mapAwsError(error, "Health check");
     }
   }
 
@@ -158,7 +209,7 @@ export class AwsRekognitionProvider implements FaceRecognitionProvider {
         data: { quality: qualityScore, issues },
       };
     } catch (error) {
-      return { ok: false, code: "provider_unavailable", message: `Quality assessment failed: ${error instanceof Error ? error.message : String(error)}`, data: { quality: 0, issues: ["assessment_failed"] } };
+      return this.mapAwsError(error, "Quality assessment");
     }
   }
 
@@ -205,11 +256,23 @@ export class AwsRekognitionProvider implements FaceRecognitionProvider {
         },
       };
     } catch (error) {
-      const msg = error instanceof Error ? error.message : String(error);
-      if (msg.includes("InvalidParameterException") && msg.includes("quality")) {
-        return { ok: false, code: "poor_image_quality", message: `Image quality rejected by provider: ${msg}` };
-      }
-      return { ok: false, code: "provider_unavailable", message: `Enrollment failed: ${msg}` };
+      return this.mapAwsError(error, "Enrollment");
+    }
+  }
+
+  /** Start active liveness session (for challenge-response flow). */
+  async startLivenessSession(): Promise<FaceOperationResult<{ sessionId: string }>> {
+    try {
+      const command = new CreateFaceLivenessSessionCommand({});
+      const response = await this.client.send(command);
+      return {
+        ok: true,
+        code: "success",
+        message: "Liveness session created",
+        data: { sessionId: response.SessionId ?? "" },
+      };
+    } catch (error) {
+      return this.mapAwsError(error, "Start liveness session");
     }
   }
 
@@ -222,9 +285,9 @@ export class AwsRekognitionProvider implements FaceRecognitionProvider {
         });
         const response = await this.client.send(command);
 
-        const statusValue = response.Status;
+        const statusValue = response.Status as string;
         // LivenessSessionStatus enum: "SUCCESS" | "FAILED" | "CREATED" | "EXPIRED" | "IN_PROGRESS"
-        const status: LivenessStatus = statusValue === "SUCCESS" ? "pass" : statusValue === "FAILED" ? "fail" : "unknown";
+        const status: LivenessStatus = (statusValue === "SUCCESS") ? "pass" : (statusValue === "FAILED") ? "fail" : "unknown";
         return {
           ok: true,
           code: status === "pass" ? "success" : status === "fail" ? "liveness_failed" : "manual_review_required",
@@ -261,7 +324,7 @@ export class AwsRekognitionProvider implements FaceRecognitionProvider {
         };
       }
     } catch (error) {
-      return { ok: false, code: "provider_unavailable", message: `Liveness check failed: ${error instanceof Error ? error.message : String(error)}`, data: { status: "unknown", providerReference: "error" } };
+      return this.mapAwsError(error, "Liveness check");
     }
   }
 
@@ -312,7 +375,7 @@ export class AwsRekognitionProvider implements FaceRecognitionProvider {
       if (confidence < this.reviewBandLow) liveness = "unknown";
 
       const result: VerifyResult = {
-        match: true,
+        match: confidence >= this.reviewBandLow,
         confidence,
         liveness,
         providerReference: matchedFaceId ?? "search_faces_match",
@@ -324,11 +387,7 @@ export class AwsRekognitionProvider implements FaceRecognitionProvider {
 
       return { ok: true, code, message: "Verify completed", data: result };
     } catch (error) {
-      const msg = error instanceof Error ? error.message : String(error);
-      if (msg.includes("InvalidParameterException") && msg.includes("FaceId")) {
-        return { ok: false, code: "enrollment_missing", message: `Enrollment not found: ${msg}` };
-      }
-      return { ok: false, code: "provider_unavailable", message: `Verification failed: ${msg}` };
+      return this.mapAwsError(error, "Verification");
     }
   }
 
@@ -341,11 +400,12 @@ export class AwsRekognitionProvider implements FaceRecognitionProvider {
       await this.client.send(command);
       return { ok: true, code: "success", message: "Face deleted from collection" };
     } catch (error) {
-      const msg = error instanceof Error ? error.message : String(error);
-      if (msg.includes("ResourceNotFoundException")) {
-        return { ok: true, code: "success", message: "Face already deleted or not found" }; // Idempotent
+      const mapped = this.mapAwsError(error, "Delete enrollment");
+      // ResourceNotFoundException is idempotent for delete
+      if (error instanceof Error && error.name === "ResourceNotFoundException") {
+        return { ok: true, code: "success", message: "Face already deleted or not found" };
       }
-      return { ok: false, code: "provider_unavailable", message: `Delete failed: ${msg}` };
+      return mapped;
     }
   }
 
@@ -353,7 +413,7 @@ export class AwsRekognitionProvider implements FaceRecognitionProvider {
     try {
       await this.client.send(new ListCollectionsCommand({ MaxResults: 1 }));
       return { configured: true, provider: "aws-rekognition", demo: false, message: "AWS Rekognition ready" };
-    } catch {
+    } catch (error) {
       return { configured: false, provider: "aws-rekognition", demo: false, message: "AWS Rekognition unavailable — check credentials/region" };
     }
   }

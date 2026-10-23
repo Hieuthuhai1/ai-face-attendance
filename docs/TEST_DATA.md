@@ -208,7 +208,43 @@ npm run test:e2e
 | PR-03 | No raw images in logs | Logger redacts image data | Unit |
 | PR-04 | Camera stream cleanup | Stream stopped on unmount | Unit |
 
-## 8. Seed / reset
+## 8. Enrollment Security Test Scenarios (Phase 14)
+
+### 8.1 Enrollment Statuses
+| # | Scenario | Expected | Test Type |
+|---|---|---|---|
+| ES-01 | Employee enrollment active | `status = 'active'`, `provider_subject_id` set, `enrolled_at` set | SQL + Unit |
+| ES-02 | Employee enrollment pending | `status = 'pending'`, no `provider_subject_id` | SQL + Unit |
+| ES-03 | Employee enrollment failed | `status = 'failed'`, `failed_reason` set, `failed_at` set | SQL + Unit |
+| ES-04 | Employee enrollment needs_review | `status = 'needs_review'`, `failed_reason` set | SQL + Unit |
+| ES-05 | Employee enrollment revoked | `status = 'revoked'`, `disabled_at` set | SQL + Unit |
+| ES-06 | Employee enrollment rejected | `status = 'rejected'`, `failed_reason` set, `failed_at` set | SQL + Unit |
+| ES-07 | No enrollment | Không có row trong `face_enrollments` | SQL + Unit |
+
+### 8.2 Enrollment Lifecycle & Functions
+| # | Scenario | Expected | Test Type |
+|---|---|---|---|
+| EL-01 | HR approve enrollment via `hr_approve_enrollment` | `status = 'active'`, `verified_by` = HR user, `enrolled_at` = now(), audit log | SQL |
+| EL-02 | HR reject enrollment via `hr_reject_enrollment` | `status = 'rejected'`, `failed_reason` = reason, `failed_at` = now(), audit log | SQL |
+| EL-03 | Employee revoke own via `revoke_my_enrollment` | `status = 'revoked'`, `disabled_at` = now(), audit log `by = 'owner'` | SQL |
+| EL-04 | Provider callback mark failed via `mark_enrollment_failed` | `status = 'failed'`, `failed_reason`, `failed_at`, audit log | SQL (service_role) |
+| EL-05 | Provider callback mark needs_review via `mark_enrollment_needs_review` | `status = 'needs_review'`, `failed_reason`, audit log | SQL (service_role) |
+| EL-06 | Duplicate active enrollment blocked | Unique violation 23505 trên `face_enrollments_one_active_or_review` | SQL |
+| EL-07 | Active + needs_review blocked | Unique violation 23505 | SQL |
+| EL-08 | Employee cannot self-set active/needs_review/failed | Update bị chặn (42501) qua RLS `face_update_own` | SQL |
+
+### 8.3 Enrollment RLS & Permissions
+| # | Scenario | Expected | Test Type |
+|---|---|---|---|
+| ER-01 | Employee chỉ đọc enrollment của mình | `face_select` policy | SQL (test_rls §2, 8b) |
+| ER-02 | Manager không đọc provider_subject_id của team | `face_select` lọc `employee_id = my_employee_id()` | SQL (test_rls §4) |
+| ER-03 | HR duyệt enrollment trong org mình | `face_write_hr` + function `hr_approve_enrollment` | SQL (test_rls §5, 8b) |
+| ER-04 | HR không duyệt enrollment org khác | Function raise `FORBIDDEN` | SQL |
+| ER-05 | Employee insert chỉ được status pending | `face_insert` WITH CHECK | SQL (test_rls §8) |
+| ER-06 | Employee update chỉ được revoke pending/active | `face_update_own` WITH CHECK | SQL (test_rls §8, 8b) |
+| ER-07 | Attendance history không bị ảnh hưởng | Attendance events/summaries intact sau enrollment changes | SQL |
+
+## 9. Seed / reset
 
 `supabase db reset` chạy lại toàn bộ migrations + seed (upsert theo id cố định nên idempotent).
 Tuyệt đối không chạy `db reset`/`db push` lên project đã link cloud khi chưa được duyệt.
