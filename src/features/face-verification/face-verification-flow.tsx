@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { DemoBanner } from "@/components/ui/demo-banner";
 import { Icon } from "@/components/ui/icon";
-import { verifyCheck, fallbackCheck, type CheckResult } from "@/features/attendance/actions";
+import { verifyCheck, fallbackCheck, type CheckResult, type AttendanceError } from "@/features/attendance/actions";
 import type { FaceFixture } from "@/server/face/types";
 
 // CameraCapture uses browser APIs (navigator.mediaDevices) that can't run during static prerendering
@@ -48,47 +48,72 @@ type UiState =
   | { kind: "idle" }
   | { kind: "verifying"; step: "liveness" | "matching" | "saving" }
   | { kind: "result"; res: Extract<CheckResult, { ok: true }> }
-  | { kind: "failed"; code: string; message: string };
+  | { kind: "failed"; error: AttendanceError };
 
 const STEPS = ["1. Chuẩn bị", "2. Quét & xác minh", "3. Kết quả"] as const;
 
-const FAILED_META: Record<string, { title: string; hint: string }> = {
+const FAILED_META: Record<string, { title: string; hint: string; category?: "retryable" | "permanent" | "configuration" | "requires_fallback"; showFallback?: boolean }> = {
   LIVENESS_FAILED: {
     title: "Không xác định được người thật",
     hint: "Thử lại đủ sáng, nhìn thẳng. Mock hiện tại không có liveness thật.",
+    category: "retryable",
+    showFallback: true,
   },
   NO_MATCH: {
     title: "Khuôn mặt không khớp",
     hint: "Thử lại hoặc dùng phương thức thay thế. Hệ thống không kết luận gian lận.",
+    category: "retryable",
+    showFallback: true,
   },
   LOW_CONFIDENCE: {
     title: "Độ khớp thấp",
     hint: "Đã ghi nhận và chuyển HR rà soát. Không coi là gian lận.",
+    category: "retryable",
+    showFallback: true,
   },
   POOR_IMAGE_QUALITY: {
     title: "Ảnh không đạt chất lượng",
     hint: "Hãy chụp lại rõ hơn, đủ sáng, nhìn thẳng camera.",
+    category: "retryable",
+    showFallback: false,
   },
   ENROLLMENT_MISSING: {
     title: "Chưa có mẫu khuôn mặt",
     hint: "Đăng ký và chờ HR duyệt trước.",
+    category: "permanent",
+    showFallback: true,
   },
   PROVIDER_UNAVAILABLE: {
     title: "Dịch vụ nhận diện bận",
     hint: "Giữ nguyên trang, bấm Thử lại (cùng mã, không tạo trùng).",
+    category: "retryable",
+    showFallback: true,
+  },
+  PROVIDER_TIMEOUT: {
+    title: "Dịch vụ nhận diện quá lâu",
+    hint: "Giữ nguyên trang, bấm Thử lại (cùng mã, không tạo trùng).",
+    category: "retryable",
+    showFallback: true,
   },
   NETWORK_ERROR: {
     title: "Mất kết nối",
     hint: "Kiểm tra mạng rồi bấm Thử lại (cùng mã).",
+    category: "retryable",
+    showFallback: true,
   },
-  NO_SHIFT: { title: "Không có ca làm", hint: "Liên hệ HR nếu cần bổ sung phân ca." },
-  NO_ENROLLMENT: { title: "Chưa có mẫu khuôn mặt", hint: "Đăng ký và chờ HR duyệt trước." },
-  OUT_WITHOUT_IN: { title: "Chưa có lượt vào", hint: "Nếu quên check-in, gửi yêu cầu chỉnh công." },
-  ALREADY_CHECKED_IN: { title: "Đã check-in rồi", hint: "Hãy check-out khi ra về." },
-  RATE_LIMITED: { title: "Thao tác quá nhanh", hint: "Nghỉ ít phút rồi thử lại." },
-  INVALID_IMAGE: { title: "Ảnh không hợp lệ", hint: "Ảnh quá lớn hoặc sai định dạng." },
-  NOT_ELIGIBLE: { title: "Không đủ điều kiện", hint: "Tài khoản chưa phải nhân viên đang làm việc." },
-  INVALID_KEY: { title: "Idempotency key không hợp lệ", hint: "Lỗi hệ thống, vui lòng tải lại trang." },
+  NO_SHIFT: { title: "Không có ca làm", hint: "Liên hệ HR nếu cần bổ sung phân ca.", category: "permanent", showFallback: false },
+  NO_ENROLLMENT: { title: "Chưa có mẫu khuôn mặt", hint: "Đăng ký và chờ HR duyệt trước.", category: "permanent", showFallback: true },
+  OUT_WITHOUT_IN: { title: "Chưa có lượt vào", hint: "Nếu quên check-in, gửi yêu cầu chỉnh công.", category: "permanent", showFallback: true },
+  ALREADY_CHECKED_IN: { title: "Đã check-in rồi", hint: "Hãy check-out khi ra về.", category: "permanent", showFallback: false },
+  RATE_LIMITED: { title: "Thao tác quá nhanh", hint: "Nghỉ ít phút rồi thử lại.", category: "retryable", showFallback: false },
+  INVALID_IMAGE: { title: "Ảnh không hợp lệ", hint: "Ảnh quá lớn hoặc sai định dạng.", category: "retryable", showFallback: false },
+  NOT_ELIGIBLE: { title: "Không đủ điều kiện", hint: "Tài khoản chưa phải nhân viên đang làm việc.", category: "permanent", showFallback: false },
+  INVALID_KEY: { title: "Idempotency key không hợp lệ", hint: "Lỗi hệ thống, vui lòng tải lại trang.", category: "permanent", showFallback: false },
+  RECORD_FAILED: { title: "Không ghi được chấm công", hint: "Thử lại, hệ thống sẽ không tạo trùng nhờ idempotency key.", category: "retryable", showFallback: true },
+  PROVIDER_NOT_CONFIGURED: { title: "Provider chưa được cấu hình", hint: "Chỉ dùng được DEMO trên development. Production cần cấu hình AWS Rekognition.", category: "configuration", showFallback: false },
+  UNAUTHORIZED: { title: "Provider credentials không hợp lệ", hint: "Liên hệ quản trị viên cấu hình provider.", category: "configuration", showFallback: false },
+  REASON_REQUIRED: { title: "Lý do bắt buộc", hint: "Vui lòng nhập lý do dùng phương thức thay thế.", category: "permanent", showFallback: false },
+  DUPLICATE: { title: "Đã ghi nhận trước đó", hint: "Không cần gửi lại.", category: "retryable", showFallback: false },
 };
 
 export function FaceVerificationFlow(props: FaceVerificationFlowProps) {
@@ -142,7 +167,7 @@ export function FaceVerificationFlow(props: FaceVerificationFlowProps) {
   }
 
   const step = ui.kind === "idle" ? 0 : ui.kind === "verifying" ? 1 : 2;
-  const failed = ui.kind === "failed" ? (FAILED_META[ui.code] ?? { title: `Lỗi (${ui.code})`, hint: ui.message }) : null;
+  const failed = ui.kind === "failed" ? (FAILED_META[ui.error.code] ?? { title: `Lỗi (${ui.error.code})`, hint: ui.error.message }) : null;
 
   async function onCapture(frameDataUrl: string) {
     setUi({ kind: "verifying", step: "liveness" });
@@ -155,12 +180,12 @@ export function FaceVerificationFlow(props: FaceVerificationFlowProps) {
         idempotencyKey: ensureKey(),
       });
     } catch {
-      setUi({ kind: "failed", code: "NETWORK_ERROR", message: "Mất mạng khi gửi. Bấm Thử lại (dùng cùng mã, không tạo trùng)." });
+      setUi({ kind: "failed", error: { code: "NETWORK_ERROR", message: "Mất mạng khi gửi. Bấm Thử lại (dùng cùng mã, không tạo trùng).", category: "retryable", hint: "Kiểm tra mạng rồi bấm Thử lại (cùng mã).", showFallback: true } });
       return;
     }
     if (!res.ok) {
-      setUi({ kind: "failed", code: res.code, message: res.message });
-      onError?.({ code: res.code, message: res.message });
+      setUi({ kind: "failed", error: res.error });
+      onError?.({ code: res.error.code, message: res.error.message });
       return;
     }
     setUi({ kind: "result", res });
@@ -182,8 +207,8 @@ export function FaceVerificationFlow(props: FaceVerificationFlowProps) {
     setUi({ kind: "verifying", step: "saving" });
     const res = await fallbackCheck({ direction, reason, idempotencyKey: ensureKey() });
     if (!res.ok) {
-      setUi({ kind: "failed", code: res.code, message: res.message });
-      onError?.({ code: res.code, message: res.message });
+      setUi({ kind: "failed", error: res.error });
+      onError?.({ code: res.error.code, message: res.error.message });
       return;
     }
     setUi({ kind: "result", res });
@@ -270,14 +295,23 @@ export function FaceVerificationFlow(props: FaceVerificationFlowProps) {
             <span className="text-[var(--danger)]"><Icon name="x" size={36} /></span>
             <p role="alert" className="text-lg font-semibold">{failed.title}</p>
             <p className="text-sm text-slate-600">{failed.hint}</p>
-            <p className="text-xs text-slate-400">Mã lỗi: {ui.code} (để đối chiếu với HR/kỹ thuật)</p>
+            <p className="text-xs text-slate-400">Mã lỗi: {ui.error.code} (để đối chiếu với HR/kỹ thuật)</p>
+            {failed.category === "configuration" && (
+              <p className="text-xs text-amber-600">Cần cấu hình từ quản trị viên.</p>
+            )}
           </div>
           <div className="flex flex-wrap justify-center gap-2">
-            <Button size="sm" variant="secondary" onClick={retry}>Thử lại (cùng mã)</Button>
-            <Button size="sm" variant="secondary" onClick={newCapture}>Chụp lại (mã mới)</Button>
-            <Button size="sm" variant="ghost" onClick={() => { newAttempt(); setShowFallback(true); }}>
-              Dùng phương thức thay thế
-            </Button>
+            {failed.category === "retryable" && (
+              <>
+                <Button size="sm" variant="secondary" onClick={retry}>Thử lại (cùng mã)</Button>
+                <Button size="sm" variant="secondary" onClick={newCapture}>Chụp lại (mã mới)</Button>
+              </>
+            )}
+            {failed.showFallback && (
+              <Button size="sm" variant="ghost" onClick={() => { newAttempt(); setShowFallback(true); }}>
+                Dùng phương thức thay thế
+              </Button>
+            )}
           </div>
         </Card>
       ) : (

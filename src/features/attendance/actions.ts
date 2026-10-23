@@ -13,6 +13,18 @@ import type { FaceFixture, FaceImageInput } from "@/server/face/types";
 import { decideVerification, resolveShiftFor, wallDateString } from "@/server/attendance/decision";
 import { minutesEarlyLeave, minutesLate, wallMinutes } from "@/lib/attendance/rules";
 
+/** Error classification for UI handling */
+export type ErrorCategory = "retryable" | "permanent" | "configuration" | "requires_fallback";
+
+/** Enhanced error code with category and action */
+export interface AttendanceError {
+  code: string;
+  message: string;
+  category: ErrorCategory;
+  hint: string;
+  showFallback: boolean;
+}
+
 export type CheckResult =
   | {
       ok: true;
@@ -27,7 +39,7 @@ export type CheckResult =
       confidence: number | null;
       liveness: string | null;
     }
-  | { ok: false; code: string; message: string };
+  | { ok: false; error: AttendanceError };
 
 type Db = Awaited<ReturnType<typeof createClient>>;
 const FIXTURES: FaceFixture[] = ["good", "blurry", "no-match", "liveness-fail"];
@@ -169,17 +181,33 @@ function frameToImageInput(frameDataUrl: string, fixture?: FaceFixture): FaceIma
   return { data, mimeType: "image/jpeg" };
 }
 
-/** Map provider verify code sang attendance error code. */
-function mapVerifyCode(code: string, livenessStatus?: string): string {
+/** Map provider verify code sang attendance error code with category. */
+function mapVerifyCode(code: string, livenessStatus?: string): AttendanceError {
   switch (code) {
-    case "success": return "NO_MATCH"; // fallback
-    case "no_match": return "NO_MATCH";
-    case "low_confidence": return "LOW_CONFIDENCE";
-    case "liveness_failed": return "LIVENESS_FAILED";
-    case "provider_unavailable": return "PROVIDER_UNAVAILABLE";
-    case "timeout": return "PROVIDER_UNAVAILABLE";
-    case "enrollment_missing": return "NO_ENROLLMENT";
-    default: return "NO_MATCH";
+    case "success":
+      return { code: "NO_MATCH", message: "Khuôn mặt không khớp", category: "retryable", hint: "Thử lại hoặc dùng phương thức thay thế.", showFallback: true };
+    case "no_match":
+      return { code: "NO_MATCH", message: "Khuôn mặt không khớp mẫu đã đăng ký", category: "retryable", hint: "Thử lại đủ sáng, nhìn thẳng camera.", showFallback: true };
+    case "low_confidence":
+      return { code: "LOW_CONFIDENCE", message: "Độ khớp thấp", category: "retryable", hint: "Thử lại hoặc chuyển HR rà soát.", showFallback: true };
+    case "liveness_failed":
+      return { code: "LIVENESS_FAILED", message: "Không xác định được người thật", category: "retryable", hint: "Thử lại đủ sáng, nhìn thẳng. Không dùng ảnh/màn hình.", showFallback: true };
+    case "poor_image_quality":
+      return { code: "POOR_IMAGE_QUALITY", message: "Ảnh không đạt chất lượng", category: "retryable", hint: "Hãy chụp lại rõ hơn, đủ sáng, nhìn thẳng camera.", showFallback: false };
+    case "provider_unavailable":
+      return { code: "PROVIDER_UNAVAILABLE", message: "Dịch vụ nhận diện bận", category: "retryable", hint: "Giữ nguyên trang, bấm Thử lại (cùng mã, không tạo trùng).", showFallback: true };
+    case "timeout":
+      return { code: "PROVIDER_TIMEOUT", message: "Dịch vụ nhận diện quá lâu", category: "retryable", hint: "Giữ nguyên trang, bấm Thử lại (cùng mã, không tạo trùng).", showFallback: true };
+    case "enrollment_missing":
+      return { code: "NO_ENROLLMENT", message: "Chưa có mẫu khuôn mặt active", category: "permanent", hint: "Đăng ký và chờ HR duyệt trước.", showFallback: true };
+    case "unauthorized":
+      return { code: "UNAUTHORIZED", message: "Provider credentials không hợp lệ", category: "configuration", hint: "Liên hệ quản trị viên cấu hình provider.", showFallback: false };
+    case "rate_limited":
+      return { code: "RATE_LIMITED", message: "Quá nhiều yêu cầu", category: "retryable", hint: "Nghỉ ít phút rồi thử lại.", showFallback: false };
+    case "not_configured":
+      return { code: "PROVIDER_NOT_CONFIGURED", message: "Provider chưa được cấu hình", category: "configuration", hint: "Chỉ dùng được DEMO trên development. Production cần cấu hình AWS Rekognition.", showFallback: false };
+    default:
+      return { code: "NO_MATCH", message: "Khuôn mặt không khớp", category: "retryable", hint: "Thử lại hoặc dùng phương thức thay thế.", showFallback: true };
   }
 }
 
@@ -191,20 +219,20 @@ export async function verifyCheck(input: {
 }): Promise<CheckResult> {
   const { userId } = await requireUser();
   if (!idempotencyKeySchema.safeParse(input.idempotencyKey).success) {
-    return { ok: false, code: "INVALID_KEY", message: "Idempotency key không hợp lệ." };
+    return { ok: false, error: { code: "INVALID_KEY", message: "Idempotency key không hợp lệ.", category: "permanent", hint: "Lỗi hệ thống, vui lòng tải lại trang.", showFallback: false } };
   }
   const supabase = await createClient();
   const ctx = await myContext(supabase, userId);
-  if (!ctx) return { ok: false, code: "NOT_ELIGIBLE", message: "Tài khoản chưa phải nhân viên đang làm việc." };
+  if (!ctx) return { ok: false, error: { code: "NOT_ELIGIBLE", message: "Tài khoản chưa phải nhân viên đang làm việc.", category: "permanent", hint: "Liên hệ HR.", showFallback: false } };
   if (!ctx.subjectId) {
-    return { ok: false, code: "NO_ENROLLMENT", message: "Chưa có mẫu khuôn mặt active. Hãy đăng ký và chờ HR duyệt." };
+    return { ok: false, error: { code: "NO_ENROLLMENT", message: "Chưa có mẫu khuôn mặt active. Hãy đăng ký và chờ HR duyệt.", category: "permanent", hint: "Đăng ký khuôn mặt trước khi chấm công.", showFallback: true } };
   }
 
   const rl = checkRateLimit(`verify:${userId}`, VERIFY_LIMIT.max, VERIFY_LIMIT.windowMs);
-  if (!rl.allowed) return { ok: false, code: "RATE_LIMITED", message: "Bạn thao tác quá nhanh, nghỉ ít phút rồi thử lại." };
+  if (!rl.allowed) return { ok: false, error: { code: "RATE_LIMITED", message: "Bạn thao tác quá nhanh, nghỉ ít phút rồi thử lại.", category: "retryable", hint: "Nghỉ ít phút rồi thử lại.", showFallback: false } };
 
   if (!/^data:image\/(jpeg|png);base64,/.test(input.frameDataUrl) || input.frameDataUrl.length > 700_000) {
-    return { ok: false, code: "INVALID_IMAGE", message: "Ảnh không hợp lệ." };
+    return { ok: false, error: { code: "INVALID_IMAGE", message: "Ảnh không hợp lệ.", category: "retryable", hint: "Chụp lại ảnh đúng định dạng.", showFallback: false } };
   }
 
   const now = new Date();
@@ -225,7 +253,7 @@ export async function verifyCheck(input: {
   });
   const resolved = resolveShiftFor(now, wallMinutes(now, ctx.tz), list, ctx.tz);
   if (!resolved) {
-    return { ok: false, code: "NO_SHIFT", message: "Hôm nay bạn không có ca làm. Liên hệ HR nếu cần bổ sung." };
+    return { ok: false, error: { code: "NO_SHIFT", message: "Hôm nay bạn không có ca làm. Liên hệ HR nếu cần bổ sung.", category: "permanent", hint: "Liên hệ HR để phân ca.", showFallback: false } };
   }
   const meta = list.find((l) => l.id === resolved.assignment_id)?.meta as {
     grace_in_min: number; grace_out_min: number; rounding_min: number;
@@ -234,12 +262,12 @@ export async function verifyCheck(input: {
   if (input.direction === "check_out") {
     const status = await getTodayStatus();
     if (!status.eligible || !status.canCheckOut) {
-      return { ok: false, code: "OUT_WITHOUT_IN", message: "Chưa có check-in hợp lệ hôm nay. Nếu quên, hãy gửi yêu cầu chỉnh công." };
+      return { ok: false, error: { code: "OUT_WITHOUT_IN", message: "Chưa có check-in hợp lệ hôm nay. Nếu quên, hãy gửi yêu cầu chỉnh công.", category: "permanent", hint: "Gửi yêu cầu chỉnh công hoặc dùng phương thức thay thế.", showFallback: true } };
     }
   } else {
     const status = await getTodayStatus();
     if (status.eligible && !status.canCheckIn && status.lastEvent?.event_type === "check_in") {
-      return { ok: false, code: "ALREADY_CHECKED_IN", message: "Bạn đã check-in. Hãy check-out khi ra về." };
+      return { ok: false, error: { code: "ALREADY_CHECKED_IN", message: "Bạn đã check-in. Hãy check-out khi ra về.", category: "permanent", hint: "Bấm check-out khi ra về.", showFallback: false } };
     }
   }
 
@@ -255,10 +283,11 @@ export async function verifyCheck(input: {
   try {
     livenessResult = await withProviderTimeout(provider.checkLiveness({ image: imageInput }), PROVIDER_TIMEOUT_MS);
   } catch {
-    return { ok: false, code: "PROVIDER_UNAVAILABLE", message: "Dịch vụ nhận diện bận. Giữ nguyên trang và bấm Thử lại (không tạo trùng), hoặc dùng phương thức thay thế." };
+    return { ok: false, error: { code: "PROVIDER_TIMEOUT", message: "Dịch vụ nhận diện quá lâu. Giữ nguyên trang và bấm Thử lại (không tạo trùng), hoặc dùng phương thức thay thế.", category: "retryable", hint: "Thử lại hoặc dùng phương thức thay thế.", showFallback: true } };
   }
   if (!livenessResult.ok) {
-    return { ok: false, code: mapVerifyCode(livenessResult.code), message: livenessResult.message };
+    const err = mapVerifyCode(livenessResult.code);
+    return { ok: false, error: { ...err, message: err.message || livenessResult.message } };
   }
   livenessStatus = livenessResult.data?.status ?? "unknown";
 
@@ -271,10 +300,11 @@ export async function verifyCheck(input: {
         PROVIDER_TIMEOUT_MS,
       );
     } catch {
-      return { ok: false, code: "PROVIDER_UNAVAILABLE", message: "Dịch vụ nhận diện bận. Giữ nguyên trang và bấm Thử lại (không tạo trùng), hoặc dùng phương thức thay thế." };
+      return { ok: false, error: { code: "PROVIDER_TIMEOUT", message: "Dịch vụ nhận diện quá lâu. Giữ nguyên trang và bấm Thử lại (không tạo trùng), hoặc dùng phương thức thay thế.", category: "retryable", hint: "Thử lại hoặc dùng phương thức thay thế.", showFallback: true } };
     }
     if (!verifyResult.ok) {
-      return { ok: false, code: mapVerifyCode(verifyResult.code, livenessStatus), message: verifyResult.message };
+      const err = mapVerifyCode(verifyResult.code, livenessStatus);
+      return { ok: false, error: { ...err, message: err.message || verifyResult.message } };
     }
     confidence = verifyResult.data!.confidence;
     ref = verifyResult.data!.providerReference;
@@ -301,9 +331,9 @@ export async function verifyCheck(input: {
     await failedEvent(decision.reason);
     revalidatePath("/check-in");
     if (decision.reason === "LIVENESS_FAILED") {
-      return { ok: false, code: "LIVENESS_FAILED", message: "Không xác định được người thật. Thử lại đủ sáng/nhìn thẳng, hoặc dùng phương thức thay thế." };
+      return { ok: false, error: { code: "LIVENESS_FAILED", message: "Không xác định được người thật. Thử lại đủ sáng/nhìn thẳng, hoặc dùng phương thức thay thế.", category: "retryable", hint: "Thử lại đủ sáng, nhìn thẳng. Không dùng ảnh/màn hình.", showFallback: true } };
     }
-    return { ok: false, code: "NO_MATCH", message: "Khuôn mặt không khớp mẫu đã đăng ký. Thử lại hoặc dùng phương thức thay thế." };
+    return { ok: false, error: { code: "NO_MATCH", message: "Khuôn mặt không khớp mẫu đã đăng ký. Thử lại hoặc dùng phương thức thay thế.", category: "retryable", hint: "Thử lại đủ sáng, nhìn thẳng camera.", showFallback: true } };
   }
 
   const eventStatus = decision.outcome === "success" ? "success" : "pending_review";
@@ -343,7 +373,7 @@ export async function verifyCheck(input: {
       }
     }
     logger.warn("verifyCheck record failed", { code: error.code });
-    return { ok: false, code: "RECORD_FAILED", message: "Không ghi được chấm công, vui lòng thử lại." };
+    return { ok: false, error: { code: "RECORD_FAILED", message: "Không ghi được chấm công, vui lòng thử lại.", category: "retryable", hint: "Thử lại, hệ thống sẽ không tạo trùng nhờ idempotency key.", showFallback: true } };
   }
   revalidatePath("/check-in");
   if (eventStatus === "pending_review") {
@@ -376,17 +406,17 @@ export async function fallbackCheck(input: {
 }): Promise<CheckResult> {
   const { userId } = await requireUser();
   if (!idempotencyKeySchema.safeParse(input.idempotencyKey).success) {
-    return { ok: false, code: "INVALID_KEY", message: "Idempotency key không hợp lệ." };
+    return { ok: false, error: { code: "INVALID_KEY", message: "Idempotency key không hợp lệ.", category: "permanent", hint: "Lỗi hệ thống, vui lòng tải lại trang.", showFallback: false } };
   }
   if (!input.reason.trim()) {
-    return { ok: false, code: "REASON_REQUIRED", message: "Vui lòng nhập lý do dùng phương thức thay thế." };
+    return { ok: false, error: { code: "REASON_REQUIRED", message: "Vui lòng nhập lý do dùng phương thức thay thế.", category: "permanent", hint: "Lý do là bắt buộc cho phương thức thay thế.", showFallback: false } };
   }
   const supabase = await createClient();
   const ctx = await myContext(supabase, userId);
-  if (!ctx) return { ok: false, code: "NOT_ELIGIBLE", message: "Tài khoản chưa phải nhân viên đang làm việc." };
+  if (!ctx) return { ok: false, error: { code: "NOT_ELIGIBLE", message: "Tài khoản chưa phải nhân viên đang làm việc.", category: "permanent", hint: "Liên hệ HR.", showFallback: false } };
 
   const rl = checkRateLimit(`verify:${userId}`, VERIFY_LIMIT.max, VERIFY_LIMIT.windowMs);
-  if (!rl.allowed) return { ok: false, code: "RATE_LIMITED", message: "Bạn thao tác quá nhanh." };
+  if (!rl.allowed) return { ok: false, error: { code: "RATE_LIMITED", message: "Bạn thao tác quá nhanh.", category: "retryable", hint: "Nghỉ ít phút rồi thử lại.", showFallback: false } };
 
   const now = new Date();
   const { data: assignments } = await supabase
@@ -402,7 +432,7 @@ export async function fallbackCheck(input: {
     };
   });
   const resolved = resolveShiftFor(now, wallMinutes(now, ctx.tz), list, ctx.tz);
-  if (!resolved) return { ok: false, code: "NO_SHIFT", message: "Hôm nay bạn không có ca làm." };
+  if (!resolved) return { ok: false, error: { code: "NO_SHIFT", message: "Hôm nay bạn không có ca làm.", category: "permanent", hint: "Liên hệ HR để phân ca.", showFallback: false } };
 
   const { data, error } = await recordViaRpc(supabase, {
     employee_id: ctx.emp.id, assignment_id: resolved.assignment_id, event_type: input.direction,
@@ -411,11 +441,11 @@ export async function fallbackCheck(input: {
     work_date: resolved.work_date, shift_id: resolved.shift_id, late_min: 0, early_leave_min: 0,
   });
   if (error?.code === "23505") {
-    return { ok: false, code: "DUPLICATE", message: "Yêu cầu đã được ghi nhận trước đó." };
+    return { ok: false, error: { code: "DUPLICATE", message: "Yêu cầu đã được ghi nhận trước đó.", category: "retryable", hint: "Không cần gửi lại.", showFallback: false } };
   }
   if (error || !data) {
     logger.warn("fallbackCheck record failed", { code: error?.code });
-    return { ok: false, code: "RECORD_FAILED", message: "Không ghi được, vui lòng thử lại." };
+    return { ok: false, error: { code: "RECORD_FAILED", message: "Không ghi được, vui lòng thử lại.", category: "retryable", hint: "Thử lại, hệ thống sẽ không tạo trùng nhờ idempotency key.", showFallback: false } };
   }
   revalidatePath("/check-in");
   return {
