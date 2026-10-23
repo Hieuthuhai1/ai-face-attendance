@@ -810,6 +810,77 @@ smoke 9/9 routes 307 + headers đầy đủ.
 
 ---
 
+## Phase 16 — Face Enrollment Workflow Rebuild (completed 2026-10-23)
+
+**Mục tiêu:** Xây dựng lại toàn bộ enrollment workflow với UX cải tiến, step indicator rõ ràng, camera preview ổn định, error handling tốt hơn, tách biệt server/client concerns.
+
+**Hoàn thành:**
+- **Enrollment Workflow Component** (`src/features/face-enrollment/enrollment-workflow.tsx`):
+  - Step indicator 4 bước: Consent → Camera Check → Capturing → Submitting
+  - Camera preview ổn định với `CameraCapture` component tái sử dụng
+  - Hướng dẫn ánh sáng, góc khuôn mặt real-time qua `FaceGuideOverlay`
+  - Trạng thái camera permission (denied/unavailable/error/ready)
+  - Trạng thái đang kiểm tra ảnh (quality gate)
+  - Trạng thái đang đăng ký (liveness, enroll, lưu)
+  - Success screen với thông tin chi tiết
+  - Error screen có Retry (thử lại chụp ảnh / quay lại camera)
+  - Nút hủy/quay lại ở mỗi bước
+  - Responsive mobile/tablet/desktop
+  - Provider demo fixture selector cho local/test
+  - Revoke enrollment section cho enrollment active/pending/needs_review
+
+- **Public Provider Module** (`src/server/face/public.ts`):
+  - Tách biệt health check `getProviderHealth` khỏi server-only code
+  - Không import `server-only`, có thể dùng ở server component prerender
+  - Health check không gọi `getFaceProvider` (tránh server-only)
+
+- **Enrollment Pages Cập Nhật**:
+  - `/enrollment` — Employee self-enrollment với dynamic import workflow
+  - `/admin/employees/[id]/enroll` — HR enroll cho employee cụ thể với dynamic import
+  - Cả hai dùng `generateStaticParams` + dynamic import client component để tránh SSR issues
+  - Import `getProviderHealth` từ `@/server/face/public` thay vì `@/server/face` (tránh server-only)
+
+- **Business Rules Enforced**:
+  - Không enroll nếu employee_id không hợp lệ
+  - Không enroll trùng (unique constraint `face_enrollments_one_active_or_review`)
+  - Không đánh dấu active trước khi backend xác nhận (HR duyệt qua `hr_approve_enrollment`)
+  - Không để frontend tự đặt enrollment status
+  - Không hiển thị face embedding
+  - Không log ảnh khuôn mặt
+  - Provider lỗi → giữ trạng thái phù hợp, cho phép thử lại
+  - Camera denied → hướng dẫn bật quyền, không crash
+  - Ảnh không đạt chất lượng → hiển thị hướng dẫn cụ thể, không gửi enrollment
+  - Provider chưa credentials → hiển thị NOT CONFIGURED, không giả success
+
+**Kết quả kiểm tra:**
+- `npm test` ✅ 117/117 tests pass (15 test files)
+- `npm run typecheck` ✅ (chỉ pre-existing errors không liên quan)
+- `npm run lint` ✅ (chỉ pre-existing warnings/errors)
+- `npm run build` ✅ (compiled successfully, 26 routes)
+- Secret scan: sạch
+
+**Files mới:**
+- `src/features/face-enrollment/enrollment-workflow.tsx` — Workflow component chính
+- `src/server/face/public.ts` — Public provider utilities (không server-only)
+
+**Files sửa đổi:**
+- `src/app/(protected)/enrollment/page.tsx` — Dynamic import workflow, import health từ public
+- `src/app/(protected)/admin/employees/[id]/enroll/page.tsx` — Dynamic import, generateStaticParams placeholder
+- `src/server/face/index.ts` — Export health check từ public module
+
+**Commit:** `feat(face-enrollment): rebuild enrollment workflow` — SHA: `8b11599` (pushed `ui/redesign`)
+
+**Vercel Preview:** https://ai-face-attendance-j7m0opaqt-hieu-98a8.vercel.app (Ready)
+
+**Known issues:**
+- Pre-existing TS errors trong chart/calendar/select/portal/components UI khác (không chặn build)
+- AWS Rekognition credentials chưa cấu hình trên Vercel (cần bạn set)
+- Migration enrollment security chưa chạy trên Supabase staging/production
+
+**Next:** Phase 17 — Cấu hình AWS credentials trên Vercel, apply migration Supabase, E2E browser tests, Production deploy.
+
+---
+
 ## Google OAuth (added 2026-10-15, staging đã bật provider)
 
 - Code: nút Google + `/auth/callback` (chống open-redirect, unit), trigger map tên
