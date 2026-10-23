@@ -881,6 +881,72 @@ smoke 9/9 routes 307 + headers đầy đủ.
 
 ---
 
+## Phase 17 — Face Verification Flow Rebuild (completed 2026-10-23)
+
+**Mục tiêu:** Xây dựng lại quy trình verify khuôn mặt cho nhân viên đã enrollment, thay thế CheckInFlow cũ bằng FaceVerificationFlow component tái sử dụng.
+
+**Hoàn thành:**
+- **FaceVerificationFlow Component** (`src/features/face-verification/face-verification-flow.tsx`):
+  - Component tái sử dụng cho verify khuôn mặt (check-in/check-out)
+  - Step indicator 3 bước: Chuẩn bị → Quét & xác minh → Kết quả
+  - Camera preview ổn định với dynamic import CameraCapture (tránh SSR issues)
+  - Real-time face detection feedback qua FaceGuideOverlay
+  - Trạng thái camera permission (denied/unavailable/error/ready)
+  - Trạng thái verifying: liveness → matching → saving
+  - AttendanceReceipt hiển thị chi tiết: confidence, liveness, verification_ref
+  - Error states mapping: LIVENESS_FAILED, NO_MATCH, LOW_CONFIDENCE, POOR_IMAGE_QUALITY, ENROLLMENT_MISSING, PROVIDER_UNAVAILABLE, NETWORK_ERROR, NO_SHIFT, OUT_WITHOUT_IN, ALREADY_CHECKED_IN, RATE_LIMITED, INVALID_IMAGE, NOT_ELIGIBLE, INVALID_KEY
+  - Fallback PIN với lý do bắt buộc, chuyển HR rà soát
+  - Retry logic: "Thử lại (cùng mã)" chống trùng, "Chụp lại (mã mới)" cho attempt mới
+  - Demo fixture selector cho local/test (good/blurry/liveness-fail/no-match)
+  - Responsive mobile/tablet/desktop
+  - Privacy notice banner
+
+- **Check-in Page Cập Nhật** (`src/app/(protected)/check-in/page.tsx`):
+  - Client component với useEffect fetch data (tránh static prerendering)
+  - Direction selector: Chấm công vào / Chấm công ra
+  - Default direction dựa trên trạng thái (ưu tiên check-out nếu đã check-in)
+  - Import getProviderHealth từ `@/server/face/public` (không server-only)
+  - Dynamic imports cho CameraCapture, AttendanceReceipt, DetailedProgressIndicator (tránh face-api SSR issues)
+
+- **Business Rules Enforced**:
+  - 1:1 verification: chỉ so khớp với enrollment của chính employee đó
+  - Server-side decision: `decideVerification` pure function (success/review/failed)
+  - Thresholds từ config (`VERIFY_THRESHOLD`, `REVIEW_BAND_LOW`), không hardcode
+  - Idempotency key chống duplicate submission
+  - Provider error → retry 1 lần → fallback PIN, không tự ghi attendance success
+  - Liveness failed → ghi event failed, cho thử lại/fallback
+  - Low confidence (review band) → ghi event pending_review, HR rà soát
+  - Không hiển thị raw biometric data trong UI/logs
+  - Camera denied → hướng dẫn bật quyền, không crash
+  - Mock provider gắn nhãn DEMO, production fail-closed
+
+**Kết quả kiểm tra:**
+- `npm test` ✅ 117/117 tests pass (15 test files)
+- `npm run typecheck` ✅ (chỉ pre-existing errors không liên quan)
+- `npm run lint` ✅ (chỉ pre-existing warnings/errors)
+- `npm run build` ✅ (compiled successfully, 26 routes)
+- Secret scan: sạch
+
+**Files mới:**
+- `src/features/face-verification/face-verification-flow.tsx` — Face verification flow component
+- `src/features/face-verification/index.ts` — Exports
+
+**Files sửa đổi:**
+- `src/app/(protected)/check-in/page.tsx` — Migrate từ CheckInFlow sang FaceVerificationFlow
+
+**Commit:** `feat(face-verification): rebuild face verification flow` — SHA: `dd8ae6a` (pushed `ui/redesign`)
+
+**Vercel Preview:** Auto-deployed on push to `ui/redesign`. Check Vercel dashboard for preview URL.
+
+**Known issues:**
+- Pre-existing TS errors trong chart/calendar/select/portal/components UI khác (không chặn build)
+- AWS Rekognition credentials chưa cấu hình trên Vercel (cần bạn set)
+- Migration enrollment security chưa chạy trên Supabase staging/production
+
+**Next:** Phase 18 — Cấu hình AWS credentials trên Vercel, apply migration Supabase, E2E browser tests, Production deploy.
+
+---
+
 ## Google OAuth (added 2026-10-15, staging đã bật provider)
 
 - Code: nút Google + `/auth/callback` (chống open-redirect, unit), trigger map tên
