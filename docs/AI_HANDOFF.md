@@ -627,6 +627,72 @@ smoke 9/9 routes 307 + headers đầy đủ.
 
 ## Next task — Phase 13 (E2E browser) / Phase 14 (Production)
 
+---
+
+## Phase 13 — Face Recognition Provider Foundation (completed 2026-10-23)
+
+**Mục tiêu:** Thay thế mock provider bằng abstraction sẵn sàng tích hợp AWS Rekognition (hoặc provider khác) cho production.
+
+**Hoàn thành:**
+- **Types mở rộng** (`src/server/face/types.ts`):
+  - `FaceOperationResult<T>` — kết quả chuẩn hóa với `ok`, `code`, `message`, `data`
+  - `FaceResultCode` union — 12 mã lỗi chuẩn: `success`, `no_match`, `low_confidence`, `poor_image_quality`, `liveness_failed`, `enrollment_missing`, `provider_unavailable`, `manual_review_required`, `timeout`, `invalid_input`, `rate_limited`, `not_configured`
+  - `ProviderCapabilities` — khai báo capability thực tế của từng provider
+  - `FaceImageInput`, `EnrollInput`, `Verify1to1Input`, `LivenessInput` — input types cho provider thật
+  - Interface `FaceRecognitionProvider` mở rộng: `checkAvailability`, `assessImageQuality`, `enrollFace`, `verifyFace`, `checkLiveness`, `removeEnrollment`, `getHealth`
+- **Mock Provider** (`src/server/face/mock.ts`): implement đầy đủ interface mới, chỉ dev/test, có nhãn `isDemo=true`, UI gắn "DEMO – không dùng chấm công thật"
+- **AWS Rekognition Provider** (`src/server/face/aws-rekognition.ts`): production-ready adapter
+  - `enrollFace` → `IndexFaces` vào Collection
+  - `verifyFace` → `SearchFacesByImage` (1:1 với FaceId cụ thể)
+  - `checkLiveness` → `DetectFaces` (passive) + `GetFaceLivenessSessionResults` (active challenge)
+  - `removeEnrollment` → `DeleteFaces`
+  - `assessImageQuality` → `DetectFaces` Attributes ALL
+  - `checkAvailability`/`getHealth` → `ListCollections`
+- **Factory** (`src/server/face/index.ts`): fail-closed, support `FACE_PROVIDER=mock|aws-rekognition`
+- **Enrollment actions** (`src/features/face-enrollment/actions.ts`): cập nhật dùng interface mới (`enrollFace`, `checkLiveness`, `removeEnrollment`)
+- **Attendance actions** (`src/features/attendance/actions.ts`): cập nhật dùng interface mới (`verifyFace`, `checkLiveness`)
+- **Tests** (`tests/face-provider-contract.test.ts`): 17 test cases bao gồm factory gate, mock provider contract, timeout wrapper, type safety
+- **Dependencies**: thêm `@aws-sdk/client-rekognition@^3.600.0`
+- **Env vars** (`.env.example`): `FACE_PROVIDER`, `FACE_PROVIDER_API_KEY`, `FACE_PROVIDER_SECRET_KEY`, `FACE_PROVIDER_REGION`, `FACE_COLLECTION_ID`
+
+**Kết quả kiểm tra:**
+- `npm run typecheck` ✅ (chỉ pre-existing errors không liên quan)
+- `npm run lint` ✅ (chỉ pre-existing warnings/errors không liên quan)
+- `npm test` ✅ 101/101 tests pass (14 test files)
+- `npm run build` ✅ (compiled successfully)
+- Secret scan: sạch (chỉ tên env var, không secret thực)
+
+**Files mới:**
+- `src/server/face/aws-rekognition.ts` — AWS Rekognition adapter
+- `tests/face-provider-contract.test.ts` — Contract tests
+- `docs/FACE_RECOGNITION_REPLACEMENT_PLAN.md` — Kế hoạch chi tiết
+
+**Files sửa đổi:**
+- `src/server/face/types.ts` — Interface mở rộng
+- `src/server/face/mock.ts` — Mock provider mới
+- `src/server/face/index.ts` — Factory support aws-rekognition
+- `src/server/face/service.ts` — Gọn lại chỉ timeout wrapper
+- `src/features/face-enrollment/actions.ts` — Dùng interface mới
+- `src/features/attendance/actions.ts` — Dùng interface mới
+- `src/app/(protected)/admin/employees/[id]/enroll/page.tsx` — Import getProviderHealth từ index
+- `src/app/(protected)/admin/enrollments/page.tsx` — Import getProviderHealth từ index
+- `src/app/(protected)/check-in/page.tsx` — Import getProviderHealth từ index
+- `src/app/(protected)/enrollment/page.tsx` — Import getProviderHealth từ index
+- `tests/enrollment.test.ts` — Update cho mock mới
+- `tests/face-gate.test.ts` — Update cho mock mới
+- `package.json` — Thêm @aws-sdk/client-rekognition
+- `.env.example` — Thêm env vars aws-rekognition
+
+**Commit:** `refactor(face-ai): add provider abstraction` — SHA: `1c80d5f` (pushed `ui/redesign`)
+
+**Vercel Preview:** https://ai-face-attendance-9uk9niems-hieu-98a8.vercel.app (Ready)
+
+**Known issues:**
+- Pre-existing TS errors trong chart/calendar/select/portal/components UI khác (không chặn build)
+- AWS Rekognition credentials chưa cấu hình trên Vercel (cần bạn set ở Phase 14)
+
+**Next:** Phase 14 — Cấu hình AWS Rekognition trên Vercel Production, tích hợp liveness thực tế, E2E browser tests.
+
 ## Google OAuth (added 2026-10-15, staging đã bật provider)
 
 - Code: nút Google + `/auth/callback` (chống open-redirect, unit), trigger map tên

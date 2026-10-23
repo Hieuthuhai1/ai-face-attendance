@@ -71,15 +71,21 @@ insert into public.shift_assignments (id, organization_id, employee_id, shift_id
   ('a0000000-0000-0000-0000-000000000002', '11111111-1111-1111-1111-111111111111', 'e0000000-0000-0000-0000-000000000002', '50000000-0000-0000-0000-000000000002', '2026-01-01', null)
 on conflict (id) do update set shift_id = excluded.shift_id, effective_from = excluded.effective_from;
 
--- ============ face_enrollments (A active, B pending, manager revoked) ============
+-- ============ face_enrollments (A active, B pending, C revoked, D failed, E needs_review) ============
 insert into public.face_enrollments (id, organization_id, employee_id, provider, provider_subject_id, quality, status, consent_version, consent_at, verified_by, enrolled_at) values
   ('f0000000-0000-0000-0000-000000000001', '11111111-1111-1111-1111-111111111111', 'e0000000-0000-0000-0000-000000000001', 'mock', 'mock_subject_NV001', 0.9, 'active', 'v1', '2026-10-01T08:00:00+07', 'dddddddd-dddd-dddd-dddd-dddddddddddd', '2026-10-01T08:05:00+07'),
   ('f0000000-0000-0000-0000-000000000002', '11111111-1111-1111-1111-111111111111', 'e0000000-0000-0000-0000-000000000002', 'mock', null, null, 'pending', 'v1', '2026-10-08T09:00:00+07', null, null)
 on conflict (id) do update set status = excluded.status, provider_subject_id = excluded.provider_subject_id,
   quality = excluded.quality, verified_by = excluded.verified_by;
-insert into public.face_enrollments (id, organization_id, employee_id, provider, status, consent_version, consent_at, revoked_at) values
-  ('f0000000-0000-0000-0000-000000000003', '11111111-1111-1111-1111-111111111111', 'e0000000-0000-0000-0000-000000000003', 'mock', 'revoked', 'v1', '2026-09-01T08:00:00+07', '2026-10-01T08:00:00+07')
-on conflict (id) do update set status = excluded.status, revoked_at = excluded.revoked_at;
+insert into public.face_enrollments (id, organization_id, employee_id, provider, status, consent_version, consent_at, revoked_at, disabled_at) values
+  ('f0000000-0000-0000-0000-000000000003', '11111111-1111-1111-1111-111111111111', 'e0000000-0000-0000-0000-000000000003', 'mock', 'revoked', 'v1', '2026-09-01T08:00:00+07', '2026-10-01T08:00:00+07', '2026-10-01T08:00:00+07')
+on conflict (id) do update set status = excluded.status, revoked_at = excluded.revoked_at, disabled_at = excluded.disabled_at;
+insert into public.face_enrollments (id, organization_id, employee_id, provider, status, consent_version, consent_at, failed_reason, failed_at) values
+  ('f0000000-0000-0000-0000-000000000004', '11111111-1111-1111-1111-111111111111', 'e0000000-0000-0000-0000-000000000004', 'mock', 'failed', 'v1', '2026-10-10T08:00:00+07', 'Provider timeout after 3 retries', '2026-10-10T08:05:00+07')
+on conflict (id) do update set status = excluded.status, failed_reason = excluded.failed_reason, failed_at = excluded.failed_at;
+insert into public.face_enrollments (id, organization_id, employee_id, provider, status, consent_version, consent_at, failed_reason) values
+  ('f0000000-0000-0000-0000-000000000005', '11111111-1111-1111-1111-111111111111', 'e0000000-0000-0000-0000-000000000005', 'mock', 'needs_review', 'v1', '2026-10-12T08:00:00+07', 'Image quality below threshold: blurry')
+on conflict (id) do update set status = excluded.status, failed_reason = excluded.failed_reason;
 
 -- ============ attendance_events (seed chạy as postgres → giữ occurred_at cố định) ============
 insert into public.attendance_events (id, organization_id, employee_id, shift_assignment_id, event_type, occurred_at, status, method, verification_ref, liveness_status, confidence, idempotency_key, created_by) values

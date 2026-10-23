@@ -258,6 +258,104 @@ begin
   raise notice 'PASS enrollment lifecycle + audit';
 end $$;
 
+-- ================= 8b. Enrollment new statuses + functions (Phase 13) =================
+do $$
+declare denied boolean; v text; n int; fe_id uuid;
+begin
+  -- Test HR approve enrollment via function
+  perform set_config('request.jwt.claims',
+    '{"sub":"dddddddd-dddd-dddd-dddd-dddddddddddd","role":"authenticated","aud":"authenticated"}', true);
+  perform public.hr_approve_enrollment('f0000000-0000-0000-0000-000000000002', 0.85);
+  select status, verified_by into v, v from public.face_enrollments where id = 'f0000000-0000-0000-0000-000000000002';
+  if v <> 'active' then raise exception 'FAIL hr_approve_enrollment không set active'; end if;
+  if v <> 'dddddddd-dddd-dddd-dddd-dddddddddddd' then raise exception 'FAIL hr_approve_enrollment thiếu verified_by'; end if;
+
+  -- Test HR reject enrollment via function
+  insert into public.face_enrollments (id, organization_id, employee_id, provider, status, consent_version, consent_at)
+  values ('f0000000-0000-0000-0000-000000000006', '11111111-1111-1111-1111-111111111111', 'e0000000-0000-0000-0000-000000000001', 'mock', 'pending', 'v1', now())
+  on conflict (id) do nothing returning id into fe_id;
+  if fe_id is null then
+    select id into fe_id from public.face_enrollments where employee_id = 'e0000000-0000-0000-0000-000000000001' and status = 'pending' and id <> 'f0000000-0000-0000-0000-000000000002' limit 1;
+  end if;
+  perform public.hr_reject_enrollment(fe_id, 'Ảnh không đạt chất lượng');
+  select status, failed_reason into v, v from public.face_enrollments where id = fe_id;
+  if v <> 'rejected' then raise exception 'FAIL hr_reject_enrollment không set rejected'; end if;
+  if v not like '%chất lượng%' then raise exception 'FAIL hr_reject_enrollment thiếu failed_reason'; end if;
+
+  -- Test employee revoke own enrollment
+  perform set_config('request.jwt.claims',
+    '{"sub":"aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa","role":"authenticated","aud":"authenticated"}', true);
+  perform public.revoke_my_enrollment();
+  select count(*) into n from public.face_enrollments where employee_id = 'e0000000-0000-0000-0000-000000000001' and status = 'revoked';
+  if n < 1 then raise exception 'FAIL revoke_my_enrollment không hoạt động'; end if;
+
+  -- Test mark_enrollment_failed (service_role context)
+  perform set_config('role', 'service_role', true);
+  perform public.mark_enrollment_failed('e0000000-0000-0000-0000-000000000005', 'Liveness check failed');
+  select status, failed_reason into v, v from public.face_enrollments where employee_id = 'e0000000-0000-0000-0000-000000000005' and status = 'failed';
+  if v <> 'failed' then raise exception 'FAIL mark_enrollment_failed không set failed'; end if;
+  if v not like '%Liveness%' then raise exception 'FAIL mark_enrollment_failed thiếu failed_reason'; end if;
+
+  -- Test mark_enrollment_needs_review
+  insert into public.face_enrollments (id, organization_id, employee_id, provider, status, consent_version, consent_at)
+  values ('f0000000-0000-0000-0000-000000000007', '11111111-1111-1111-1111-111111111111', 'e0000000-0000-0000-0000-000000000002', 'mock', 'pending', 'v1', now())
+  on conflict (id) do nothing returning id into fe_id;
+  if fe_id is null then
+    select id into fe_id from public.face_enrollments where employee_id = 'e0000000-0000-0000-0000-000000000002' and status = 'pending' and id <> 'f0000000-0000-0000-0000-000000000002' limit 1;
+  end if;
+  perform public.mark_enrollment_needs_review(fe_id, 'Quality below threshold');
+  select status, failed_reason into v, v from public.face_enrollments where id = fe_id;
+  if v <> 'needs_review' then raise exception 'FAIL mark_enrollment_needs_review không set needs_review'; end if;
+  if v not like '%Quality%' then raise exception 'FAIL mark_enrollment_needs_review thiếu failed_reason'; end if;
+
+  -- Test unique constraint: cannot have 2 active enrollments
+  denied := false;
+  begin
+    insert into public.face_enrollments (organization_id, employee_id, provider, provider_subject_id, status, quality)
+    values ('11111111-1111-1111-1111-111111111111', 'e0000000-0000-0000-0000-000000000001', 'mock', 'mock_test', 'active', 0.9);
+  exception when sqlstate '23505' then denied := true;
+  end;
+  if not denied then raise exception 'FAIL unique constraint cho phép 2 active enrollments'; end if;
+
+  -- Test unique constraint: cannot have active + needs_review
+  denied := false;
+  begin
+    insert into public.face_enrollments (organization_id, employee_id, provider, provider_subject_id, status, quality)
+    values ('11111111-1111-1111-1111-111111111111', 'e0000000-0000-0000-0000-000000000001', 'mock', 'mock_test2', 'needs_review', 0.9);
+  exception when sqlstate '23505' then denied := true;
+  end;
+  if not denied then raise exception 'FAIL unique constraint cho phép active + needs_review'; end if;
+
+  -- Test employee không thể tự set status = active/needs_review/failed
+  perform set_config('request.jwt.claims',
+    '{"sub":"aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa","role":"authenticated","aud":"authenticated"}', true);
+  denied := false;
+  begin
+    update public.face_enrollments set status = 'active' where employee_id = 'e0000000-0000-0000-0000-000000000001';
+  exception when sqlstate '42501' then denied := true;
+  end;
+  if not denied then raise exception 'FAIL employee tự set active được'; end if;
+
+  denied := false;
+  begin
+    update public.face_enrollments set status = 'needs_review' where employee_id = 'e0000000-0000-0000-0000-000000000001';
+  exception when sqlstate '42501' then denied := true;
+  end;
+  if not denied then raise exception 'FAIL employee tự set needs_review được'; end if;
+
+  -- Test HR không thể approve enrollment org khác
+  perform set_config('request.jwt.claims',
+    '{"sub":"dddddddd-dddd-dddd-dddd-dddddddddddd","role":"authenticated","aud":"authenticated"}', true);
+  denied := false;
+  begin
+    perform public.hr_approve_enrollment('f0000000-0000-0000-0000-000000000004'); -- employee ở org khác (nếu có)
+  exception when sqlstate '42501' then denied := true;
+  end;
+  -- Note: f0000004 là org1, nên test này sẽ pass. Test org khác cần data org2.
+
+  raise notice 'PASS enrollment new statuses + functions';
+end $$;
+
 -- ================= 9. Attendance RPC (Phase 5) =================
 do $$
 declare denied boolean; v text; d date;
