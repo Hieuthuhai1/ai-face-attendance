@@ -1,8 +1,6 @@
 import { Suspense } from "react";
-import { requireUser } from "@/server/auth";
-import { getProviderHealth } from "@/server/face";
+import { getProviderHealth } from "@/server/face/public";
 import { getMyEnrollment } from "@/features/face-enrollment/actions";
-import { EnrollmentFlow, type EnrollmentState } from "@/features/face-enrollment/enrollment-flow";
 import { LoadingState } from "@/components/ui/states";
 
 export default function EnrollmentPage() {
@@ -17,8 +15,12 @@ export default function EnrollmentPage() {
 }
 
 async function EnrollmentData() {
-  await requireUser();
   const [enrollment, health] = await Promise.all([getMyEnrollment(), getProviderHealth()]);
-  const state: EnrollmentState = enrollment.state === "none" ? "none" : enrollment.state;
-  return <EnrollmentFlow initialState={state} providerDemo={health.demo && health.configured} />;
+  const state: "none" | "pending" | "active" | "rejected" | "revoked" | "failed" | "needs_review" =
+    enrollment.state === "none" ? "none" : enrollment.state;
+
+  // Dynamic import client component to avoid SSR issues
+  const { EnrollmentWorkflow } = await import("@/features/face-enrollment/enrollment-workflow");
+
+  return <EnrollmentWorkflow initialState={state} providerDemo={health.demo && health.configured} />;
 }

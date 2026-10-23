@@ -755,6 +755,61 @@ smoke 9/9 routes 307 + headers đầy đủ.
 
 ---
 
+## Phase 15 — Real Face Recognition Provider Integration (completed 2026-10-23)
+
+**Mục tiêu:** Tích hợp AWS Rekognition làm provider production cho face recognition, thay thế mock provider.
+
+**Hoàn thành:**
+- **AWS Rekognition Provider** (`src/server/face/aws-rekognition.ts`):
+  - Implement đầy đủ `FaceRecognitionProvider` interface
+  - `enrollFace` → `IndexFaces` vào Collection (mỗi employee = 1 FaceId)
+  - `verifyFace` → `SearchFacesByImage` (1:1 verification với FaceId cụ thể)
+  - `checkLiveness` → Passive (`DetectFaces` Attributes ALL) + Active (`CreateFaceLivenessSession` + `GetFaceLivenessSessionResults`)
+  - `assessImageQuality` → `DetectFaces` Attributes ALL (brightness, sharpness, pose, eyes open)
+  - `removeEnrollment` → `DeleteFaces` (idempotent)
+  - `checkAvailability`/`getHealth` → `ListCollections`
+  - Error mapping: AWS error codes → chuẩn `FaceResultCode` (unauthorized, rate_limited, timeout, enrollment_missing, provider_unavailable, poor_image_quality, no_match, low_confidence, liveness_failed)
+  - Retry safety: idempotent delete, enrollment quality gate, verify threshold logic
+- **Factory** (`src/server/face/index.ts`): Support `FACE_PROVIDER=aws-rekognition` với validation credentials
+- **Health Check Endpoint** (`src/app/api/health/face/route.ts`): GET `/api/health/face` trả về provider status
+- **Types** (`src/server/face/types.ts`): Thêm `unauthorized` vào `FaceResultCode`, fix LivenessSessionStatus comparison
+- **Environment Variables** (`.env.example`): Thêm `FACE_PROVIDER`, `FACE_PROVIDER_API_KEY`, `FACE_PROVIDER_SECRET_KEY`, `FACE_PROVIDER_REGION`, `FACE_COLLECTION_ID`
+- **Documentation** (`docs/FACE_PROVIDER_SETUP.md`): Hướng dẫn chi tiết setup AWS Rekognition (IAM policy, collection, env vars, test flow, cost, rollback)
+- **Tests** (`tests/aws-rekognition-provider.test.ts`): 33 test cases bao gồm tất cả methods, error mapping, mock AWS SDK
+- **Mock Provider** (`src/server/face/mock.ts`): Vẫn hoạt động cho dev/test (FACE_PROVIDER=mock)
+
+**Kết quả kiểm tra:**
+- `npm test` ✅ 117/117 tests pass (15 test files)
+- `npm run typecheck` ✅ (chỉ pre-existing errors không liên quan)
+- `npm run lint` ✅ (chỉ pre-existing warnings/errors)
+- `npm run build` ✅ (compiled successfully, route `/api/health/face` added)
+- Secret scan: sạch (chỉ tên env var, không secret thực)
+
+**Files mới:**
+- `src/server/face/aws-rekognition.ts` — AWS Rekognition production adapter
+- `src/app/api/health/face/route.ts` — Health check endpoint
+- `tests/aws-rekognition-provider.test.ts` — Contract tests cho AWS provider
+- `docs/FACE_PROVIDER_SETUP.md` — Setup guide chi tiết
+
+**Files sửa đổi:**
+- `src/server/face/types.ts` — Thêm `unauthorized` vào `FaceResultCode`
+- `src/server/face/aws-rekognition.ts` — Fix logic verifyFace match:false khi confidence < reviewBandLow, fix LivenessSessionStatus comparison
+- `src/server/face/index.ts` — Factory support aws-rekognition (đã có từ Phase B)
+- `.env.example` — Thêm env vars AWS Rekognition
+
+**Commit:** `feat(face-ai): integrate real recognition provider` — SHA: `8814870` (pushed `ui/redesign`)
+
+**Vercel Preview:** https://ai-face-attendance-ptc01jjf1-hieu-98a8.vercel.app (Ready)
+
+**Known issues:**
+- Pre-existing TS errors trong chart/calendar/select/portal/components UI khác (không chặn build)
+- AWS Rekognition credentials chưa cấu hình trên Vercel (cần bạn set `FACE_PROVIDER_API_KEY`, `FACE_PROVIDER_SECRET_KEY`, `FACE_PROVIDER_REGION`, `FACE_COLLECTION_ID` trên Vercel Dashboard)
+- Migration enrollment security chưa chạy trên Supabase staging/production (cần bạn duyệt và apply)
+
+**Next:** Phase 16 — Cấu hình AWS credentials trên Vercel Staging/Production, apply migration Supabase, E2E browser tests, Production deploy.
+
+---
+
 ## Google OAuth (added 2026-10-15, staging đã bật provider)
 
 - Code: nút Google + `/auth/callback` (chống open-redirect, unit), trigger map tên
