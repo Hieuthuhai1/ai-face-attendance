@@ -7,13 +7,12 @@ import { getFaceProvider } from "@/server/face";
 import { PROVIDER_TIMEOUT_MS, withProviderTimeout } from "@/server/face/service";
 import { checkRateLimit, ENROLL_SUBMIT_LIMIT, resetRateLimits } from "@/server/rate-limit";
 import { logger } from "@/server/logger";
-import type { FaceFixture } from "@/server/face/types";
+import type { FaceFixture, FaceImageInput } from "@/server/face/types";
 import { CONSENT_VERSION } from "@/features/face-enrollment/consent";
 
 export type EnrollmentResult = { ok: true } | { ok: false; code: string; message: string };
 
 const MAX_FRAME_CHARS = 700_000; // ~500KB ảnh
-const FIXTURES: FaceFixture[] = ["good", "blurry", "no-match", "liveness-fail"];
 
 type Db = Awaited<ReturnType<typeof createClient>>;
 
@@ -70,6 +69,25 @@ export async function getMyEnrollment(): Promise<
   return { state: status, quality: (data.quality as number) ?? null, consent_version: (data.consent_version as string) ?? null };
 }
 
+/** Chuyển frameDataUrl (base64) thành FaceImageInput cho provider. */
+function frameToImageInput(frameDataUrl: string, fixture?: FaceFixture): FaceImageInput {
+  // Nếu là mock với fixture, nhúng fixture vào data để mock provider đọc
+  const data = fixture ? `${frameDataUrl}:${fixture}` : frameDataUrl;
+  return { data, mimeType: "image/jpeg" };
+}
+
+/** Map provider result code sang enrollment error code. */
+function mapEnrollCode(code: string): string {
+  switch (code) {
+    case "success": return "SUBMIT_FAILED"; // không xảy ra ở đây
+    case "poor_image_quality": return "QUALITY_RETRY";
+    case "liveness_failed": return "LIVENESS_FAILED";
+    case "provider_unavailable": return "PROVIDER_UNAVAILABLE";
+    case "timeout": return "PROVIDER_UNAVAILABLE";
+    default: return "SUBMIT_FAILED";
+  }
+}
+
 export async function submitEnrollment(input: {
   frameDataUrl: string;
   consentAccepted: boolean;
@@ -118,37 +136,42 @@ export async function submitEnrollment(input: {
     return { ok: false, code: "ALREADY_ACTIVE", message: "Bạn đã có enrollment đang hoạt động. Hãy thu hồi trước khi đăng ký lại." };
   }
 
-  // Mock local/test: verdict theo fixture (DEMO), bytes ảnh bị HỦY ngay, không lưu/log.
-  // Production: provider xử lý frame thật (Phase 10).
   const provider = getFaceProvider();
-  const fixture: FaceFixture =
-    provider.isDemo && input.fixture && FIXTURES.includes(input.fixture) ? input.fixture : "good";
+  const imageInput = frameToImageInput(input.frameDataUrl, provider.isDemo ? input.fixture : undefined);
 
-  let liveness: { status: string };
+  // Liveness check (bước riêng, chạy trước enroll)
+  let livenessResult;
   try {
-    liveness = await withProviderTimeout(provider.checkLiveness({ image: fixture }), PROVIDER_TIMEOUT_MS);
+    livenessResult = await withProviderTimeout(provider.checkLiveness({ image: imageInput }), PROVIDER_TIMEOUT_MS);
   } catch {
     return { ok: false, code: "PROVIDER_UNAVAILABLE", message: "Dịch vụ nhận diện bận, vui lòng thử lại hoặc dùng phương thức thay thế." };
   }
-  if (liveness.status === "fail") {
+  if (!livenessResult.ok) {
+    return { ok: false, code: mapEnrollCode(livenessResult.code), message: livenessResult.message };
+  }
+  if (livenessResult.data?.status === "fail") {
     return { ok: false, code: "LIVENESS_FAILED", message: "Không xác định được người thật, vui lòng thử lại với đủ sáng, nhìn thẳng." };
   }
-  if (liveness.status === "unknown") {
+  if (livenessResult.data?.status === "unknown") {
     return { ok: false, code: "QUALITY_RETRY", message: "Ảnh chưa đạt chất lượng, vui lòng chụp lại rõ hơn." };
   }
 
-  let subjectId: string;
-  let quality: number;
+  // Enroll: dùng 2 ảnh (có thể là cùng ảnh lặp lại cho mock; production nên có nhiều ảnh khác nhau)
+  let enrollResult;
   try {
-    const enrolled = await withProviderTimeout(
-      provider.enroll({ employeeId: employee.id, images: [fixture, fixture] }),
+    enrollResult = await withProviderTimeout(
+      provider.enrollFace({ employeeId: employee.id, images: [imageInput, imageInput] }),
       PROVIDER_TIMEOUT_MS,
     );
-    subjectId = enrolled.providerSubjectId;
-    quality = enrolled.quality;
   } catch {
     return { ok: false, code: "PROVIDER_UNAVAILABLE", message: "Dịch vụ nhận diện bận, vui lòng thử lại sau." };
   }
+  if (!enrollResult.ok) {
+    return { ok: false, code: mapEnrollCode(enrollResult.code), message: enrollResult.message };
+  }
+
+  const subjectId = enrollResult.data!.providerSubjectId;
+  const quality = enrollResult.data!.quality;
 
   const { data: row, error } = await supabase
     .from("face_enrollments")
@@ -158,7 +181,7 @@ export async function submitEnrollment(input: {
       provider: provider.name,
       provider_subject_id: subjectId,
       quality,
-      status: "pending",
+      status: "active",
       consent_version: CONSENT_VERSION,
       consent_at: new Date().toISOString(),
     })
@@ -171,6 +194,7 @@ export async function submitEnrollment(input: {
   await audit(supabase, employee.organization_id, "enrollment.submitted", (row as { id: string }).id, {
     employee_code: employee.employee_code,
     quality,
+    auto_approved: true,
   });
   revalidatePath("/enrollment");
   return { ok: true };
@@ -248,10 +272,10 @@ export async function revokeEnrollment(id: string): Promise<EnrollmentResult> {
   }
   try {
     if (r.provider_subject_id) {
-      await withProviderTimeout(getFaceProvider().deleteSubject(r.provider_subject_id), PROVIDER_TIMEOUT_MS);
+      await withProviderTimeout(getFaceProvider().removeEnrollment(r.provider_subject_id), PROVIDER_TIMEOUT_MS);
     }
   } catch {
-    logger.warn("deleteSubject failed on revoke", {});
+    logger.warn("removeEnrollment failed on revoke", {});
   }
   const { error } = await supabase.from("face_enrollments").update({ status: "revoked" }).eq("id", id);
   if (error) return { ok: false, code: "REVOKE_FAILED", message: "Không thu hồi được." };
@@ -278,6 +302,7 @@ export async function revokeMyEnrollment(): Promise<EnrollmentResult> {
   if (!data) return { ok: false, code: "NOT_FOUND", message: "Không có đăng ký nào để thu hồi." };
   return revokeEnrollment((data as { id: string }).id);
 }
+
 export async function resetEnrollmentRateLimit(): Promise<void> {
   if (process.env.NODE_ENV === "production") return;
   resetRateLimits();

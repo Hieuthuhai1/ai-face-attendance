@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { getFaceProvider, ProviderNotConfiguredError } from "@/server/face";
 import { MockFaceRecognitionProvider } from "@/server/face/mock";
+import type { FaceImageInput } from "@/server/face/types";
+
+const img = (fixture: string): FaceImageInput => ({ data: fixture, mimeType: "image/jpeg" as const });
 
 describe("getFaceProvider gate (F-01, F-02)", () => {
   it("trả mock ở development", () => {
@@ -21,12 +24,13 @@ describe("getFaceProvider gate (F-01, F-02)", () => {
     );
   });
 
-  it("mock enroll yêu cầu đủ ảnh đạt chất lượng", async () => {
+  it("mock enrollFace yêu cầu ít nhất 2 ảnh good", async () => {
     const p = new MockFaceRecognitionProvider();
-    await expect(p.enroll({ employeeId: "u1", images: ["good", "blurry"] })).rejects.toThrow(
-      "MOCK_LOW_QUALITY",
-    );
-    const ok = await p.enroll({ employeeId: "u1", images: ["good", "good"] });
-    expect(ok.providerSubjectId).toBe("mock_u1");
+    const fail = await p.enrollFace({ employeeId: "u1", images: [img("good"), img("blurry")] });
+    expect(fail.ok).toBe(false);
+    expect(fail.code).toBe("poor_image_quality");
+    const ok = await p.enrollFace({ employeeId: "u1", images: [img("good"), img("good")] });
+    expect(ok.ok).toBe(true);
+    expect(ok.data?.providerSubjectId).toBe("mock_u1");
   });
 });

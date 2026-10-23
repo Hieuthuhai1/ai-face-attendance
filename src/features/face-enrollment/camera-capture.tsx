@@ -86,6 +86,8 @@ interface CameraCaptureInnerProps {
   buttonVariant?: "primary" | "secondary";
   /** Show privacy notice */
   showPrivacyNotice?: boolean;
+  /** Allow manual capture without face detection */
+  allowManualCapture?: boolean;
 }
 
 /** Inner component that uses FaceDetectionProvider context */
@@ -97,12 +99,13 @@ function CameraCaptureInner({
   captureLabel = "Chụp ảnh",
   buttonVariant = "primary",
   showPrivacyNotice = false,
+  allowManualCapture = false,
 }: CameraCaptureInnerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const [state, setState] = useState<EnrollmentCameraState>("idle");
   const [quality, setQuality] = useState<{ ok: boolean; issues: string[] } | null>(null);
-  const { result, startDetection, stopDetection } = useFaceDetection();
+  const { result, startDetection, stopDetection, isLoading, error: detectionError } = useFaceDetection();
 
   const faceDetected = useCallback(() => result.detected, [result.detected]);
   const faceCentered = useCallback(() => result.centered, [result.centered]);
@@ -111,7 +114,8 @@ function CameraCaptureInner({
   const brightnessOk = useCallback(() => result.brightness === "ok", [result.brightness]);
   const sharpnessOk = useCallback(() => result.sharpness !== "blurry", [result.sharpness]);
 
-  const canCapture = faceDetected && faceCentered && faceAligned && faceSizeOk && brightnessOk && sharpnessOk;
+  // Chỉ yêu cầu phát hiện khuôn mặt, các điều kiện khác là khuyến nghị
+  const canCapture = faceDetected || allowManualCapture;
 
   useEffect(() => {
     return () => {
@@ -130,15 +134,39 @@ function CameraCaptureInner({
       streamRef.current = stream;
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        await videoRef.current.play();
+        try {
+          await videoRef.current.play();
+        } catch (playErr) {
+          console.error("Video play failed:", playErr);
+          // Try to play again after a short delay
+          await new Promise(r => setTimeout(r, 100));
+          await videoRef.current.play();
+        }
       }
       setState("ready");
       // Start face detection after camera is ready
       if (videoRef.current) {
-        startDetection(videoRef.current);
+        try {
+          startDetection(videoRef.current);
+        } catch (detErr) {
+          console.warn("Face detection start failed:", detErr);
+          // Continue without face detection - manual capture still works
+        }
       }
     } catch (err) {
-      setState(err instanceof DOMException && err.name === "NotAllowedError" ? "denied" : "error");
+      console.error("Camera start error:", err);
+      const isNotAllowed = err instanceof DOMException && err.name === "NotAllowedError";
+      const isNotFound = err instanceof DOMException && err.name === "NotFoundError";
+      const isNotReadable = err instanceof DOMException && err.name === "NotReadableError";
+      const isOverconstrained = err instanceof DOMException && err.name === "OverconstrainedError";
+      const isTimeout = err instanceof DOMException && err.name === "TimeoutError";
+      
+      if (isNotAllowed) setState("denied");
+      else if (isNotFound) setState("unavailable");
+      else if (isNotReadable) setState("error");
+      else if (isOverconstrained) setState("error");
+      else if (isTimeout) setState("error");
+      else setState("error");
     }
   }
 
@@ -212,16 +240,16 @@ function CameraCaptureInner({
   // Error messages
   const errorMessages: Record<Exclude<EnrollmentCameraState, "idle" | "requesting" | "ready" | "capturing">, { title: string; hint: string }> = {
     denied: {
-      title: "Camera bị từ chối",
-      hint: "Hãy cấp quyền camera trong trình duyệt rồi tải lại trang, hoặc dùng phương thức thay thế (liên hệ HR).",
+      title: "Quyền camera bị từ chối",
+      hint: "Trình duyệt chặn truy cập camera. Hãy bật quyền trong cài đặt trình duyệt (khóa 🔒 bên thanh địa chỉ) rồi tải lại trang.",
     },
     unavailable: {
-      title: "Không có camera",
-      hint: "Thiết bị không có camera hoặc trình duyệt không hỗ trợ. Dùng phương thức thay thế.",
+      title: "Không tìm thấy camera",
+      hint: "Thiết bị không có camera hoặc trình duyệt không hỗ trợ getUserMedia. Dùng phương thức thay thế.",
     },
     error: {
-      title: "Lỗi camera",
-      hint: "Không mở được camera. Thử lại hoặc dùng phương thức thay thế.",
+      title: "Lỗi mở camera",
+      hint: "Camera đang được dùng bởi ứng dụng khác, hoặc lỗi phần cứng. Thử: 1) Đóng app khác dùng camera 2) Tải lại trang 3) Dùng phương thức thay thế.",
     },
     detecting: {
       title: "Đang phát hiện khuôn mặt",
@@ -279,9 +307,9 @@ function CameraCaptureInner({
           aria-label={isCheckIn ? "Xem trước camera chấm công" : "Xem trước camera đăng ký khuôn mặt"}
           className="aspect-[4/3] w-full object-cover"
         />
-        {/* Face Guide Overlay */}
+        {/* Face Guide Overlay - đè lên video */}
         {showGuide && state === "ready" && (
-          <FaceGuideOverlay showInstructions={true} />
+          <FaceGuideOverlay showInstructions={false} overlay={true} />
         )}
         {/* Recording indicator */}
         {state === "capturing" && (
@@ -346,6 +374,13 @@ function CameraCaptureInner({
       </div>
 
       {/* Camera State UI */}
+      {detectionError && state === "idle" && (
+        <div role="alert" className="rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700">
+          <p className="font-medium">Lỗi tải mô hình nhận diện</p>
+          <p className="text-xs mt-1">{detectionError}. Vẫn có thể dùng nút "Chụp ngay" bên dưới.</p>
+        </div>
+      )}
+
       {state === "idle" || state === "requesting" ? (
         <Button onClick={start} loading={state === "requesting"} disabled={disabled} className="w-full">
           {state === "requesting" ? "Đang bật camera..." : "Bật camera"}
@@ -353,27 +388,60 @@ function CameraCaptureInner({
       ) : null}
 
       {state === "ready" && (
-        <Button
-          onClick={startCapture}
-          disabled={disabled || !canCapture}
-          variant={buttonVariant}
-          className="w-full"
-        >
-          {captureLabel}
-          {!canCapture && <span className="ml-2 opacity-50">(Căn chỉnh khuôn mặt)</span>}
-        </Button>
+        <div className="flex flex-col gap-2">
+          <Button
+            onClick={startCapture}
+            disabled={disabled || !faceDetected()}
+            variant={buttonVariant}
+            className="w-full"
+          >
+            {captureLabel}
+            {!faceDetected() && <span className="ml-2 opacity-50">(Đang tìm khuôn mặt...)</span>}
+          </Button>
+
+          {allowManualCapture && (
+            <Button
+              onClick={startCapture}
+              disabled={disabled}
+              variant="outline"
+              className="w-full"
+            >
+              Chụp ngay (bỏ qua phát hiện)
+            </Button>
+          )}
+
+          {allowManualCapture && faceDetected() && (
+            <Button
+              onClick={startCapture}
+              disabled={disabled}
+              variant="ghost"
+              size="sm"
+              className="w-full"
+            >
+              Chụp ngay (không cần căn chỉnh hoàn hảo)
+            </Button>
+          )}
+        </div>
       )}
 
-      {!canCapture && state === "ready" && (
+      {state === "ready" && (
         <p className="text-xs text-slate-500 text-center">
-          Hãy căn chỉnh khuôn mặt: {[
-            !result.detected && "Đưa mặt vào khung",
-            result.detected && !result.centered && "Đưa mặt vào giữa",
-            result.detected && !result.aligned && "Giữ đầu thẳng",
-            result.size !== "ok" && (result.size === "small" ? "Gần hơn" : "Xa ra"),
-            !brightnessOk() && (result.brightness === "dark" ? "Thêm sáng" : "Giảm sáng"),
-            !sharpnessOk() && "Giữ máy ổn định",
-          ].filter(Boolean).join(", ")}
+          {detectionError
+            ? `Mô hình nhận diện lỗi (${detectionError}) — dùng "Chụp ngay" bên dưới.`
+            : result.detected
+              ? "Đã phát hiện khuôn mặt — có thể chụp. " +
+                [
+                  !result.centered && "Đưa mặt vào giữa",
+                  !result.aligned && "Giữ đầu thẳng",
+                  result.size === "small" && "Gần hơn",
+                  result.size === "large" && "Xa ra",
+                  result.brightness === "dark" && "Thêm sáng",
+                  result.brightness === "bright" && "Giảm sáng",
+                  result.sharpness === "blurry" && "Giữ máy ổn định",
+                ].filter(Boolean).join(", ")
+              : isLoading
+                ? "Đang tải mô hình nhận diện... Vui lòng đợi hoặc bấm 'Chụp ngay' bên dưới."
+                : "Chưa phát hiện khuôn mặt — hãy đưa mặt vào khung hoặc bấm 'Chụp ngay'."}
         </p>
       )}
 

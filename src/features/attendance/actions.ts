@@ -9,7 +9,7 @@ import { checkRateLimit, VERIFY_LIMIT } from "@/server/rate-limit";
 import { REVIEW_BAND_LOW, VERIFY_THRESHOLD } from "@/config/app";
 import { idempotencyKeySchema } from "@/lib/validation";
 import { logger } from "@/server/logger";
-import type { FaceFixture } from "@/server/face/types";
+import type { FaceFixture, FaceImageInput } from "@/server/face/types";
 import { decideVerification, resolveShiftFor, wallDateString } from "@/server/attendance/decision";
 import { minutesEarlyLeave, minutesLate, wallMinutes } from "@/lib/attendance/rules";
 
@@ -39,7 +39,18 @@ async function myContext(supabase: Db, userId: string) {
     .eq("profile_id", userId)
     .single();
   if (!employee || (employee as { employment_status: string }).employment_status !== "active") {
-    return null;
+    // Tự động tạo employee nếu chưa có (idempotent)
+    const { data: newEmpId, error: rpcError } = await supabase.rpc("ensure_self_employee");
+    if (rpcError || !newEmpId) {
+      return null;
+    }
+    const { data: newEmployee } = await supabase
+      .from("employees")
+      .select("id, organization_id, employee_code, employment_status")
+      .eq("id", newEmpId)
+      .single();
+    if (!newEmployee) return null;
+    return { emp: newEmployee as { id: string; organization_id: string; employee_code: string }, tz: "Asia/Ho_Chi_Minh", subjectId: null };
   }
   const emp = employee as { id: string; organization_id: string; employee_code: string };
   const { data: org } = await supabase
@@ -152,6 +163,26 @@ export async function getTodayStatus() {
   };
 }
 
+/** Chuyển frameDataUrl (base64) thành FaceImageInput cho provider. */
+function frameToImageInput(frameDataUrl: string, fixture?: FaceFixture): FaceImageInput {
+  const data = fixture ? `${frameDataUrl}:${fixture}` : frameDataUrl;
+  return { data, mimeType: "image/jpeg" };
+}
+
+/** Map provider verify code sang attendance error code. */
+function mapVerifyCode(code: string, livenessStatus?: string): string {
+  switch (code) {
+    case "success": return "NO_MATCH"; // fallback
+    case "no_match": return "NO_MATCH";
+    case "low_confidence": return "LOW_CONFIDENCE";
+    case "liveness_failed": return "LIVENESS_FAILED";
+    case "provider_unavailable": return "PROVIDER_UNAVAILABLE";
+    case "timeout": return "PROVIDER_UNAVAILABLE";
+    case "enrollment_missing": return "NO_ENROLLMENT";
+    default: return "NO_MATCH";
+  }
+}
+
 export async function verifyCheck(input: {
   direction: "check_in" | "check_out";
   frameDataUrl: string;
@@ -213,29 +244,45 @@ export async function verifyCheck(input: {
   }
 
   const provider = getFaceProvider();
-  const fixture: FaceFixture = provider.isDemo && input.fixture && FIXTURES.includes(input.fixture) ? input.fixture : "good";
+  const imageInput = frameToImageInput(input.frameDataUrl, provider.isDemo && input.fixture && FIXTURES.includes(input.fixture) ? input.fixture : undefined);
 
-  let liveness: string;
+  let livenessStatus: string = "unknown";
   let confidence = 0;
   let ref: string | null = null;
+
+  // Liveness check
+  let livenessResult;
   try {
-    const liv = await withProviderTimeout(provider.checkLiveness({ image: fixture }), PROVIDER_TIMEOUT_MS);
-    liveness = liv.status;
-    if (liveness === "pass" || liveness === "unknown") {
-      const v = await withProviderTimeout(
-        provider.verify1to1({ providerSubjectId: ctx.subjectId, image: fixture }),
-        PROVIDER_TIMEOUT_MS,
-      );
-      confidence = v.confidence;
-      ref = v.providerReference;
-      if (v.liveness === "fail") liveness = "fail";
-    }
+    livenessResult = await withProviderTimeout(provider.checkLiveness({ image: imageInput }), PROVIDER_TIMEOUT_MS);
   } catch {
     return { ok: false, code: "PROVIDER_UNAVAILABLE", message: "Dịch vụ nhận diện bận. Giữ nguyên trang và bấm Thử lại (không tạo trùng), hoặc dùng phương thức thay thế." };
   }
+  if (!livenessResult.ok) {
+    return { ok: false, code: mapVerifyCode(livenessResult.code), message: livenessResult.message };
+  }
+  livenessStatus = livenessResult.data?.status ?? "unknown";
+
+  // Verify 1:1 (chỉ chạy nếu liveness pass hoặc unknown)
+  let verifyResult;
+  if (livenessStatus === "pass" || livenessStatus === "unknown") {
+    try {
+      verifyResult = await withProviderTimeout(
+        provider.verifyFace({ providerSubjectId: ctx.subjectId, image: imageInput }),
+        PROVIDER_TIMEOUT_MS,
+      );
+    } catch {
+      return { ok: false, code: "PROVIDER_UNAVAILABLE", message: "Dịch vụ nhận diện bận. Giữ nguyên trang và bấm Thử lại (không tạo trùng), hoặc dùng phương thức thay thế." };
+    }
+    if (!verifyResult.ok) {
+      return { ok: false, code: mapVerifyCode(verifyResult.code, livenessStatus), message: verifyResult.message };
+    }
+    confidence = verifyResult.data!.confidence;
+    ref = verifyResult.data!.providerReference;
+    if (verifyResult.data!.liveness === "fail") livenessStatus = "fail";
+  }
 
   const decision = decideVerification({
-    liveness: liveness as "pass" | "fail" | "unknown",
+    liveness: livenessStatus as "pass" | "fail" | "unknown",
     confidence,
     threshold: VERIFY_THRESHOLD,
     reviewBandLow: REVIEW_BAND_LOW,
@@ -244,7 +291,7 @@ export async function verifyCheck(input: {
   const failedEvent = async (reason: string) => {
     await recordViaRpc(supabase, {
       employee_id: ctx.emp.id, assignment_id: resolved.assignment_id, event_type: input.direction,
-      status: "failed", method: "face", verification_ref: ref, liveness, confidence,
+      status: "failed", method: "face", verification_ref: ref, liveness: livenessStatus, confidence,
       idempotency_key: input.idempotencyKey, note: reason,
       work_date: resolved.work_date, shift_id: resolved.shift_id, late_min: 0, early_leave_min: 0,
     });
@@ -270,7 +317,7 @@ export async function verifyCheck(input: {
 
   const { data, error } = await recordViaRpc(supabase, {
     employee_id: ctx.emp.id, assignment_id: resolved.assignment_id, event_type: input.direction,
-    status: eventStatus, method: "face", verification_ref: ref, liveness, confidence,
+    status: eventStatus, method: "face", verification_ref: ref, liveness: livenessStatus, confidence,
     idempotency_key: input.idempotencyKey, note,
     work_date: resolved.work_date, shift_id: resolved.shift_id, late_min: late, early_leave_min: early,
   });
@@ -306,7 +353,7 @@ export async function verifyCheck(input: {
       message: "Độ khớp thấp — đã ghi nhận và chuyển HR rà soát (không coi là gian lận).",
       verification_ref: ref,
       confidence,
-      liveness,
+      liveness: livenessStatus,
     };
   }
   return {
@@ -317,7 +364,7 @@ export async function verifyCheck(input: {
       : (early > 0 ? `Check-out thành công (về sớm ${early}′).` : "Check-out thành công."),
     verification_ref: ref,
     confidence,
-    liveness,
+    liveness: livenessStatus,
   };
 }
 

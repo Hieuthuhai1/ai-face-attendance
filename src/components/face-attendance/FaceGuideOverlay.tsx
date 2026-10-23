@@ -6,6 +6,8 @@ import { useFaceDetection } from "./FaceDetectionProvider";
 interface FaceGuideOverlayProps {
   className?: string;
   showInstructions?: boolean;
+  /** Chế độ overlay đè lên video (mặc định false = panel riêng) */
+  overlay?: boolean;
 }
 
 const SIZE_LABELS = {
@@ -26,55 +28,157 @@ const SHARPNESS_LABELS = {
   sharp: "Rất nét",
 } as const;
 
-export function FaceGuideOverlay({ className, showInstructions = true }: FaceGuideOverlayProps) {
+function getStatusColor(status: string | boolean, type: "size" | "brightness" | "sharpness" | "aligned" | "centered") {
+  if (type === "size") {
+    switch (status) {
+      case "ok": return "text-[var(--success)]";
+      case "small": return "text-[var(--warning)]";
+      case "large": return "text-[var(--warning)]";
+    }
+  }
+  if (type === "brightness") {
+    switch (status) {
+      case "ok": return "text-[var(--success)]";
+      case "dark": return "text-[var(--warning)]";
+      case "bright": return "text-[var(--warning)]";
+    }
+  }
+  if (type === "sharpness") {
+    switch (status) {
+      case "sharp": return "text-[var(--success)]";
+      case "ok": return "text-[var(--info)]";
+      case "blurry": return "text-[var(--warning)]";
+    }
+  }
+  if (type === "aligned" || type === "centered") {
+    const isTrue = status === true || status === "true";
+    return isTrue ? "text-[var(--success)]" : "text-[var(--warning)]";
+  }
+  return "text-slate-500";
+}
+
+/** SVG Face Guide Overlay - dùng cho overlay mode (đè lên video) */
+function FaceGuideSVG({ result, className }: { result: ReturnType<typeof useFaceDetection>["result"]; className?: string }) {
+  const ovalRx = 70;
+  const ovalRy = 85;
+  const centerX = 100;
+  const centerY = 100;
+
+  return (
+    <svg viewBox="0 0 200 200" className={cn("w-full h-full", className)} fill="none" stroke="currentColor" strokeWidth={2.5} aria-hidden="true">
+      <defs>
+        <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur stdDeviation="2" result="coloredBlur" />
+          <feMerge>
+            <feMergeNode in="coloredBlur" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
+      </defs>
+
+      {/* Background dimming */}
+      <rect x="0" y="0" width="200" height="200" fill="black" fillOpacity={0.15} />
+
+      {/* Face oval - main guide */}
+      <ellipse
+        cx={centerX}
+        cy={centerY}
+        rx={ovalRx}
+        ry={ovalRy}
+        className={cn(
+          result.aligned ? "stroke-[var(--success)]" : "stroke-[var(--warning)]",
+          result.centered ? "stroke-[var(--success)]" : "stroke-[var(--warning)]"
+        )}
+        strokeDasharray={result.aligned && result.centered ? "0" : "12 6"}
+        filter={result.aligned && result.centered ? "url(#glow)" : "none"}
+        strokeWidth={result.aligned && result.centered ? 3 : 2.5}
+      />
+
+      {/* Corner brackets for visual guidance */}
+      <g strokeWidth={3} className={result.centered ? "stroke-[var(--success)]" : "stroke-white/60"}>
+        {/* Top-left */}
+        <path d="M30 100 L30 120 Q30 130 40 130 L60 130" fill="none" />
+        <path d="M100 30 L120 30 Q130 30 130 40 L130 60" fill="none" />
+        {/* Top-right */}
+        <path d="M170 100 L170 120 Q170 130 160 130 L140 130" fill="none" />
+        <path d="M100 30 L80 30 Q70 30 70 40 L70 60" fill="none" />
+        {/* Bottom-left */}
+        <path d="M30 100 L30 80 Q30 70 40 70 L60 70" fill="none" />
+        <path d="M100 170 L120 170 Q130 170 130 160 L130 140" fill="none" />
+        {/* Bottom-right */}
+        <path d="M170 100 L170 80 Q170 70 160 70 L140 70" fill="none" />
+        <path d="M100 170 L80 170 Q70 170 70 160 L70 140" fill="none" />
+      </g>
+
+      {/* Center crosshair - only show when not centered */}
+      {!result.centered && (
+        <g strokeWidth={1.5} stroke="currentColor" className="stroke-white/50 stroke-dasharray-4">
+          <line x1={centerX} y1="5" x2={centerX} y2={centerY - ovalRy - 10} />
+          <line x1={centerX} y1={centerY + ovalRy + 10} x2={centerX} y2="195" />
+          <line x1="5" y1={centerY} x2={centerX - ovalRx - 10} y2={centerY} />
+          <line x1={centerX + ovalRx + 10} y1={centerY} x2="195" y2={centerY} />
+        </g>
+      )}
+
+      {/* Size indicator rings */}
+      {result.size === "small" && (
+        <ellipse cx={centerX} cy={centerY} rx={40} ry={50} stroke="currentColor" strokeWidth={1.5} strokeDasharray="6 4" className="text-[var(--warning)]" />
+      )}
+      {result.size === "large" && (
+        <ellipse cx={centerX} cy={centerY} rx={95} ry={115} stroke="currentColor" strokeWidth={1.5} strokeDasharray="6 4" className="text-[var(--warning)]" />
+      )}
+
+      {/* Face detected center dot */}
+      {result.detected && (
+        <circle cx={centerX} cy={centerY} r={6} fill="currentColor" className="text-[var(--success)] animate-pulse" />
+      )}
+
+      {/* Arrow indicators for adjustment */}
+      {!result.detected && (
+        <g className="text-white/70 animate-pulse">
+          <path d="M100 190 L100 175 M95 180 L100 185 L105 180" strokeWidth={2.5} fill="none" strokeLinecap="round" strokeLinejoin="round" />
+        </g>
+      )}
+      {result.detected && !result.centered && (
+        <g className="text-[var(--warning)] animate-bounce">
+          {result.faceX !== undefined && result.faceX < 0.45 && (
+            <path d="M40 100 L55 100 M50 95 L55 100 L50 105" strokeWidth={3} fill="none" strokeLinecap="round" strokeLinejoin="round" />
+          )}
+          {result.faceX !== undefined && result.faceX > 0.55 && (
+            <path d="M160 100 L145 100 M150 95 L145 100 L150 105" strokeWidth={3} fill="none" strokeLinecap="round" strokeLinejoin="round" />
+          )}
+          {result.faceY !== undefined && result.faceY < 0.45 && (
+            <path d="M100 40 L100 55 M95 50 L100 55 L105 50" strokeWidth={3} fill="none" strokeLinecap="round" strokeLinejoin="round" />
+          )}
+          {result.faceY !== undefined && result.faceY > 0.55 && (
+            <path d="M100 160 L100 145 M95 150 L100 145 L105 150" strokeWidth={3} fill="none" strokeLinecap="round" strokeLinejoin="round" />
+          )}
+        </g>
+      )}
+    </svg>
+  );
+}
+
+export function FaceGuideOverlay({ className, showInstructions = true, overlay = false }: FaceGuideOverlayProps) {
   const { result } = useFaceDetection();
 
-  const getStatusColor = (status: string | boolean, type: "size" | "brightness" | "sharpness" | "aligned" | "centered") => {
-    if (type === "size") {
-      switch (status) {
-        case "ok": return "text-[var(--success)]";
-        case "small": return "text-[var(--warning)]";
-        case "large": return "text-[var(--warning)]";
-      }
-    }
-    if (type === "brightness") {
-      switch (status) {
-        case "ok": return "text-[var(--success)]";
-        case "dark": return "text-[var(--warning)]";
-        case "bright": return "text-[var(--warning)]";
-      }
-    }
-    if (type === "sharpness") {
-      switch (status) {
-        case "sharp": return "text-[var(--success)]";
-        case "ok": return "text-[var(--info)]";
-        case "blurry": return "text-[var(--warning)]";
-      }
-    }
-    if (type === "aligned" || type === "centered") {
-      const isTrue = status === true || status === "true";
-      return isTrue ? "text-[var(--success)]" : "text-[var(--warning)]";
-    }
-    return "text-slate-500";
-  };
+  // Overlay mode: render SVG directly on top of video
+  if (overlay) {
+    return (
+      <div className={cn("absolute inset-0 pointer-events-none flex items-center justify-center", className)}>
+        <div className="relative w-full h-full max-w-[400px] aspect-square">
+          <FaceGuideSVG result={result} />
+        </div>
+      </div>
+    );
+  }
 
+  // Panel mode (original): render below video with instructions
   if (!result.detected) {
     return (
       <div className={cn("flex flex-col items-center gap-3 p-4", className)}>
-        <div className="relative" aria-hidden="true">
-          <svg viewBox="0 0 200 200" className="w-48 h-48 text-slate-300" fill="none" stroke="currentColor" strokeWidth={1.5}>
-            <ellipse cx="100" cy="100" rx="70" ry="85" strokeDasharray="8 4" />
-            <line x1="100" y1="20" x2="100" y2="40" strokeWidth={2} />
-            <line x1="100" y1="160" x2="100" y2="180" strokeWidth={2} />
-            <line x1="20" y1="100" x2="40" y2="100" strokeWidth={2} />
-            <line x1="160" y1="100" x2="180" y2="100" strokeWidth={2} />
-          </svg>
-          <div className="absolute inset-0 flex items-center justify-center">
-            <svg className="w-12 h-12 text-slate-400 animate-pulse" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-              <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-          </div>
+        <div className="relative w-48 h-48" aria-hidden="true">
+          <FaceGuideSVG result={result} />
         </div>
         <p className="text-center text-sm text-slate-600 font-medium">Đưa khuôn mặt vào khung</p>
         {showInstructions && (
@@ -91,65 +195,8 @@ export function FaceGuideOverlay({ className, showInstructions = true }: FaceGui
 
   return (
     <div className={cn("flex flex-col items-center gap-3 p-4", className)}>
-      {/* Face oval with status indicators */}
-      <div className="relative" aria-hidden="true">
-        <svg viewBox="0 0 200 200" className="w-48 h-48" fill="none" stroke="currentColor" strokeWidth={2}>
-          {/* Face oval */}
-          <ellipse
-            cx="100"
-            cy="100"
-            rx="70"
-            ry="85"
-            className={cn(
-              result.aligned ? "text-[var(--success)]" : "text-[var(--warning)]",
-              result.centered ? "stroke-[var(--success)]" : "stroke-[var(--warning)]"
-            )}
-            strokeDasharray={result.aligned ? "0" : "8 4"}
-          />
-          {/* Center crosshair */}
-          <line x1="100" y1="15" x2="100" y2="35" className={result.centered ? "stroke-[var(--success)]" : "stroke-slate-300"} strokeWidth={2} />
-          <line x1="100" y1="165" x2="100" y2="185" className={result.centered ? "stroke-[var(--success)]" : "stroke-slate-300"} strokeWidth={2} />
-          <line x1="15" y1="100" x2="35" y2="100" className={result.centered ? "stroke-[var(--success)]" : "stroke-slate-300"} strokeWidth={2} />
-          <line x1="165" y1="100" x2="185" y2="100" className={result.centered ? "stroke-[var(--success)]" : "stroke-slate-300"} strokeWidth={2} />
-
-          {/* Size indicator rings */}
-          {result.size === "small" && (
-            <ellipse cx="100" cy="100" rx="40" ry="50" stroke="currentColor" strokeWidth={1} strokeDasharray="4 4" className="text-[var(--warning)]" />
-          )}
-          {result.size === "large" && (
-            <ellipse cx="100" cy="100" rx="90" ry="110" stroke="currentColor" strokeWidth={1} strokeDasharray="4 4" className="text-[var(--warning)]" />
-          )}
-
-          {/* Face detected indicator */}
-          <circle cx="100" cy="100" r="8" fill="currentColor" className="text-[var(--success)] animate-pulse" />
-        </svg>
-
-        {/* Status badges overlay */}
-        <div className="absolute inset-0 flex flex-col items-center justify-between p-2 pointer-events-none">
-          {/* Top: Size */}
-          <div className={cn("px-2 py-0.5 rounded text-[10px] font-medium", getStatusColor(result.size, "size"))}>
-            {SIZE_LABELS[result.size]}
-          </div>
-
-          {/* Bottom: Brightness & Sharpness */}
-          <div className="flex gap-1">
-            <span className={cn("px-2 py-0.5 rounded text-[10px] font-medium", getStatusColor(result.brightness, "brightness"))}>
-              {BRIGHTNESS_LABELS[result.brightness]}
-            </span>
-            <span className={cn("px-2 py-0.5 rounded text-[10px] font-medium", getStatusColor(result.sharpness, "sharpness"))}>
-              {SHARPNESS_LABELS[result.sharpness]}
-            </span>
-          </div>
-        </div>
-
-        {/* Centered indicator */}
-        {!result.centered && (
-          <div className="absolute inset-0 flex items-center justify-center">
-            <svg className="w-8 h-8 text-[var(--warning)] animate-bounce" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
-              <path d="M12 5v14M5 12h14" />
-            </svg>
-          </div>
-        )}
+      <div className="relative w-48 h-48" aria-hidden="true">
+        <FaceGuideSVG result={result} />
       </div>
 
       {/* Status Summary */}

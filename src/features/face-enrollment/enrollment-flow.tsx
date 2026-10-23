@@ -128,7 +128,7 @@ export function EnrollmentFlow(props: { initialState: EnrollmentState; providerD
           <Card>
             <CardTitle>Chụp ảnh đăng ký</CardTitle>
             <div className="mt-3">
-              <CameraCapture onCapture={onCapture} disabled={!consent || submitting} />
+              <CameraCapture onCapture={onCapture} disabled={!consent || submitting} allowManualCapture={true} />
             </div>
             {!consent ? (
               <p className="mt-2 text-sm text-slate-500">Tick đồng ý ở trên để bật nút chụp.</p>

@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { requireRole } from "@/server/auth";
 import { createClient } from "@/lib/supabase/server";
-import { getProviderHealth } from "@/server/face/service";
+import { getProviderHealth } from "@/server/face";
 import { EnrollmentQueue, type EnrollmentQueueRow } from "@/features/face-enrollment/enrollment-queue";
 import { Icon } from "@/components/ui/icon";
 import { LoadingState } from "@/components/ui/states";

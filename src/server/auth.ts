@@ -23,6 +23,11 @@ export async function requireUser(): Promise<{ userId: string; profile: Profile 
 /** Guard theo role — chặn server-side, không chỉ ẩn nút UI. */
 export async function requireRole(allowed: Role[]): Promise<{ userId: string; profile: Profile }> {
   const session = await requireUser();
-  if (!allowed.includes(session.profile.role)) redirect("/dashboard?forbidden=1");
+  if (!allowed.includes(session.profile.role)) {
+    // Employee bị chặn → về trang chấm công (trang chính cho employee)
+    // Manager/HR bị chặn → về dashboard (sẽ hiển thị forbidden message)
+    const fallback = session.profile.role === "employee" ? "/check-in" : "/dashboard?forbidden=1";
+    redirect(fallback);
+  }
   return session;
 }

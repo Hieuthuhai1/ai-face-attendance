@@ -12,11 +12,11 @@ export interface QualityReport {
 }
 
 export const QUALITY_RULES = {
-  minBrightness: 40,
-  maxBrightness: 220,
-  minBlur: 60,
-  minWidth: 320,
-  minHeight: 240,
+  minBrightness: 25,
+  maxBrightness: 240,
+  minBlur: 25,
+  minWidth: 240,
+  minHeight: 180,
 } as const;
 
 /** Tính trên mảng grayscale (1 byte/pixel, row-major). */

@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import { requireUser } from "@/server/auth";
-import { getProviderHealth } from "@/server/face/service";
+import { getProviderHealth } from "@/server/face";
 import { getMyEnrollment } from "@/features/face-enrollment/actions";
 import { EnrollmentFlow, type EnrollmentState } from "@/features/face-enrollment/enrollment-flow";
 import { LoadingState } from "@/components/ui/states";

@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { getProviderHealth } from "@/server/face/service";
+import { getProviderHealth } from "@/server/face";
 import { getTodayStatus } from "@/features/attendance/actions";
 import { CheckInFlow } from "@/features/attendance/checkin-flow";
 import { LoadingState } from "@/components/ui/states";

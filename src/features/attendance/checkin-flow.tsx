@@ -135,7 +135,15 @@ export function CheckInFlow(props: { status: TodayStatus; providerDemo: boolean 
     return (
       <Card>
         <CardTitle>Chưa có mẫu khuôn mặt</CardTitle>
-        <CardDescription>Đăng ký khuôn mặt và chờ HR duyệt trước khi chấm công.</CardDescription>
+        <CardDescription>Bạn có thể dùng phương thức thay thế để chấm công ngay, hoặc đăng ký khuôn mặt (tự động active).</CardDescription>
+        <div className="mt-3 flex flex-col gap-2">
+          <Button variant="ghost" size="sm" onClick={() => { newAttempt(); setShowFallback(true); }}>
+            Dùng phương thức thay thế (nhập lý do)
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => router.push("/enrollment")}>
+            Đăng ký khuôn mặt
+          </Button>
+        </div>
       </Card>
     );
   }
@@ -266,6 +274,7 @@ export function CheckInFlow(props: { status: TodayStatus; providerDemo: boolean 
                 captureLabel={direction === "check_in" ? "Chấm công vào" : "Chấm công ra"}
                 buttonVariant="primary"
                 showPrivacyNotice
+                allowManualCapture={true}
               />
             )}
           </div>
