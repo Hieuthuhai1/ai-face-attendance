@@ -947,6 +947,59 @@ smoke 9/9 routes 307 + headers đầy đủ.
 
 ---
 
+## Phase 18 — Connect Verified Face Result to Attendance Business Logic (completed 2026-10-23)
+
+**Mục tiêu:** Đảm bảo flow verification khuôn mặt đã kết nối hoàn chỉnh vào attendance business logic hiện tại.
+
+**Đã hoàn thành (trong `verifyCheck` server action):**
+- **Backend quyết định ghi attendance**: `verifyCheck` server action (src/features/attendance/actions.ts) là nơi duy nhất ghi event qua RPC `record_attendance_event`
+- **Không tin frontend**: employee_id lấy từ DB qua `auth.uid()`, role từ profiles, enrollment subjectId từ face_enrollments — không nhận từ client
+- **Validation đầy đủ**: active enrollment, liveness check, 1:1 verify, shift eligibility, check-in/check-out state
+- **Idempotency**: client sinh `evt_<uuid>`, DB unique constraint trên `idempotency_key` + RPC xử lý retry an toàn
+- **Business rules**: không check-out khi chưa check-in, không duplicate check-in, grace/rounding theo config
+- **Provider unavailable**: trả `PROVIDER_UNAVAILABLE`, UI cho retry/fallback PIN
+- **Audit**: RPC ghi event + trigger `harden_attendance_event` + recompute summary, không log raw biometrics
+
+**Receipt UI (AttendanceReceipt):**
+- Tên nhân viên, mã nhân viên
+- Check-in/Check-out, thời gian ghi nhận (server timestamp)
+- Ca làm việc, thời gian ca
+- Trạng thái: success / pending_review / fallback
+- Phút đi muộn / về sớm
+- Phương thức: face / pin_fallback / manual
+- Confidence, liveness, verification_ref
+
+**Test coverage:**
+- Unit: `decideVerification` (success/review/failed), `resolveShiftFor` (overnight, spill)
+- Provider contract: mock provider verify/liveness/enroll
+- Integration (RUN_DB_TESTS=1): check-in timestamp+summary, duplicate key 23505, cross-user 42501, concurrent RPC, transaction rollback
+
+**Kết quả kiểm tra:**
+- `npm test` ✅ 117/117 tests pass (15 test files)
+- `npm run typecheck` ✅ (chỉ pre-existing errors)
+- `npm run lint` ✅ (chỉ pre-existing warnings/errors)
+- `npm run build` ✅ (26 routes)
+- Secret scan: sạch
+
+**Files liên quan (đã có từ Phase 17):**
+- `src/features/attendance/actions.ts` — `verifyCheck`, `fallbackCheck`, `getTodayStatus`, `myContext`, `recordViaRpc`
+- `src/features/face-verification/face-verification-flow.tsx` — UI flow gọi `verifyCheck`/`fallbackCheck`
+- `src/app/(protected)/check-in/page.tsx` — Trang check-in sử dụng FaceVerificationFlow
+- `src/server/attendance/decision.ts` — `decideVerification`, `resolveShiftFor`
+
+**Commit:** `feat(attendance): connect face verification to attendance` — SHA: `f2b19c9` (pushed `ui/redesign`)
+
+**Vercel Preview:** Auto-deployed on push to `ui/redesign`.
+
+**Known issues:**
+- Pre-existing TS errors trong chart/calendar/select/portal/components UI khác (không chặn build)
+- AWS Rekognition credentials chưa cấu hình trên Vercel (cần bạn set)
+- Migration enrollment security chưa chạy trên Supabase staging/production
+
+**Next:** Phase 19 — Cấu hình AWS credentials trên Vercel, apply migration Supabase, E2E browser tests, Production deploy.
+
+---
+
 ## Google OAuth (added 2026-10-15, staging đã bật provider)
 
 - Code: nút Google + `/auth/callback` (chống open-redirect, unit), trigger map tên
