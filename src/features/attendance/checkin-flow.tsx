@@ -140,7 +140,7 @@ export function CheckInFlow(props: { status: TodayStatus; providerDemo: boolean 
           <Button variant="ghost" size="sm" onClick={() => { newAttempt(); setShowFallback(true); }}>
             Dùng phương thức thay thế (nhập lý do)
           </Button>
-          <Button variant="outline" size="sm" onClick={() => router.push("/enrollment")}>
+          <Button variant="secondary" size="sm" onClick={() => router.push("/enrollment")}>
             Đăng ký khuôn mặt
           </Button>
         </div>

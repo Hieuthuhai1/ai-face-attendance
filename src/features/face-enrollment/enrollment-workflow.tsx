@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -9,42 +9,27 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Icon, type IconName } from "@/components/ui/icon";
 import { CameraCapture } from "@/features/face-enrollment/camera-capture";
 import { CONSENT_SECTIONS, CONSENT_VERSION } from "@/features/face-enrollment/consent";
-import { submitEnrollment, revokeMyEnrollment, getMyEnrollment } from "@/features/face-enrollment/actions";
-import { getProviderHealth } from "@/server/face";
+import {
+  submitEnrollment,
+  revokeMyEnrollment,
+  revokeEmployeeEnrollment,
+  type EnrollmentStatus,
+} from "@/features/face-enrollment/actions";
 import type { FaceFixture } from "@/server/face/types";
-import { LoadingState } from "@/components/ui/states";
 
-export type EnrollmentWorkflowState =
-  | "idle"
-  | "consent"
-  | "camera_check"
-  | "capturing"
-  | "submitting"
-  | "success"
-  | "error"
-  | "revoke_confirm"
-  | "revoking";
+type LocalState = "none" | EnrollmentStatus;
+type View = "status" | "consent" | "capture" | "submitting" | "success" | "error";
 
-const WORKFLOW_STEPS = [
-  { key: "consent", label: "Thông báo & Consent", description: "Đọc thông báo và đồng ý" },
-  { key: "camera_check", label: "Kiểm tra Camera", description: "Kiểm tra camera, ánh sáng, góc khuôn mặt" },
-  { key: "capturing", label: "Chụp ảnh", description: "Chụp ảnh khuôn mặt đạt chất lượng" },
-  { key: "submitting", label: "Xác minh & Lưu", description: "Liveness, enroll, lưu đăng ký" },
-] as const;
+const NEEDS_FORM: LocalState[] = ["none", "rejected", "revoked", "failed"];
 
-type WorkflowStepKey = typeof WORKFLOW_STEPS[number]["key"];
-
-const STEP_META: Record<WorkflowStepKey, { icon: IconName; label: string }> = {
-  consent: { icon: "file-text", label: "Consent" },
-  camera_check: { icon: "camera", label: "Camera" },
-  capturing: { icon: "camera", label: "Chụp ảnh" },
-  submitting: { icon: "shield", label: "Xác minh" },
-};
+const STEPS = ["Thông báo & đồng ý", "Chụp ảnh", "Hoàn tất"] as const;
 
 interface EnrollmentWorkflowProps {
   /** Trạng thái enrollment ban đầu của employee */
-  initialState: "none" | "pending" | "active" | "rejected" | "revoked" | "failed" | "needs_review";
-  /** Employee ID (cho HR đăng ký hộ) */
+  initialState: LocalState;
+  /** Lý do thất bại/từ chối (nếu có) */
+  statusReason?: string | null;
+  /** HR đăng ký hộ nhân viên */
   employeeId?: string;
   /** Provider demo mode */
   providerDemo?: boolean;
@@ -52,495 +37,472 @@ interface EnrollmentWorkflowProps {
   onSuccess?: () => void;
   /** Callback khi enrollment thất bại */
   onError?: (error: string) => void;
-  /** Callback khi hoàn tất (success hoặc error đã xử lý) */
+  /** Callback khi hoàn tất */
   onComplete?: () => void;
 }
 
+interface ProviderHealth {
+  configured: boolean;
+  demo: boolean;
+  message: string;
+}
+
+const STATUS_META: Record<
+  EnrollmentStatus,
+  { tone: "success" | "warning" | "danger" | "neutral" | "info"; icon: IconName; title: string; description: string }
+> = {
+  active: {
+    tone: "success",
+    icon: "check",
+    title: "Khuôn mặt đã được kích hoạt",
+    description: "Bạn có thể chấm công vào/ra bằng khuôn mặt ngay bây giờ.",
+  },
+  pending: {
+    tone: "warning",
+    icon: "clock",
+    title: "Đăng ký đang chờ duyệt",
+    description:
+      "HR cần duyệt đăng ký trước khi bạn chấm công bằng khuôn mặt. Trong lúc chờ, bạn vẫn có thể dùng phương thức thay thế ở trang chấm công.",
+  },
+  needs_review: {
+    tone: "warning",
+    icon: "alert",
+    title: "Đăng ký cần HR rà soát",
+    description: "Ảnh đăng ký chưa đủ chắc chắn. HR sẽ kiểm tra và phản hồi, hoặc bạn có thể đăng ký lại.",
+  },
+  failed: {
+    tone: "danger",
+    icon: "x",
+    title: "Đăng ký trước đó không thành công",
+    description: "Bạn có thể thử đăng ký lại. Hãy chú ý ánh sáng và giữ khuôn mặt trong khung.",
+  },
+  rejected: {
+    tone: "danger",
+    icon: "x",
+    title: "Đăng ký bị từ chối",
+    description: "HR đã từ chối đăng ký trước đó. Bạn có thể đăng ký lại sau khi khắc phục lý do bên dưới.",
+  },
+  revoked: {
+    tone: "neutral",
+    icon: "info",
+    title: "Mẫu khuôn mặt đã được thu hồi",
+    description: "Mẫu tham chiếu đã bị xóa. Bạn có thể đăng ký lại bất cứ lúc nào.",
+  },
+};
+
 export function EnrollmentWorkflow({
   initialState,
-  employeeId: initialEmployeeId,
+  statusReason = null,
+  employeeId,
   providerDemo = false,
   onSuccess,
   onError,
   onComplete,
 }: EnrollmentWorkflowProps) {
   const router = useRouter();
+  const isAdminFlow = Boolean(employeeId);
 
-  // Workflow state
-  const [workflowState, setWorkflowState] = useState<EnrollmentWorkflowState>("idle");
-  const [currentStep, setCurrentStep] = useState<WorkflowStepKey>("consent");
-  const [employeeId, setEmployeeId] = useState(initialEmployeeId || "");
+  const [localState, setLocalState] = useState<LocalState>(initialState);
+  const [view, setView] = useState<View>(() =>
+    NEEDS_FORM.includes(initialState) ? "consent" : "status",
+  );
   const [consent, setConsent] = useState(false);
   const [fixture, setFixture] = useState<FaceFixture>("good");
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
+  const [error, setError] = useState<{ code: string; message: string } | null>(null);
+  const [resultStatus, setResultStatus] = useState<"pending" | "active">("pending");
+  const [health, setHealth] = useState<ProviderHealth | null>(null);
   const [confirmingRevoke, setConfirmingRevoke] = useState(false);
   const [revoking, setRevoking] = useState(false);
-  const [cameraReady, setCameraReady] = useState(false);
 
-  // Provider health check
-  const [providerHealth, setProviderHealth] = useState<{
-    configured: boolean;
-    demo: boolean;
-    message: string;
-  } | null>(null);
-
-  const currentStepIndex = WORKFLOW_STEPS.findIndex(s => s.key === currentStep);
-  const isLastStep = currentStepIndex === WORKFLOW_STEPS.length - 1;
-
-  // Load provider health on mount
+  // Trạng thái provider (chỉ để hiển thị — quyết định thật nằm ở server).
   useEffect(() => {
-    async function loadHealth() {
-      try {
-        const res = await fetch("/api/health/face");
-        if (res.ok) {
-          const health = await res.json();
-          setProviderHealth(health);
-        }
-      } catch {
-        // Ignore health check errors
+    let alive = true;
+    fetch("/api/health/face", { cache: "no-store" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: ProviderHealth | null) => {
+        if (alive && data) setHealth(data);
+      })
+      .catch(() => {
+        // Không chặn luồng đăng ký nếu health check lỗi.
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const onCapture = useCallback(
+    async (frameDataUrl: string) => {
+      if (!consent) {
+        setError({ code: "CONSENT_REQUIRED", message: "Bạn cần đồng ý thông báo xử lý dữ liệu trước khi chụp." });
+        setView("error");
+        return;
       }
-    }
-    loadHealth();
-  }, []);
+      setError(null);
+      setView("submitting");
+      try {
+        const res = await submitEnrollment({
+          frameDataUrl,
+          consentAccepted: consent,
+          consentVersion: CONSENT_VERSION,
+          employeeId,
+          fixture: providerDemo ? fixture : undefined,
+        });
+        if (!res.ok) {
+          setError({ code: res.code, message: res.message });
+          setView("error");
+          onError?.(`${res.code}: ${res.message}`);
+          return;
+        }
+        setResultStatus(res.status ?? "pending");
+        setLocalState(res.status ?? "pending");
+        setView("success");
+        onSuccess?.();
+        router.refresh();
+      } catch {
+        setError({
+          code: "NETWORK_ERROR",
+          message: "Không gửi được đăng ký (mất mạng hoặc máy chủ không phản hồi). Vui lòng thử lại.",
+        });
+        setView("error");
+      }
+    },
+    [consent, employeeId, fixture, providerDemo, router, onError, onSuccess],
+  );
 
-  // Auto-transition from idle to consent if starting fresh
-  useEffect(() => {
-    if (workflowState === "idle" && (initialState === "none" || initialState === "rejected" || initialState === "revoked")) {
-      setWorkflowState("consent");
-    } else if (initialState === "active" || initialState === "pending" || initialState === "failed" || initialState === "needs_review") {
-      setWorkflowState("success");
-    }
-  }, [workflowState, initialState]);
-
-  // Camera ready callback
-  const onCameraReady = useCallback(() => {
-    setCameraReady(true);
-  }, []);
-
-  // Capture callback
-  const onCapture = useCallback(async (frameDataUrl: string, quality: { ok: boolean; issues: string[] }) => {
-    if (!quality.ok) {
-      // Quality check failed - camera component will show issues
-      return;
-    }
-
-    setWorkflowState("submitting");
-    setSubmitting(true);
-    setError(null);
-
-    const res = await submitEnrollment({
-      frameDataUrl,
-      consentAccepted: consent,
-      consentVersion: CONSENT_VERSION,
-      fixture: providerDemo ? fixture : undefined,
-    });
-
-    setSubmitting(false);
-
-    if (!res.ok) {
-      setError(`${res.code}: ${res.message}`);
-      setWorkflowState("error");
-      onError?.(`${res.code}: ${res.message}`);
-      return;
-    }
-
-    setSuccess(true);
-    setWorkflowState("success");
-    onSuccess?.();
-    router.refresh();
-  }, [consent, providerDemo, fixture, router, onError, onSuccess]);
-
-  // Revoke callback
   const onRevoke = useCallback(async () => {
     setConfirmingRevoke(false);
     setRevoking(true);
     setError(null);
-    const res = await revokeMyEnrollment();
-    setRevoking(false);
-    if (!res.ok) {
-      setError(`${res.code}: ${res.message}`);
-      return;
+    try {
+      const res = isAdminFlow && employeeId
+        ? await revokeEmployeeEnrollment(employeeId)
+        : await revokeMyEnrollment();
+      if (!res.ok) {
+        setError({ code: res.code, message: res.message });
+        setView("error");
+        return;
+      }
+      setLocalState("revoked");
+      setConsent(false);
+      setView("consent");
+      router.refresh();
+      onComplete?.();
+    } catch {
+      setError({ code: "NETWORK_ERROR", message: "Không thu hồi được (mất mạng). Vui lòng thử lại." });
+      setView("error");
+    } finally {
+      setRevoking(false);
     }
-    router.refresh();
-    onComplete?.();
-  }, [router, onComplete]);
+  }, [router, onComplete, isAdminFlow, employeeId]);
 
-  // Navigation
-  const goNext = useCallback(() => {
-    if (currentStepIndex < WORKFLOW_STEPS.length - 1) {
-      const nextStep = WORKFLOW_STEPS[currentStepIndex + 1].key;
-      setCurrentStep(nextStep);
-      setWorkflowState(nextStep as EnrollmentWorkflowState);
-    }
-  }, [currentStepIndex]);
-
-  const goPrev = useCallback(() => {
-    if (currentStepIndex > 0) {
-      const prevStep = WORKFLOW_STEPS[currentStepIndex - 1].key;
-      setCurrentStep(prevStep);
-      setWorkflowState(prevStep as EnrollmentWorkflowState);
-    }
-  }, [currentStepIndex]);
-
-  const retryFromError = useCallback(() => {
-    setError(null);
-    setWorkflowState("capturing");
-    setCurrentStep("capturing");
-  }, []);
-
-  const retryFromCamera = useCallback(() => {
-    setError(null);
-    setCameraReady(false);
-    setWorkflowState("camera_check");
-    setCurrentStep("camera_check");
-  }, []);
-
-  const startOver = useCallback(() => {
-    setWorkflowState("consent");
-    setCurrentStep("consent");
-    setConsent(false);
-    setError(null);
-    setSuccess(false);
-    setCameraReady(false);
-    setEmployeeId("");
-  }, []);
-
-  // Determine current step display
-  const isStepCompleted = (index: number) => index < currentStepIndex;
-  const isStepActive = (index: number) => index === currentStepIndex;
-
-  // Provider status display
-  const providerStatus = providerHealth
-    ? providerHealth.configured
-      ? (providerHealth.demo ? "DEMO" : "Sẵn sàng")
-      : "NOT CONFIGURED"
-    : "Kiểm tra...";
-
-  const providerStatusTone = providerHealth
-    ? providerHealth.configured
-      ? (providerHealth.demo ? "warning" : "success")
-      : "danger"
-    : "neutral";
+  const stepIndex = view === "consent" || view === "error" ? 0 : view === "capture" ? 1 : 2;
+  const statusMeta = localState === "none" ? null : STATUS_META[localState];
+  const providerBlocked = health !== null && !health.configured;
 
   return (
-    <div className="flex flex-col gap-4 max-w-2xl mx-auto px-4 py-6">
-      {/* Header */}
-      <div className="flex flex-col gap-2">
-        <h1 className="text-2xl font-bold">Đăng ký nhận diện khuôn mặt</h1>
-        
-        {/* Provider status badge */}
-        <div className="flex items-center gap-2">
-          <Badge tone={providerStatusTone}>
-            {providerStatus}
-          </Badge>
-          {providerDemo && (
-            <Badge tone="info">DEMO MODE</Badge>
-          )}
-        </div>
-
-        {/* Step indicator */}
-        <div className="flex items-center gap-1">
-          {WORKFLOW_STEPS.map((step, index) => (
-            <div key={step.key} className="flex items-center gap-1">
-              <div
-                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full font-semibold text-sm transition-colors ${
-                  isStepCompleted(index)
-                    ? "bg-[var(--success)] text-white"
-                    : isStepActive(index)
-                    ? "bg-[var(--brand)] text-white"
-                    : "bg-slate-100 text-slate-400"
-                }`}
-              >
-                {isStepCompleted(index) ? (
-                  <Icon name="check" size={14} />
-                ) : (
-                  <Icon name={STEP_META[step.key].icon} size={14} />
-                )}
-              </div>
-              <span className={isStepActive(index) ? "font-medium text-slate-800 hidden sm:block" : "text-slate-500 hidden sm:block"}>
-                {step.label}
-              </span>
-              {index < WORKFLOW_STEPS.length - 1 && (
-                <span className={`h-px flex-1 max-w-20 transition-colors ${isStepCompleted(index) ? "bg-[var(--success)]" : "bg-slate-200"}`} />
-              )}
-            </div>
-          ))}
-        </div>
+    <div className="flex flex-col gap-4">
+      {/* Provider status */}
+      <div className="flex flex-wrap items-center gap-2">
+        <Badge tone={health === null ? "neutral" : health.configured ? (health.demo ? "warning" : "success") : "danger"}>
+          {health === null
+            ? "Đang kiểm tra dịch vụ…"
+            : health.configured
+              ? health.demo
+                ? "DEMO — không dùng chấm công thật"
+                : "Dịch vụ nhận diện sẵn sàng"
+              : "Dịch vụ nhận diện chưa cấu hình"}
+        </Badge>
+        {providerDemo ? <Badge tone="info">DEMO MODE</Badge> : null}
       </div>
 
-      {/* Provider not configured warning */}
-      {providerHealth && !providerHealth.configured && (
-        <Card className="border-[var(--danger)] bg-[var(--danger-bg)]">
-          <div className="flex items-center gap-3 p-4">
-            <Icon name="alert-triangle" size={24} className="text-[var(--danger)]" />
-            <div>
-              <p className="font-medium text-[var(--danger)]">Provider chưa được cấu hình</p>
-              <p className="text-sm text-slate-600 mt-1">
-                {providerHealth.message}. Chỉ có thể chạy DEMO/mock trên môi trường development.
-              </p>
+      {providerBlocked ? (
+        <div role="alert" className="flex items-start gap-2 rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700">
+          <Icon name="alert" size={16} className="mt-0.5 shrink-0" />
+          <div>
+            <p className="font-medium">Chưa thể đăng ký khuôn mặt</p>
+            <p>{health.message}</p>
+            <p className="mt-1 text-xs">
+              Liên hệ quản trị viên để cấu hình dịch vụ nhận diện. Trong lúc chờ, bạn vẫn có thể chấm công bằng phương thức thay thế.
+            </p>
+          </div>
+        </div>
+      ) : null}
+
+      {/* Stepper */}
+      {view !== "status" && view !== "success" ? (
+        <ol aria-label="Tiến trình đăng ký" className="flex items-center gap-1 text-xs">
+          {STEPS.map((label, index) => {
+            const done = index < stepIndex;
+            const current = index === stepIndex;
+            return (
+              <li key={label} className="flex flex-1 items-center gap-1" aria-current={current ? "step" : undefined}>
+                <span
+                  aria-hidden="true"
+                  className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full font-semibold ${
+                    done
+                      ? "bg-[var(--success-bg)] text-[var(--success)]"
+                      : current
+                        ? "bg-[var(--brand)] text-white"
+                        : "bg-slate-100 text-slate-400"
+                  }`}
+                >
+                  {done ? <Icon name="check" size={14} /> : index + 1}
+                </span>
+                <span className={current ? "font-medium text-slate-800" : "text-slate-500"}>{label}</span>
+                {index < STEPS.length - 1 ? <span aria-hidden="true" className="mx-1 h-px flex-1 bg-slate-200" /> : null}
+              </li>
+            );
+          })}
+        </ol>
+      ) : null}
+
+      {/* Trạng thái hiện tại */}
+      {view === "status" && statusMeta ? (
+        <Card>
+          <div className="flex items-start gap-3">
+            <span className="mt-0.5">
+              <Badge tone={statusMeta.tone}>
+                <Icon name={statusMeta.icon} size={14} />
+              </Badge>
+            </span>
+            <div className="min-w-0 flex-1">
+              <CardTitle>{statusMeta.title}</CardTitle>
+              <CardDescription>{statusMeta.description}</CardDescription>
+              {statusReason && (localState === "needs_review" || localState === "rejected" || localState === "failed") ? (
+                <p className="mt-2 rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-700">
+                  <span className="font-medium">Ghi chú: </span>
+                  {statusReason}
+                </p>
+              ) : null}
             </div>
           </div>
-        </Card>
-      )}
 
-      {/* Consent Step */}
-      {currentStep === "consent" && workflowState !== "success" && (
+          <div className="mt-4 flex flex-wrap gap-2">
+            {localState === "active" && !isAdminFlow ? (
+              <Button onClick={() => router.push("/check-in")}>
+                <Icon name="camera" size={16} /> Chấm công ngay
+              </Button>
+            ) : null}
+            {localState === "pending" ? (
+              <Button variant="secondary" onClick={() => router.refresh()}>
+                <Icon name="refresh" size={16} /> Tải lại trạng thái
+              </Button>
+            ) : null}
+            {localState === "needs_review" ? (
+              <Button
+                onClick={() => {
+                  setConsent(false);
+                  setView("consent");
+                }}
+              >
+                <Icon name="refresh" size={16} /> Đăng ký lại
+              </Button>
+            ) : null}
+            {localState === "pending" ? (
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setConsent(false);
+                  setView("consent");
+                }}
+              >
+                <Icon name="refresh" size={16} /> Đăng ký lại
+              </Button>
+            ) : null}
+            {localState === "pending" || localState === "active" || localState === "needs_review" ? (
+              <Button variant="ghost" onClick={() => setConfirmingRevoke(true)} loading={revoking}>
+                Thu hồi mẫu khuôn mặt
+              </Button>
+            ) : null}
+          </div>
+        </Card>
+      ) : null}
+
+      {/* Consent */}
+      {view === "consent" ? (
         <Card>
+          {statusMeta && localState !== "none" ? (
+            <div
+              role="status"
+              className={`mb-4 rounded-lg px-3 py-2 text-sm ${
+                statusMeta.tone === "danger"
+                  ? "border border-red-200 bg-red-50 text-red-700"
+                  : "border border-slate-200 bg-slate-50 text-slate-700"
+              }`}
+            >
+              <p className="font-medium">{statusMeta.title}</p>
+              {statusReason ? <p className="mt-1">{statusReason}</p> : <p className="mt-1">{statusMeta.description}</p>}
+            </div>
+          ) : null}
+
           <CardTitle>Thông báo xử lý dữ liệu khuôn mặt (bản {CONSENT_VERSION})</CardTitle>
-          <CardDescription>
-            <span className="text-slate-600">Vui lòng đọc kỹ và đồng ý trước khi tiếp tục đăng ký.</span>
-          </CardDescription>
-          <div className="mt-4 space-y-4">
+          <CardDescription>Vui lòng đọc kỹ và đồng ý trước khi tiếp tục.</CardDescription>
+
+          <div className="mt-4 space-y-3">
             {CONSENT_SECTIONS.map((section) => (
               <div key={section.title} className="border-l-2 border-slate-200 pl-4">
                 <p className="text-sm font-medium text-slate-800">{section.title}</p>
-                <p className="text-sm text-slate-600 mt-1">{section.body}</p>
+                <p className="mt-1 text-sm text-slate-600">{section.body}</p>
               </div>
             ))}
           </div>
-          <label className="mt-4 flex items-start gap-2 cursor-pointer">
+
+          <label className="mt-4 flex cursor-pointer items-start gap-2">
             <input
               type="checkbox"
               checked={consent}
               onChange={(e) => setConsent(e.target.checked)}
               className="mt-1 h-4 w-4 rounded border-slate-300 text-[var(--brand)] focus:ring-[var(--brand)]"
               aria-label="Tôi đã đọc và đồng ý"
-              disabled={workflowState === "submitting"}
             />
-            <span className="text-sm text-slate-700 mt-1">
-              Tôi đã đọc thông báo trên và đồng ý đăng ký khuôn mặt cho mục đích chấm công.
+            <span className="mt-0.5 text-sm text-slate-700">
+              {isAdminFlow
+                ? "Tôi xác nhận nhân viên đã đọc thông báo trên và đồng ý đăng ký khuôn mặt cho mục đích chấm công."
+                : "Tôi đã đọc thông báo trên và đồng ý đăng ký khuôn mặt cho mục đích chấm công."}
             </span>
           </label>
+
           <div className="mt-6 flex justify-end gap-2">
-            <Button variant="ghost" onClick={startOver} disabled={workflowState === "submitting"}>
-              Hủy
-            </Button>
-            <Button
-              onClick={() => { setWorkflowState("camera_check"); setCurrentStep("camera_check"); }}
-              disabled={!consent || workflowState === "submitting"}
-            >
+            {localState !== "none" ? (
+              <Button variant="ghost" onClick={() => setView("status")}>
+                Quay lại
+              </Button>
+            ) : null}
+            <Button onClick={() => setView("capture")} disabled={!consent || providerBlocked}>
               Tiếp tục
-              <span className="ml-1 inline-flex"><Icon name="chevron-right" size={14} /></span>
             </Button>
           </div>
         </Card>
-      )}
+      ) : null}
 
-      {/* Camera Check Step */}
-      {currentStep === "camera_check" && workflowState !== "success" && (
-        <Card>
-          <CardTitle>Kiểm tra Camera & Ánh sáng</CardTitle>
-          <CardDescription>
-            <span className="text-slate-600">Hệ thống sẽ kiểm tra camera, ánh sáng và góc khuôn mặt. Hãy đảm bảo bạn ở nơi đủ sáng.</span>
-          </CardDescription>
-          <div className="mt-4">
-            <CameraCapture
-              onCapture={onCapture}
-              disabled={submitting}
-              showGuide
-              captureLabel="Kiểm tra camera"
-              buttonVariant="secondary"
-              showPrivacyNotice
-              allowManualCapture={true}
-            />
-            {/* Camera status indicators */}
-            <div className="mt-4 flex flex-wrap gap-2">
-              <Badge tone={cameraReady ? "success" : "neutral"}>
-                <span className="mr-1 inline-flex"><Icon name={cameraReady ? "check" : "clock"} size={12} /></span>
-                {cameraReady ? "Camera sẵn sàng" : "Đang kiểm tra camera..."}
-              </Badge>
-              {providerDemo && (
-                <Badge tone="info">DEMO: Kết quả theo kịch bản mock</Badge>
-              )}
-            </div>
-          </div>
-          <div className="mt-6 flex justify-between">
-            <Button variant="secondary" onClick={() => { setWorkflowState("consent"); setCurrentStep("consent"); }}>
-              <Icon name="chevron-left" size={14} className="mr-1" /> Quay lại
-            </Button>
-            <Button
-              onClick={() => { setWorkflowState("capturing"); setCurrentStep("capturing"); }}
-              disabled={workflowState === "submitting"}
-            >
-              Tiếp tục chụp ảnh <Icon name="chevron-right" size={14} className="ml-1" />
-            </Button>
-          </div>
-        </Card>
-      )}
-
-      {/* Capturing Step */}
-      {currentStep === "capturing" && workflowState !== "success" && (
+      {/* Camera */}
+      {view === "capture" ? (
         <Card>
           <CardTitle>Chụp ảnh khuôn mặt</CardTitle>
           <CardDescription>
-            <span className="text-slate-600">Đưa khuôn mặt vào khung tròn, nhìn thẳng camera, giữ yên. Hệ thống sẽ tự động chụp khi đạt chất lượng.</span>
+            Đưa khuôn mặt vào giữa khung, nhìn thẳng camera, giữ yên và đảm bảo đủ sáng. Hệ thống chỉ kiểm tra chất lượng ảnh, không lưu ảnh thô.
           </CardDescription>
+
+          <ul className="mt-3 grid gap-1 text-sm text-slate-600 sm:grid-cols-3">
+            <li className="flex items-center gap-1"><Icon name="check" size={14} /> Đủ sáng, không ngược sáng</li>
+            <li className="flex items-center gap-1"><Icon name="check" size={14} /> Nhìn thẳng, không che mặt</li>
+            <li className="flex items-center gap-1"><Icon name="check" size={14} /> Chỉ một người trong khung</li>
+          </ul>
+
           <div className="mt-4">
-            <CameraCapture
-              onCapture={onCapture}
-              disabled={submitting}
-              showGuide
-              captureLabel="Chụp ảnh"
-              showPrivacyNotice
-              allowManualCapture={true}
-            />
-            {/* Progress indicator for capturing */}
-            {workflowState === "submitting" && (
-              <div className="mt-4 flex flex-col items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--brand)] text-white">
-                  <span className="animate-spin"><Icon name="loader" size={20} /></span>
-                </div>
-                <p className="text-lg font-medium text-center">Đang xử lý đăng ký...</p>
-                <p className="text-sm text-slate-500 text-center">Vui lòng không đóng trang này</p>
-              </div>
-            )}
+            <CameraCapture onCapture={onCapture} captureLabel="Chụp & đăng ký" showGuide showPrivacyNotice />
           </div>
-          <div className="mt-6 flex justify-end gap-2">
-            <Button variant="secondary" onClick={() => { setWorkflowState("camera_check"); setCurrentStep("camera_check"); }}>
-              <Icon name="chevron-left" size={14} className="mr-1" /> Quay lại
+
+          {providerDemo ? (
+            <label className="mt-4 flex flex-col gap-1 text-sm">
+              <span className="font-medium text-slate-700">Kịch bản DEMO (chỉ local/test)</span>
+              <select
+                value={fixture}
+                onChange={(e) => setFixture(e.target.value as FaceFixture)}
+                className="h-10 rounded-lg border border-slate-300 px-3 text-sm"
+              >
+                <option value="good">good — liveness pass, đăng ký thành công</option>
+                <option value="blurry">blurry — chất lượng kém, yêu cầu chụp lại</option>
+                <option value="liveness-fail">liveness-fail — chống giả mạo thất bại</option>
+              </select>
+            </label>
+          ) : null}
+
+          <div className="mt-6 flex justify-between">
+            <Button variant="secondary" onClick={() => setView("consent")}>
+              Quay lại
             </Button>
           </div>
         </Card>
-      )}
+      ) : null}
 
-      {/* Submitting Step (handled inline during capturing) */}
-      {workflowState === "submitting" && (
+      {/* Đang gửi */}
+      {view === "submitting" ? (
         <Card>
-            <CardTitle>Đang xử lý đăng ký</CardTitle>
-            <div className="mt-4 flex flex-col items-center gap-4 py-8">
-              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[var(--brand)] text-white">
-                <span className="animate-spin"><Icon name="loader" size={28} /></span>
-              </div>
-              <div className="text-center">
-                <p className="text-lg font-medium">Đang xác minh và lưu đăng ký...</p>
-                <p className="text-sm text-slate-500 mt-1">Vui lòng không đóng trang này</p>
-              </div>
-              <div className="w-64 h-2 bg-slate-200 rounded-full overflow-hidden">
-                <div className="h-full bg-[var(--brand)] rounded-full animate-pulse" style={{ width: "75%" }} />
-              </div>
+          <CardTitle>Đang xử lý đăng ký</CardTitle>
+          <div className="mt-4 flex flex-col items-center gap-4 py-8">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[var(--brand)] text-white">
+              <span className="animate-spin"><Icon name="refresh" size={28} /></span>
             </div>
-          </Card>
-      )}
+            <div className="text-center">
+              <p className="text-lg font-medium">Đang xác minh và lưu đăng ký…</p>
+              <p className="mt-1 text-sm text-slate-500">Vui lòng không đóng trang này.</p>
+            </div>
+          </div>
+        </Card>
+      ) : null}
 
-      {/* Success State */}
-      {workflowState === "success" && (
+      {/* Thành công */}
+      {view === "success" ? (
         <Card>
-          <div className="flex flex-col items-center gap-4 py-8 text-center">
+          <div className="flex flex-col items-center gap-4 py-6 text-center">
             <div className="flex h-20 w-20 items-center justify-center rounded-full bg-[var(--success-bg)] text-[var(--success)]">
               <Icon name="check" size={36} />
             </div>
             <div>
-              <h3 className="text-xl font-semibold text-slate-900">Đăng ký thành công!</h3>
-              <p className="text-slate-600 mt-1">
-                {initialState === "pending" || initialState === "none"
-                  ? "Đăng ký khuôn mặt đã được gửi và đang chờ HR duyệt."
-                  : "Đăng ký khuôn mặt đã được cập nhật."}
+              <h3 className="text-xl font-semibold text-slate-900">
+                {resultStatus === "active" ? "Đăng ký thành công!" : "Đã gửi đăng ký!"}
+              </h3>
+              <p className="mx-auto mt-1 max-w-md text-slate-600">
+                {resultStatus === "active"
+                  ? isAdminFlow
+                    ? "Khuôn mặt của nhân viên đã được kích hoạt và có thể dùng để chấm công."
+                    : "Khuôn mặt đã được kích hoạt. Bạn có thể chấm công bằng khuôn mặt ngay bây giờ."
+                  : "Đăng ký đã được ghi nhận và đang chờ HR duyệt. Bạn sẽ chấm công bằng khuôn mặt được sau khi HR duyệt."}
               </p>
             </div>
-            <div className="flex gap-3 mt-2">
-              <Button onClick={() => { router.push("/enrollment"); onComplete?.(); }}>
-                Quay lại trang đăng ký
-              </Button>
-              <Button variant="secondary" onClick={startOver}>
-                Đăng ký cho nhân viên khác
+            <div className="mt-2 flex flex-wrap justify-center gap-2">
+              {resultStatus === "active" && !isAdminFlow ? (
+                <Button onClick={() => router.push("/check-in")}>
+                  <Icon name="camera" size={16} /> Chấm công ngay
+                </Button>
+              ) : null}
+              <Button variant="secondary" onClick={() => router.push(isAdminFlow ? "/admin/enrollments" : "/dashboard")}>
+                {isAdminFlow ? "Về hàng đợi duyệt" : "Về trang chủ"}
               </Button>
             </div>
-            {error && (
-              <p className="mt-4 text-sm text-red-600" role="alert">
-                <span className="inline mr-1"><Icon name="alert-triangle" size={14} /></span>
-                {error}
-              </p>
-            )}
           </div>
         </Card>
-      )}
+      ) : null}
 
-      {/* Error State */}
-      {workflowState === "error" && (
+      {/* Lỗi */}
+      {view === "error" ? (
         <Card className="border-[var(--danger)]">
           <CardTitle>
-            <span className="text-[var(--danger)]">Đăng ký thất bại</span>
+            <span className="text-[var(--danger)]">Đăng ký chưa hoàn tất</span>
           </CardTitle>
           <div className="mt-4 flex flex-col items-center gap-4 text-center">
             <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[var(--danger-bg)] text-[var(--danger)]">
               <Icon name="x" size={32} />
             </div>
             <div>
-              <h3 className="text-xl font-semibold text-slate-900">Không thể hoàn tất đăng ký</h3>
-              <p className="text-slate-600 mt-1 max-w-md">{error || "Đã xảy ra lỗi không xác định"}</p>
+              <p role="alert" className="max-w-md text-slate-700">
+                {error?.message ?? "Đã xảy ra lỗi không xác định."}
+              </p>
+              {error?.code ? <p className="mt-1 text-xs text-slate-400">Mã lỗi: {error.code}</p> : null}
             </div>
-            <div className="flex gap-3">
-              <Button variant="secondary" onClick={retryFromError}>
-                <span className="mr-1 inline-flex"><Icon name="refresh" size={14} /></span> Thử lại chụp ảnh
+            <div className="flex flex-wrap justify-center gap-2">
+              <Button variant="secondary" onClick={() => { setError(null); setView("capture"); }}>
+                <Icon name="refresh" size={16} /> Chụp lại
               </Button>
-              <Button variant="ghost" onClick={retryFromCamera}>
-                Quay lại kiểm tra camera
+              <Button variant="ghost" onClick={() => { setError(null); setView("consent"); }}>
+                Quay lại
               </Button>
             </div>
           </div>
         </Card>
-      )}
+      ) : null}
 
-      {/* Revoke Section for Active/Pending/Needs Review Enrollments */}
-      {(initialState === "active" || initialState === "pending" || initialState === "needs_review") && (
-        <Card className="border-amber-200 bg-amber-50">
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>Thu hồi đăng ký</CardTitle>
-              <CardDescription>Rút đồng ý — mẫu khuôn mặt bị xóa ở provider, enrollment chuyển về revoked.</CardDescription>
-            </div>
-            <Button
-              variant="danger"
-              size="sm"
-              onClick={() => setConfirmingRevoke(true)}
-              loading={revoking}
-            >
-              Thu hồi mẫu khuôn mặt
-            </Button>
-          </div>
-          <ConfirmDialog
-            open={confirmingRevoke}
-            title="Thu hồi mẫu khuôn mặt"
-            message="Bạn sẽ phải đăng ký lại để chấm công bằng khuôn mặt. Tiếp tục thu hồi?"
-            confirmLabel="Thu hồi"
-            danger
-            loading={revoking}
-            onConfirm={onRevoke}
-            onCancel={() => setConfirmingRevoke(false)}
-          />
-        </Card>
-      )}
-
-      {/* Provider Demo Fixture Selector */}
-      {providerDemo && workflowState !== "success" && workflowState !== "submitting" && (
-        <Card>
-          <CardTitle>Kịch bản DEMO (chỉ local/test)</CardTitle>
-          <CardDescription>Mock provider không đọc ảnh thật — kết quả theo kịch bản chọn sẵn.</CardDescription>
-          <select
-            value={fixture}
-            onChange={(e) => setFixture(e.target.value as FaceFixture)}
-            aria-label="Kịch bản mock"
-            className="mt-2 h-10 w-full rounded-lg border border-slate-300 px-3 text-sm"
-            disabled={workflowState === "submitting" as EnrollmentWorkflowState}
-          >
-            <option value="good">good — liveness pass, enroll thành công</option>
-            <option value="blurry">blurry — chất lượng kém, yêu cầu chụp lại</option>
-            <option value="liveness-fail">liveness-fail — chống giả mạo thất bại</option>
-            <option value="no-match">no-match — không khớp (dùng ở verify)</option>
-          </select>
-        </Card>
-      )}
+      <ConfirmDialog
+        open={confirmingRevoke}
+        title="Thu hồi mẫu khuôn mặt"
+        message="Mẫu tham chiếu sẽ bị xóa và bạn phải đăng ký lại để chấm công bằng khuôn mặt. Tiếp tục thu hồi?"
+        confirmLabel="Thu hồi"
+        danger
+        loading={revoking}
+        onConfirm={onRevoke}
+        onCancel={() => setConfirmingRevoke(false)}
+      />
     </div>
-  );
-}
-
-export default function EnrollmentPage() {
-  return (
-    <main className="mx-auto flex w-full max-w-2xl flex-col gap-4 px-4 py-6">
-      <h1 className="text-2xl font-bold">Đăng ký khuôn mặt</h1>
-      <div className="flex h-32 items-center justify-center">Đang tải trạng thái…</div>
-    </main>
   );
 }

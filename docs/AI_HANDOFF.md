@@ -1205,3 +1205,65 @@ REVIEW_BAND_LOW=0.60
   self-enrollment SQL 2/2 · build ✅ · secret sạch.
 - Còn lại (bạn, theo `docs/GOOGLE_OAUTH_SETUP.md`): tạo OAuth client →
   bật provider + redirect URLs local/staging → test browser G-04/G-05/S-01.
+
+---
+
+## Phase 21 — Fix đăng ký khuôn mặt (completed 2026-10-29)
+
+**Triệu chứng:** nhân viên không đăng ký được khuôn mặt → không thể chấm công bằng khuôn mặt.
+
+**Nguyên nhân gốc (đã xác nhận bằng code):**
+1. `submitEnrollment` insert thẳng `status = 'active'`, nhưng RLS `face_insert`
+   chỉ cho `status = 'pending'` (migration `20261009125000_rls.sql`). Mọi tài khoản
+   không phải HR đều bị chặn `42501` → đăng ký luôn thất bại.
+2. `getMyEnrollment` chỉ map 4 trạng thái; `failed`/`needs_review` bị coi là `none`
+   nên UI mời đăng ký lại trong khi vẫn còn row → dễ đụng unique index.
+3. UI workflow import `getProviderHealth` từ `@/server/face` (module `server-only`)
+   trong client component; icon dùng tên không tồn tại; bước camera trùng lặp.
+4. `verifyFace` (AWS) chỉ lấy top-1 với `FaceMatchThreshold = verifyThreshold` →
+   nếu top-1 là người khác thì báo `no_match` dù đúng người ở top-2..10.
+5. Mock provider chỉ chấp nhận ảnh có chuỗi `"good"` → dữ liệu thật (data URL)
+   bị coi là chất lượng kém khi `providerDemo = false`.
+6. HR bấm "Thu hồi" ở trang nhân viên lại gọi `revokeMyEnrollment()` → thu hồi
+   khuôn mặt của chính HR.
+
+**Đã sửa:**
+- **Migration mới** `supabase/migrations/20261029120000_enrollment_submit_rpc.sql`:
+  - `submit_my_face_enrollment(...)` (SECURITY DEFINER): tự resolve employee qua
+    `auth.uid()`, đọc `app_settings.face_verification.auto_approve_enrollment`,
+    thay thế pending/needs_review cũ, ghi audit `enrollment.submitted`.
+  - `hr_submit_face_enrollment(...)`: HR/admin đăng ký hộ nhân viên (active ngay).
+  - Helper `face_enrollment_persist` bị revoke execute khỏi `public/anon/authenticated`.
+- **`src/features/face-enrollment/actions.ts`**: gọi RPC thay vì insert trực tiếp;
+  map lỗi provider thân thiện; dọn subject nếu ghi DB lỗi; `getMyEnrollment` trả
+  đủ 6 trạng thái + lý do; `approveEnrollment`/`rejectEnrollment` dùng RPC HR;
+  thêm `getEmployeeEnrollment`, `revokeEmployeeEnrollment`; bọc `getFaceProvider()`.
+- **`enrollment-workflow.tsx`**: viết lại 3 bước (đồng ý → chụp → hoàn tất),
+  màn trạng thái riêng cho pending/active/needs_review/failed/rejected/revoked,
+  banner provider, nút chấm công ngay, lỗi thân thiện, không còn import server-only.
+- **`camera-capture.tsx`**: nút chụp luôn khả dụng khi camera ready (không chặn bởi
+  face detection), bỏ nút trùng, sửa stale-state, autoPlay, cleanup ref an toàn.
+- **`FaceDetectionProvider.tsx`**: cấu trúc lại `detectFaces`, thêm `faceX/faceY`.
+- **`attendance/actions.ts`**: `myContext` trả `enrollmentState`; thông báo
+  "đang chờ duyệt" thay vì "chưa đăng ký"; bọc provider factory.
+- **`check-in/page.tsx`**: chuyển thành server component, truyền health/providerDemo
+  xuống `check-in-client.tsx` (hết đọc `process.env` trong browser).
+- **AWS Rekognition**: `MaxFaces: 10`, threshold = review band, chọn đúng FaceId.
+- **Mock provider**: nhận data URL thật, chỉ loại ảnh có marker lỗi.
+- **Settings → Nhận diện khuôn mặt**: thêm toggle `auto_approve_enrollment`
+  (mặc định **bật** để đăng ký xong dùng được ngay; tắt để buộc HR duyệt).
+- **Trang thu hồi của HR**: dùng `revokeEmployeeEnrollment(employeeId)`.
+
+**Bắt buộc khi deploy:** apply migration mới
+(`supabase db push` hoặc chạy file SQL trên Supabase SQL editor). Thiếu migration
+thì RPC không tồn tại và đăng ký vẫn lỗi.
+
+**Kết quả kiểm tra:**
+- `npm test` ✅ 118/118 pass (thêm regression test mock enroll với data URL thật)
+- `npx tsc --noEmit` ✅ không phát sinh lỗi mới ở các file đã sửa
+- `npm run lint` ✅ không phát sinh lỗi mới ở các file đã sửa
+- `npm run build` ✅ (26 routes; Next 16 cảnh báo bảo mật — cần `next upgrade --agent=security`)
+- Integration/RLS SQL chưa chạy: Docker Desktop không bật trong phiên này.
+
+**Next:** apply migration → test browser: đăng ký (user thường) → trạng thái
+active (hoặc pending nếu tắt auto-approve) → chấm công vào/ra → thu hồi → đăng ký lại.

@@ -32,6 +32,14 @@ import {
   exportAuditLogs,
 } from "@/features/settings/actions";
 
+export interface FaceConfig {
+  threshold: number;
+  review_band_low: number;
+  provider_timeout_ms: number;
+  /** true = nhân viên đăng ký xong được kích hoạt ngay; false = chờ HR duyệt. */
+  auto_approve_enrollment: boolean;
+}
+
 const TIMEZONES = [
   { value: "Asia/Ho_Chi_Minh", label: "Asia/Ho_Chi_Minh (UTC+7)" },
   { value: "Asia/Bangkok", label: "Asia/Bangkok (UTC+7)" },
@@ -94,7 +102,7 @@ export function SettingsClient() {
     max_overtime_hours_per_month: number;
     check_in_methods: string[];
   } | null>(null);
-  const [faceConfig, setFaceConfig] = useState<{ threshold: number; review_band_low: number; provider_timeout_ms: number } | null>(null);
+  const [faceConfig, setFaceConfig] = useState<FaceConfig | null>(null);
   const [holidays, setHolidays] = useState<Array<{ id: string; name: string; date: string; is_recurring: boolean }>>([]);
   const [users, setUsers] = useState<Array<{
     id: string;
@@ -136,7 +144,7 @@ export function SettingsClient() {
       if (policiesRes.ok && policiesRes.data) setPolicies(policiesRes.data);
       else setError(policiesRes.ok ? "Lỗi không xác định" : (policiesRes as { ok: false; message: string }).message);
 
-      if (faceConfigRes.ok && faceConfigRes.data) setFaceConfig(faceConfigRes.data);
+      if (faceConfigRes.ok && faceConfigRes.data) setFaceConfig(faceConfigRes.data as FaceConfig);
 
       if (orgRes.ok && orgRes.data) setOrg(orgRes.data);
 
@@ -401,7 +409,7 @@ function AttendancePoliciesSettings({ policies, setPolicies, saving, error, onSa
   );
 }
 
-function FaceVerificationSettings({ config, setFaceConfig, saving, onSave }: { config: { threshold: number; review_band_low: number; provider_timeout_ms: number } | null; setFaceConfig: (c: { threshold: number; review_band_low: number; provider_timeout_ms: number }) => void; saving: boolean; onSave: () => void }) {
+function FaceVerificationSettings({ config, setFaceConfig, saving, onSave }: { config: FaceConfig | null; setFaceConfig: (c: FaceConfig) => void; saving: boolean; onSave: () => void }) {
   if (!config) return null;
 
   return (
@@ -412,6 +420,21 @@ function FaceVerificationSettings({ config, setFaceConfig, saving, onSave }: { c
         <Input label="Ngưỡng verify (0-1)" type="number" step={0.01} min={0} max={1} value={config?.threshold ?? 0.7} onChange={(e) => setFaceConfig({ ...config!, threshold: Number(e.target.value) })} />
         <Input label="Review band low (0-1)" type="number" step={0.01} min={0} max={1} value={config?.review_band_low ?? 0.5} onChange={(e) => setFaceConfig({ ...config!, review_band_low: Number(e.target.value) })} />
         <Input label="Provider timeout (ms)" type="number" min={1000} max={30000} value={config?.provider_timeout_ms ?? 8000} onChange={(e) => setFaceConfig({ ...config!, provider_timeout_ms: Number(e.target.value) })} />
+        <label className="sm:col-span-3 flex items-start gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3">
+          <input
+            type="checkbox"
+            checked={config?.auto_approve_enrollment ?? true}
+            onChange={(e) => setFaceConfig({ ...config!, auto_approve_enrollment: e.target.checked })}
+            className="mt-0.5 h-4 w-4 rounded border-slate-300 text-[var(--brand)] focus:ring-[var(--brand)]"
+          />
+          <span className="text-sm text-slate-700">
+            <span className="font-medium">Tự kích hoạt sau khi nhân viên đăng ký</span>
+            <span className="mt-0.5 block text-slate-500">
+              Bật: nhân viên đăng ký xong dùng được ngay để chấm công. Tắt: đăng ký ở trạng thái chờ và HR phải duyệt
+              ở trang “Xác minh khuôn mặt”.
+            </span>
+          </span>
+        </label>
         <div className="sm:col-span-3 flex justify-end">
           <Button type="submit" loading={saving}>Lưu cấu hình</Button>
         </div>

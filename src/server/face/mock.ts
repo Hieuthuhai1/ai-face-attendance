@@ -43,10 +43,13 @@ export class MockFaceRecognitionProvider implements FaceRecognitionProvider {
   }
 
   async enrollFace(input: EnrollInput): Promise<FaceOperationResult<EnrollResult>> {
-    // Mock: kiểm tra số lượng ảnh "good"
+    // Mock: đếm ảnh không mang dấu hiệu lỗi (blurry/no-match/liveness-fail).
+    // Nhờ vậy dữ liệu thật (data URL) vẫn enroll được khi chạy mock.
+    const NEGATIVE = ["blurry", "no-match", "liveness-fail"];
     const goodCount = input.images.filter((img) => {
       const dataStr = typeof img.data === "string" ? img.data : "";
-      return dataStr.includes("good") || dataStr === "";
+      if (dataStr === "") return true;
+      return !NEGATIVE.some((marker) => dataStr.includes(marker));
     }).length;
 
     if (goodCount < 2) {

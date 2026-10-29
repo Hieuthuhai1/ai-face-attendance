@@ -336,8 +336,9 @@ export class AwsRekognitionProvider implements FaceRecognitionProvider {
       const command = new SearchFacesByImageCommand({
         CollectionId: this.collectionId,
         Image: { Bytes: bytes },
-        FaceMatchThreshold: this.verifyThreshold * 100, // AWS uses 0-100
-        MaxFaces: 1,
+        // Lấy nhiều ứng viên rồi tự chọn đúng FaceId của nhân viên (1:1 thật sự).
+        FaceMatchThreshold: this.reviewBandLow * 100, // AWS uses 0-100
+        MaxFaces: 10,
         QualityFilter: "AUTO",
       });
 
@@ -352,15 +353,11 @@ export class AwsRekognitionProvider implements FaceRecognitionProvider {
         };
       }
 
-      const match = response.FaceMatches[0];
-      // Check if the matched face is the specific enrolled face for this employee
-      const matchedFaceId = match.Face?.FaceId;
-      const isTargetFace = matchedFaceId === input.providerSubjectId;
-      const similarity = (match.Similarity ?? 0) / 100; // Convert to 0..1
-      const confidence = similarity;
-
-      // If the matched face is not the target employee's face, treat as no match
-      if (!isTargetFace) {
+      // 1:1: chỉ chấp nhận FaceId đã đăng ký cho nhân viên này.
+      const match = response.FaceMatches.find(
+        (m) => m.Face?.FaceId === input.providerSubjectId,
+      );
+      if (!match) {
         return {
           ok: true,
           code: "no_match",
@@ -368,6 +365,10 @@ export class AwsRekognitionProvider implements FaceRecognitionProvider {
           data: { match: false, confidence: 0, liveness: "unknown", providerReference: "search_faces_wrong_face" },
         };
       }
+
+      const matchedFaceId = match.Face?.FaceId;
+      const similarity = (match.Similarity ?? 0) / 100; // Convert to 0..1
+      const confidence = similarity;
 
       // Determine liveness status (SearchFacesByImage doesn't directly return liveness)
       // We infer from quality/confidence

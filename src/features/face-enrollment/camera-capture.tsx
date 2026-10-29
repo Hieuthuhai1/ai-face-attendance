@@ -22,7 +22,7 @@ export type EnrollmentCameraState =
   | "error";
 
 const CAPTURE_WIDTH = 480;
-const ATTEMPT_MS = 6000;
+const ATTEMPT_MS = 10_000;
 
 /** Mở camera với timeout và fallback. */
 function openWithTimeout(constraints: MediaStreamConstraints, ms: number): Promise<MediaStream> {
@@ -86,7 +86,10 @@ interface CameraCaptureInnerProps {
   buttonVariant?: "primary" | "secondary";
   /** Show privacy notice */
   showPrivacyNotice?: boolean;
-  /** Allow manual capture without face detection */
+  /**
+   * @deprecated Không còn cần thiết: nút chụp luôn bật khi camera sẵn sàng.
+   * Giữ prop để không phá vỡ call site cũ.
+   */
   allowManualCapture?: boolean;
 }
 
@@ -99,102 +102,101 @@ function CameraCaptureInner({
   captureLabel = "Chụp ảnh",
   buttonVariant = "primary",
   showPrivacyNotice = false,
-  allowManualCapture = false,
 }: CameraCaptureInnerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const [state, setState] = useState<EnrollmentCameraState>("idle");
   const [quality, setQuality] = useState<{ ok: boolean; issues: string[] } | null>(null);
+  const [captureError, setCaptureError] = useState<string | null>(null);
   const { result, startDetection, stopDetection, isLoading, error: detectionError } = useFaceDetection();
 
-  const faceDetected = useCallback(() => result.detected, [result.detected]);
-  const faceCentered = useCallback(() => result.centered, [result.centered]);
-  const faceAligned = useCallback(() => result.aligned, [result.aligned]);
-  const faceSizeOk = useCallback(() => result.size === "ok", [result.size]);
-  const brightnessOk = useCallback(() => result.brightness === "ok", [result.brightness]);
-  const sharpnessOk = useCallback(() => result.sharpness !== "blurry", [result.sharpness]);
+  const faceDetected = result.detected;
 
-  // Chỉ yêu cầu phát hiện khuôn mặt, các điều kiện khác là khuyến nghị
-  const canCapture = faceDetected || allowManualCapture;
+  const stopStream = useCallback(() => {
+    streamRef.current?.getTracks().forEach((t) => t.stop());
+    streamRef.current = null;
+  }, []);
+
+  // Giữ tham chiếu mới nhất để cleanup không chạy lại mỗi lần provider re-render.
+  const stopDetectionRef = useRef(stopDetection);
+  useEffect(() => {
+    stopDetectionRef.current = stopDetection;
+  }, [stopDetection]);
 
   useEffect(() => {
     return () => {
-      streamRef.current?.getTracks().forEach((t) => t.stop());
+      stopDetectionRef.current();
+      stopStream();
     };
-  }, []);
+  }, [stopStream]);
 
-  async function start() {
+  const start = useCallback(async () => {
     if (!navigator.mediaDevices?.getUserMedia) {
       setState("unavailable");
       return;
     }
+    setCaptureError(null);
+    setQuality(null);
     setState("requesting");
     try {
+      stopStream();
       const stream = await openCamera();
       streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        try {
-          await videoRef.current.play();
-        } catch (playErr) {
-          console.error("Video play failed:", playErr);
-          // Try to play again after a short delay
-          await new Promise(r => setTimeout(r, 100));
-          await videoRef.current.play();
-        }
+      const video = videoRef.current;
+      if (!video) {
+        stopStream();
+        setState("error");
+        return;
+      }
+      video.srcObject = stream;
+      try {
+        await video.play();
+      } catch {
+        // Autoplay có thể bị chặn — thử lại sau 1 nhịp.
+        await new Promise((r) => setTimeout(r, 150));
+        await video.play();
       }
       setState("ready");
-      // Start face detection after camera is ready
-      if (videoRef.current) {
-        try {
-          startDetection(videoRef.current);
-        } catch (detErr) {
-          console.warn("Face detection start failed:", detErr);
-          // Continue without face detection - manual capture still works
-        }
+      try {
+        startDetection(video);
+      } catch {
+        // Không có face detection vẫn chụp được (chất lượng kiểm tra khi chụp).
       }
     } catch (err) {
-      console.error("Camera start error:", err);
-      const isNotAllowed = err instanceof DOMException && err.name === "NotAllowedError";
-      const isNotFound = err instanceof DOMException && err.name === "NotFoundError";
-      const isNotReadable = err instanceof DOMException && err.name === "NotReadableError";
-      const isOverconstrained = err instanceof DOMException && err.name === "OverconstrainedError";
-      const isTimeout = err instanceof DOMException && err.name === "TimeoutError";
-      
-      if (isNotAllowed) setState("denied");
-      else if (isNotFound) setState("unavailable");
-      else if (isNotReadable) setState("error");
-      else if (isOverconstrained) setState("error");
-      else if (isTimeout) setState("error");
+      const name = err instanceof DOMException ? err.name : "";
+      if (name === "NotAllowedError" || name === "SecurityError") setState("denied");
+      else if (name === "NotFoundError" || name === "DevicesNotFoundError") setState("unavailable");
       else setState("error");
     }
-  }
+  }, [startDetection, stopStream]);
 
-  async function startCapture() {
-    if (!canCapture) return;
-    setState("capturing");
-
+  const startCapture = useCallback(() => {
+    if (disabled) return;
     const video = videoRef.current;
-    if (!video || state !== "ready") {
-      setState("ready");
+    if (!video || !video.videoWidth || !video.videoHeight) {
+      setCaptureError("Camera chưa sẵn sàng. Đợi một chút rồi thử lại, hoặc bấm “Bật lại camera”.");
       return;
     }
 
-    // Capture frame
+    setCaptureError(null);
+    setQuality(null);
+    setState("capturing");
+
     const scale = CAPTURE_WIDTH / video.videoWidth;
     const w = CAPTURE_WIDTH;
-    const h = Math.round(video.videoHeight * scale);
+    const h = Math.max(1, Math.round(video.videoHeight * scale));
     const canvas = document.createElement("canvas");
     canvas.width = w;
     canvas.height = h;
     const ctx = canvas.getContext("2d", { willReadFrequently: true });
     if (!ctx) {
+      setCaptureError("Trình duyệt không xử lý được ảnh. Hãy thử trình duyệt khác.");
       setState("ready");
       return;
     }
     ctx.drawImage(video, 0, 0, w, h);
 
-    // Analyze quality
+    // Kiểm tra chất lượng ảnh (sáng/mờ/kích thước) — trung thực, không phải liveness.
     const pixels = ctx.getImageData(0, 0, w, h).data;
     const gray = new Uint8Array(w * h);
     for (let i = 0; i < w * h; i++) {
@@ -203,262 +205,197 @@ function CameraCaptureInner({
     const report = analyzeQuality(gray, w, h);
     setQuality({ ok: report.ok, issues: report.issues });
 
-    if (report.ok) {
-      // Stop face detection to save resources
-      stopDetection();
-      onCapture(canvas.toDataURL("image/jpeg", 0.85), report);
-    } else {
+    if (!report.ok) {
       setState("ready");
+      return;
     }
-  }
 
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      stopDetection();
-      streamRef.current?.getTracks().forEach((t) => t.stop());
-    };
+    stopDetection();
+    onCapture(canvas.toDataURL("image/jpeg", 0.85), report);
+  }, [disabled, onCapture, stopDetection]);
+
+  const retry = useCallback(() => {
+    setState("idle");
+    setCaptureError(null);
+    setQuality(null);
   }, []);
 
-  // Determine current step for progress indicator
-  const getProgressStep = () => {
-    switch (state) {
-      case "idle":
-      case "requesting":
-        return 0;
-      case "ready":
-        return 1;
-      case "capturing":
-        return 2;
-      default:
-        return 0;
-    }
-  };
-
-  const progressStep = getProgressStep();
-
-  // Error messages
-  const errorMessages: Record<Exclude<EnrollmentCameraState, "idle" | "requesting" | "ready" | "capturing">, { title: string; hint: string }> = {
+  const errorMessages: Partial<Record<EnrollmentCameraState, { title: string; hint: string }>> = {
     denied: {
       title: "Quyền camera bị từ chối",
-      hint: "Trình duyệt chặn truy cập camera. Hãy bật quyền trong cài đặt trình duyệt (khóa 🔒 bên thanh địa chỉ) rồi tải lại trang.",
+      hint: "Trình duyệt đang chặn camera. Bấm vào biểu tượng ổ khóa trên thanh địa chỉ → cho phép Camera → tải lại trang.",
     },
     unavailable: {
       title: "Không tìm thấy camera",
-      hint: "Thiết bị không có camera hoặc trình duyệt không hỗ trợ getUserMedia. Dùng phương thức thay thế.",
+      hint: "Thiết bị không có camera hoặc trình duyệt không hỗ trợ. Bạn vẫn có thể chấm công bằng phương thức thay thế.",
     },
     error: {
-      title: "Lỗi mở camera",
-      hint: "Camera đang được dùng bởi ứng dụng khác, hoặc lỗi phần cứng. Thử: 1) Đóng app khác dùng camera 2) Tải lại trang 3) Dùng phương thức thay thế.",
-    },
-    detecting: {
-      title: "Đang phát hiện khuôn mặt",
-      hint: "Vui lòng đưa khuôn mặt vào khung camera.",
-    },
-    quality_check: {
-      title: "Kiểm tra chất lượng ảnh",
-      hint: "Đang phân tích chất lượng ảnh...",
+      title: "Không mở được camera",
+      hint: "Camera có thể đang bị ứng dụng khác dùng. Đóng ứng dụng đó, tải lại trang rồi thử lại.",
     },
   };
 
+  const guidance = result.detected
+    ? [
+        !result.centered && "đưa mặt vào giữa",
+        !result.aligned && "giữ đầu thẳng",
+        result.size === "small" && "gần camera hơn",
+        result.size === "large" && "xa camera hơn",
+        result.brightness === "dark" && "thêm ánh sáng",
+        result.brightness === "bright" && "giảm ánh sáng",
+        result.sharpness === "blurry" && "giữ yên máy",
+      ].filter(Boolean)
+    : [];
+
   return (
     <div className="flex flex-col gap-3">
-      {/* Privacy Notice */}
-      {showPrivacyNotice && (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4" role="note">
-          <div className="flex items-start gap-3">
-            <svg className="flex-shrink-0 w-5 h-5 mt-0.5 text-amber-500" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h4a1 1 0 001-1v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-            </svg>
-          </div>
-          <div className="flex-1">
-            <p className="text-sm font-medium text-amber-800">Quyền riêng tư dữ liệu khuôn mặt</p>
-            <p className="mt-1 text-sm text-amber-700">
-              Dữ liệu khuôn mặt chỉ dùng để xác minh chấm công. Chỉ lưu mã tham chiếu, không lưu ảnh/template.
-              <a href="#" className="underline hover:text-amber-900 ml-1">Xem chi tiết</a>
-            </p>
-          </div>
+      {showPrivacyNotice ? (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-3" role="note">
+          <p className="text-sm font-medium text-amber-800">Quyền riêng tư dữ liệu khuôn mặt</p>
+          <p className="mt-1 text-sm text-amber-700">
+            Ảnh chỉ dùng để tạo mẫu xác minh chấm công, không lưu ảnh thô và không dùng cho mục đích khác.
+          </p>
         </div>
-      )}
+      ) : null}
 
-      {/* Progress Indicator */}
       <DetailedProgressIndicator
         step={
-          state === "idle" ? "idle" :
-          state === "requesting" ? "detecting" :
-          state === "ready" ? "detecting" :
-          state === "capturing" ? "saving" : "idle"
+          state === "idle"
+            ? "idle"
+            : state === "requesting"
+              ? "detecting"
+              : state === "ready"
+                ? "detecting"
+                : state === "capturing"
+                  ? "saving"
+                  : "idle"
         }
         message={
-          state === "requesting" ? "Đang bật camera..." :
-          state === "ready" ? "Sẵn sàng chụp" :
-          state === "capturing" ? "Đang xử lý ảnh..." :
-          state === "idle" ? "Nhấn nút để bật camera" : "Sẵn sàng"
+          state === "requesting"
+            ? "Đang bật camera…"
+            : state === "ready"
+              ? "Camera sẵn sàng — bấm chụp khi khuôn mặt nằm trong khung"
+              : state === "capturing"
+                ? "Đang xử lý ảnh…"
+                : "Bấm “Bật camera” để bắt đầu"
         }
-        errorCode={state === "error" ? "CAMERA_ERROR" : state === "denied" ? "CAMERA_DENIED" : state === "unavailable" ? "NO_CAMERA" : undefined}
+        errorCode={
+          state === "error"
+            ? "CAMERA_ERROR"
+            : state === "denied"
+              ? "CAMERA_DENIED"
+              : state === "unavailable"
+                ? "NO_CAMERA"
+                : undefined
+        }
       />
 
-      {/* Camera Preview */}
       <div className="relative overflow-hidden rounded-xl border border-slate-200 bg-slate-950">
         <video
           ref={videoRef}
           playsInline
+          autoPlay
           muted
           aria-label={isCheckIn ? "Xem trước camera chấm công" : "Xem trước camera đăng ký khuôn mặt"}
           className="aspect-[4/3] w-full object-cover"
         />
-        {/* Face Guide Overlay - đè lên video */}
-        {showGuide && state === "ready" && (
-          <FaceGuideOverlay showInstructions={false} overlay={true} />
-        )}
-        {/* Recording indicator */}
-        {state === "capturing" && (
-          <div className="absolute top-3 right-3 flex items-center gap-1 px-2 py-1 rounded-full bg-red-500/90 text-white text-xs font-medium animate-pulse">
-            <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
-            Đang chụp...
+        {showGuide && state === "ready" ? <FaceGuideOverlay showInstructions={false} overlay /> : null}
+        {state === "capturing" ? (
+          <div className="absolute right-3 top-3 flex items-center gap-1 rounded-full bg-red-500/90 px-2 py-1 text-xs font-medium text-white">
+            <span className="h-2 w-2 animate-pulse rounded-full bg-white" />
+            Đang chụp…
           </div>
-        )}
+        ) : null}
       </div>
 
-      {/* Quality Feedback */}
-      {quality && !quality.ok && (
+      {quality && !quality.ok ? (
         <div role="alert" className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800">
           <p className="font-medium">Ảnh chưa đạt, hãy chụp lại:</p>
-          <ul className="list-disc pl-5 mt-1 space-y-0.5">
+          <ul className="mt-1 list-disc space-y-0.5 pl-5">
             {quality.issues.map((issue) => (
-              <li key={issue} className="text-sm">{issue}</li>
+              <li key={issue}>{issue}</li>
             ))}
           </ul>
         </div>
-      )}
+      ) : null}
 
-      {/* Face Detection Feedback */}
-      <div className="rounded-lg border border-slate-200 bg-white p-3">
-        <div className="flex items-center gap-2 text-sm">
-          <span className={cn(
-            "flex h-6 w-6 items-center justify-center rounded-full",
-            result.detected ? "bg-[var(--success-bg)] text-[var(--success)]" : "bg-slate-100 text-slate-400"
-          )}>
-            {result.detected ? (
-              <Icon name="check" size={14} />
-            ) : (
-              <Icon name="camera" size={14} />
-            )}
-          </span>
-          <span className={result.detected ? "text-[var(--success)]" : "text-slate-500"}>
-            {result.detected ? "Đã phát hiện khuôn mặt" : "Chưa phát hiện khuôn mặt"}
-          </span>
-          {result.faceCount > 1 && (
-            <span className="ml-auto text-xs px-2 py-0.5 rounded-full bg-[var(--warning-bg)] text-[var(--warning)]">
-              {result.faceCount} khuôn mặt
+      {captureError ? (
+        <p role="alert" className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+          {captureError}
+        </p>
+      ) : null}
+
+      {/* Hướng dẫn căn chỉnh realtime (không chặn chụp) */}
+      {state === "ready" ? (
+        <div className="rounded-lg border border-slate-200 bg-white p-3">
+          <div className="flex items-center gap-2 text-sm">
+            <span
+              className={cn(
+                "flex h-6 w-6 items-center justify-center rounded-full",
+                faceDetected ? "bg-[var(--success-bg)] text-[var(--success)]" : "bg-slate-100 text-slate-400",
+              )}
+            >
+              <Icon name={faceDetected ? "check" : "camera"} size={14} />
             </span>
-          )}
-        </div>
-
-        {result.detected && (
-          <div className="mt-2 grid grid-cols-3 gap-2 text-xs">
-            <div className={cn("flex items-center gap-1 p-2 rounded", faceCentered() ? "bg-[var(--success-bg)]" : "bg-[var(--warning-bg)]")}>
-              <Icon name={faceCentered() ? "check" : "x"} size={12} className={faceCentered() ? "text-[var(--success)]" : "text-[var(--warning)]"} />
-              <span className={faceCentered() ? "text-[var(--success)]" : "text-[var(--warning)]"}>Giữa</span>
-            </div>
-            <div className={cn("flex items-center gap-1 p-2 rounded", faceAligned() ? "bg-[var(--success-bg)]" : "bg-[var(--warning-bg)]")}>
-              <Icon name={faceAligned() ? "check" : "x"} size={12} className={faceAligned() ? "text-[var(--success)]" : "text-[var(--warning)]"} />
-              <span className={faceAligned() ? "text-[var(--success)]" : "text-[var(--warning)]"}>Thẳng</span>
-            </div>
-            <div className={cn("flex items-center gap-1 p-2 rounded", brightnessOk() ? "bg-[var(--success-bg)]" : "bg-[var(--warning-bg)]")}>
-              <Icon name={brightnessOk() ? "check" : "x"} size={12} className={brightnessOk() ? "text-[var(--success)]" : "text-[var(--warning)]"} />
-              <span className={brightnessOk() ? "text-[var(--success)]" : "text-[var(--warning)]"}>Sáng</span>
-            </div>
+            <span className={faceDetected ? "text-[var(--success)]" : "text-slate-500"}>
+              {faceDetected ? "Đã phát hiện khuôn mặt" : isLoading ? "Đang tải mô hình nhận diện…" : "Chưa phát hiện khuôn mặt"}
+            </span>
+            {result.faceCount > 1 ? (
+              <span className="ml-auto rounded-full bg-[var(--warning-bg)] px-2 py-0.5 text-xs text-[var(--warning)]">
+                {result.faceCount} khuôn mặt
+              </span>
+            ) : null}
           </div>
-        )}
-      </div>
 
-      {/* Camera State UI */}
-      {detectionError && state === "idle" && (
-        <div role="alert" className="rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700">
-          <p className="font-medium">Lỗi tải mô hình nhận diện</p>
-          <p className="text-xs mt-1">{detectionError}. Vẫn có thể dùng nút "Chụp ngay" bên dưới.</p>
+          <p className="mt-2 text-xs text-slate-500">
+            {detectionError
+              ? "Không tải được mô hình nhận diện — bạn vẫn có thể bấm chụp, hệ thống sẽ kiểm tra chất lượng ảnh."
+              : faceDetected
+                ? guidance.length > 0
+                  ? `Gợi ý: ${guidance.join(", ")}.`
+                  : "Khuôn mặt đã căn chỉnh tốt — bấm chụp."
+                : "Đưa khuôn mặt vào khung rồi bấm chụp. Nút chụp luôn khả dụng."}
+          </p>
         </div>
-      )}
+      ) : null}
 
       {state === "idle" || state === "requesting" ? (
         <Button onClick={start} loading={state === "requesting"} disabled={disabled} className="w-full">
-          {state === "requesting" ? "Đang bật camera..." : "Bật camera"}
+          {state === "requesting" ? "Đang bật camera…" : "Bật camera"}
         </Button>
       ) : null}
 
-      {state === "ready" && (
+      {state === "ready" ? (
         <div className="flex flex-col gap-2">
           <Button
             onClick={startCapture}
-            disabled={disabled || !faceDetected()}
+            disabled={disabled}
             variant={buttonVariant}
             className="w-full"
+            size="lg"
           >
-            {captureLabel}
-            {!faceDetected() && <span className="ml-2 opacity-50">(Đang tìm khuôn mặt...)</span>}
+            <Icon name="camera" size={18} /> {captureLabel}
           </Button>
-
-          {allowManualCapture && (
-            <Button
-              onClick={startCapture}
-              disabled={disabled}
-              variant="outline"
-              className="w-full"
-            >
-              Chụp ngay (bỏ qua phát hiện)
-            </Button>
-          )}
-
-          {allowManualCapture && faceDetected() && (
-            <Button
-              onClick={startCapture}
-              disabled={disabled}
-              variant="ghost"
-              size="sm"
-              className="w-full"
-            >
-              Chụp ngay (không cần căn chỉnh hoàn hảo)
-            </Button>
-          )}
+          <Button onClick={start} variant="ghost" size="sm" className="w-full">
+            Bật lại camera
+          </Button>
         </div>
-      )}
+      ) : null}
 
-      {state === "ready" && (
-        <p className="text-xs text-slate-500 text-center">
-          {detectionError
-            ? `Mô hình nhận diện lỗi (${detectionError}) — dùng "Chụp ngay" bên dưới.`
-            : result.detected
-              ? "Đã phát hiện khuôn mặt — có thể chụp. " +
-                [
-                  !result.centered && "Đưa mặt vào giữa",
-                  !result.aligned && "Giữ đầu thẳng",
-                  result.size === "small" && "Gần hơn",
-                  result.size === "large" && "Xa ra",
-                  result.brightness === "dark" && "Thêm sáng",
-                  result.brightness === "bright" && "Giảm sáng",
-                  result.sharpness === "blurry" && "Giữ máy ổn định",
-                ].filter(Boolean).join(", ")
-              : isLoading
-                ? "Đang tải mô hình nhận diện... Vui lòng đợi hoặc bấm 'Chụp ngay' bên dưới."
-                : "Chưa phát hiện khuôn mặt — hãy đưa mặt vào khung hoặc bấm 'Chụp ngay'."}
-        </p>
-      )}
-
-      {errorMessages[state as keyof typeof errorMessages] && (
+      {errorMessages[state] ? (
         <div role="alert" className="flex flex-col gap-2">
           <div className="flex items-start gap-2 rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700">
             <Icon name="x" size={16} className="mt-0.5 shrink-0" />
             <div>
-              <p className="font-medium">{errorMessages[state as keyof typeof errorMessages].title}</p>
-              <p className="text-sm">{errorMessages[state as keyof typeof errorMessages].hint}</p>
+              <p className="font-medium">{errorMessages[state]!.title}</p>
+              <p>{errorMessages[state]!.hint}</p>
             </div>
           </div>
-          <Button variant="secondary" size="sm" onClick={start} className="w-full">
+          <Button variant="secondary" size="sm" onClick={retry} className="w-full">
             Thử lại
           </Button>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

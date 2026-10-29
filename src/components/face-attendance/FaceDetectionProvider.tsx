@@ -8,6 +8,10 @@ export interface FaceDetectionResult {
   faceCount: number;
   aligned: boolean;
   centered: boolean;
+  /** Tâm khuôn mặt theo trục X (0..1) — dùng cho overlay hướng dẫn. */
+  faceX?: number;
+  /** Tâm khuôn mặt theo trục Y (0..1) — dùng cho overlay hướng dẫn. */
+  faceY?: number;
   size: "small" | "ok" | "large";
   brightness: "dark" | "ok" | "bright";
   sharpness: "blurry" | "ok" | "sharp";
@@ -44,31 +48,36 @@ export function FaceDetectionProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const detectionInterval = useRef<ReturnType<typeof setInterval> | null>(null);
-  const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const isDetecting = useRef(false);
-
-  async function loadModels() {
-    try {
-      await Promise.all([
-        faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
-        faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
-        faceapi.nets.faceExpressionNet.loadFromUri(MODEL_URL),
-      ]);
-      setIsLoading(false);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      setError(`Không tải được mô hình: ${msg}`);
-      setIsLoading(false);
-    }
-  }
+  const disposed = useRef(false);
 
   useEffect(() => {
+    disposed.current = false;
+    async function loadModels() {
+      try {
+        await Promise.all([
+          faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+          faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+          faceapi.nets.faceExpressionNet.loadFromUri(MODEL_URL),
+        ]);
+        if (!disposed.current) setIsLoading(false);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        if (!disposed.current) {
+          setError(`Không tải được mô hình: ${msg}`);
+          setIsLoading(false);
+        }
+      }
+    }
     loadModels();
+    return () => {
+      disposed.current = true;
+    };
   }, []);
 
   async function detectFaces(video: HTMLVideoElement) {
-    if (!video || video.readyState !== 4 || isDetecting.current) return;
+    if (!video || video.readyState !== 4 || isDetecting.current || disposed.current) return;
     isDetecting.current = true;
 
     try {
@@ -77,95 +86,89 @@ export function FaceDetectionProvider({ children }: { children: ReactNode }) {
         .withFaceLandmarks(true)
         .withFaceExpressions();
 
-      if (detection) {
-        const { detection: det, landmarks, expressions: faceExpressions } = detection;
-        const box = det.box;
-        const videoWidth = video.videoWidth;
-        const videoHeight = video.videoHeight;
+      if (!detection || disposed.current) {
+        setResult(DEFAULT_RESULT);
+        return;
+      }
 
-        // Check face size relative to video
-        const faceArea = box.width * box.height;
-        const videoArea = videoWidth * videoHeight;
-        const sizeRatio = faceArea / videoArea;
+      const { detection: det, landmarks, expressions } = detection;
+      const box = det.box;
+      const videoWidth = video.videoWidth;
+      const videoHeight = video.videoHeight;
 
-        let size: "small" | "ok" | "large" = "ok";
-        if (sizeRatio < 0.08) size = "small";
-        else if (sizeRatio > 0.6) size = "large";
+      // Kích thước khuôn mặt so với khung hình
+      const sizeRatio = (box.width * box.height) / (videoWidth * videoHeight);
+      const size: "small" | "ok" | "large" =
+        sizeRatio < 0.08 ? "small" : sizeRatio > 0.6 ? "large" : "ok";
 
-        // Check centering
-        const faceCenterX = box.x + box.width / 2;
-        const faceCenterY = box.y + box.height / 2;
-        const videoCenterX = videoWidth / 2;
-        const videoCenterY = videoHeight / 2;
-        const offsetX = Math.abs(faceCenterX - videoCenterX) / (videoWidth / 2);
-        const offsetY = Math.abs(faceCenterY - videoCenterY) / (videoHeight / 2);
-        const centered = offsetX < 0.35 && offsetY < 0.35;
+      // Vị trí tâm khuôn mặt
+      const faceX = (box.x + box.width / 2) / videoWidth;
+      const faceY = (box.y + box.height / 2) / videoHeight;
+      const centered = Math.abs(faceX - 0.5) < 0.18 && Math.abs(faceY - 0.5) < 0.2;
 
-        // Estimate brightness from face region (simplified)
-        let brightness: "dark" | "ok" | "bright" = "ok";
-        // We'll use a canvas to sample brightness
-        if (canvasRef.current) {
-          const ctx = canvasRef.current.getContext("2d");
-          if (ctx) {
-            canvasRef.current.width = videoWidth;
-            canvasRef.current.height = videoHeight;
-            ctx.drawImage(video, 0, 0, videoWidth, videoHeight);
-            const imageData = ctx.getImageData(box.x, box.y, box.width, box.height);
-            let sum = 0;
-            for (let i = 0; i < imageData.data.length; i += 4) {
-              sum += (imageData.data[i] + imageData.data[i + 1] + imageData.data[i + 2]) / 3;
-            }
-            const avgBrightness = sum / (imageData.data.length / 4);
-            if (avgBrightness < 40) brightness = "dark";
-            else if (avgBrightness > 220) brightness = "bright";
+      // Độ sáng vùng mặt
+      let brightness: "dark" | "ok" | "bright" = "ok";
+      if (!canvasRef.current) {
+        canvasRef.current = document.createElement("canvas");
+        canvasRef.current.style.display = "none";
+        document.body.appendChild(canvasRef.current);
+      }
+      const canvas = canvasRef.current;
+      const ctx = canvas.getContext("2d", { willReadFrequently: true });
+      if (ctx) {
+        canvas.width = videoWidth;
+        canvas.height = videoHeight;
+        ctx.drawImage(video, 0, 0, videoWidth, videoHeight);
+        const sx = Math.max(0, Math.floor(box.x));
+        const sy = Math.max(0, Math.floor(box.y));
+        const sw = Math.max(1, Math.min(Math.floor(box.width), videoWidth - sx));
+        const sh = Math.max(1, Math.min(Math.floor(box.height), videoHeight - sy));
+        try {
+          const imageData = ctx.getImageData(sx, sy, sw, sh);
+          let sum = 0;
+          for (let i = 0; i < imageData.data.length; i += 4) {
+            sum += (imageData.data[i] + imageData.data[i + 1] + imageData.data[i + 2]) / 3;
           }
-
-        // Sharpness from landmarks (eye openness, etc.)
-        let sharpness: "blurry" | "ok" | "sharp" = "ok";
-        if (faceExpressions) {
-          const eyeOpenness = (faceExpressions.neutral || 0) + (faceExpressions.happy || 0);
-          if (eyeOpenness < 0.2) sharpness = "blurry";
-          else if (eyeOpenness > 0.6) sharpness = "sharp";
+          const avg = sum / (imageData.data.length / 4);
+          if (avg < 40) brightness = "dark";
+          else if (avg > 220) brightness = "bright";
+        } catch {
+          // getImageData có thể lỗi nếu canvas bị nhiễu — bỏ qua.
         }
-
-        // Check alignment (face rotation)
-        const leftEye = landmarks.getLeftEye();
-        const rightEye = landmarks.getRightEye();
-        const eyeAngle = Math.atan2(rightEye[0].y - leftEye[0].y, rightEye[0].x - leftEye[0].x);
-        const aligned = Math.abs(eyeAngle) < 0.5; // ~28 degrees
-
-        setResult({
-          detected: true,
-          faceCount: 1,
-          aligned,
-          centered,
-          size,
-          brightness,
-          sharpness,
-          landmarks,
-          box,
-        });
       }
-    } else {
-        // No face detected
-        setResult({
-          detected: false,
-          faceCount: 0,
-          aligned: false,
-          centered: false,
-          size: "ok",
-          brightness: "ok",
-          sharpness: "ok",
-          landmarks: null,
-          box: null,
-        });
+
+      // Độ nét ước lượng từ biểu cảm (không phải blur thật) — chỉ là gợi ý.
+      let sharpness: "blurry" | "ok" | "sharp" = "ok";
+      if (expressions) {
+        const openness = (expressions.neutral || 0) + (expressions.happy || 0);
+        if (openness < 0.2) sharpness = "blurry";
+        else if (openness > 0.6) sharpness = "sharp";
       }
+
+      // Góc nghiêng đầu qua đường nối hai mắt
+      const leftEye = landmarks.getLeftEye();
+      const rightEye = landmarks.getRightEye();
+      const eyeAngle = Math.atan2(rightEye[0].y - leftEye[0].y, rightEye[0].x - leftEye[0].x);
+      const aligned = Math.abs(eyeAngle) < 0.5; // ~28 độ
+
+      setResult({
+        detected: true,
+        faceCount: 1,
+        aligned,
+        centered,
+        faceX,
+        faceY,
+        size,
+        brightness,
+        sharpness,
+        landmarks,
+        box,
+      });
     } catch (err) {
-      console.error("Face detection error:", err);
       const msg = err instanceof Error ? err.message : String(err);
-      // Nếu là lỗi WebGL/context lost, set error để UI hiển thị
+      // Lỗi WebGL/context: hiển thị để người dùng biết vẫn chụp tay được.
       if (msg.includes("WebGL") || msg.includes("context") || msg.includes("canvas") || msg.includes("texture")) {
-        setError(`Lỗi WebGL: ${msg}. Thử tải lại trang hoặc dùng nút "Chụp ngay".`);
+        setError(`Lỗi xử lý ảnh: ${msg}. Bạn vẫn có thể bấm chụp.`);
       }
       setResult(DEFAULT_RESULT);
     } finally {
@@ -174,24 +177,18 @@ export function FaceDetectionProvider({ children }: { children: ReactNode }) {
   }
 
   function startDetection(video: HTMLVideoElement) {
-    videoRef.current = video;
-    // Create hidden canvas for brightness analysis
     if (!canvasRef.current) {
       canvasRef.current = document.createElement("canvas");
       canvasRef.current.style.display = "none";
       document.body.appendChild(canvasRef.current);
     }
 
-    if (detectionInterval.current) {
-      clearInterval(detectionInterval.current);
-    }
-    // Detect at ~10fps
+    if (detectionInterval.current) clearInterval(detectionInterval.current);
     detectionInterval.current = setInterval(() => {
-      detectFaces(video);
-    }, 100);
+      void detectFaces(video);
+    }, 150);
 
-    // Initial detection
-    detectFaces(video);
+    void detectFaces(video);
   }
 
   function stopDetection() {

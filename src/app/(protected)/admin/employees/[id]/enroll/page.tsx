@@ -1,31 +1,41 @@
 import { Suspense } from "react";
 import { getProviderHealth } from "@/server/face/public";
-import { getMyEnrollment } from "@/features/face-enrollment/actions";
+import { getEmployeeEnrollment } from "@/features/face-enrollment/actions";
 import { LoadingState } from "@/components/ui/states";
 
 export async function generateStaticParams() {
-  // Return a dummy param to satisfy Cache Components requirement
-  // This path will not be used in production since the page is dynamic
+  // Placeholder để thoả Cache Components; route vẫn dynamic theo session.
   return [{ id: "static-placeholder" }];
 }
 
-export default function EnrollmentPage() {
+export default function EnrollForEmployeePage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-col gap-4 px-4 py-6">
-      <h1 className="text-2xl font-bold">Đăng ký khuôn mặt</h1>
+      <h1 className="text-2xl font-bold">Đăng ký khuôn mặt cho nhân viên</h1>
       <Suspense fallback={<LoadingState message="Đang tải trạng thái…" />}>
-        <EnrollmentData />
+        <EnrollmentData params={params} />
       </Suspense>
     </main>
   );
 }
 
-async function EnrollmentData() {
-  const [enrollment, health] = await Promise.all([getMyEnrollment(), getProviderHealth()]);
-  const state = enrollment.state === "none" ? "none" : enrollment.state;
+async function EnrollmentData({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const [enrollment, health] = await Promise.all([getEmployeeEnrollment(id), getProviderHealth()]);
+  const reason = enrollment.state === "none" ? null : enrollment.reason;
 
-  // Dynamic import client component to avoid SSR issues
   const { EnrollmentWorkflow } = await import("@/features/face-enrollment/enrollment-workflow");
 
-  return <EnrollmentWorkflow initialState={state} providerDemo={health.demo && health.configured} />;
+  return (
+    <EnrollmentWorkflow
+      initialState={enrollment.state}
+      statusReason={reason}
+      employeeId={id}
+      providerDemo={health.demo && health.configured}
+    />
+  );
 }

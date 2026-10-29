@@ -31,6 +31,8 @@ const faceVerificationSchema = z.object({
   threshold: z.number().min(0).max(1).default(0.7),
   review_band_low: z.number().min(0).max(1).default(0.5),
   provider_timeout_ms: z.number().int().min(1000).max(30000).default(8000),
+  /** true = nhân viên đăng ký xong được kích hoạt ngay; false = chờ HR duyệt. */
+  auto_approve_enrollment: z.boolean().default(true),
 });
 
 const holidaySchema = z.object({

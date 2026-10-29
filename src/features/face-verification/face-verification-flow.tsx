@@ -150,13 +150,21 @@ export function FaceVerificationFlow(props: FaceVerificationFlowProps) {
   }
 
   if (!status.hasEnrollment) {
+    const waiting = status.enrollmentState === "pending" || status.enrollmentState === "needs_review";
+    const rejected = status.enrollmentState === "rejected" || status.enrollmentState === "failed";
     return (
       <Card>
-        <CardTitle>Chưa có mẫu khuôn mặt</CardTitle>
-        <CardDescription>Bạn chưa đăng ký khuôn mặt. Vui lòng đăng ký trước khi chấm công.</CardDescription>
+        <CardTitle>{waiting ? "Đăng ký khuôn mặt đang chờ duyệt" : rejected ? "Đăng ký khuôn mặt chưa hoàn tất" : "Chưa có mẫu khuôn mặt"}</CardTitle>
+        <CardDescription>
+          {waiting
+            ? "HR cần duyệt đăng ký trước khi bạn chấm công bằng khuôn mặt. Bạn vẫn có thể dùng phương thức thay thế bên dưới."
+            : rejected
+              ? "Đăng ký trước đó chưa thành công. Hãy đăng ký lại để chấm công bằng khuôn mặt."
+              : "Bạn chưa đăng ký khuôn mặt. Vui lòng đăng ký trước khi chấm công."}
+        </CardDescription>
         <div className="mt-3 flex flex-col gap-2">
           <Button variant="secondary" size="sm" onClick={() => router.push("/enrollment")}>
-            Đăng ký khuôn mặt
+            {waiting ? "Xem trạng thái đăng ký" : "Đăng ký khuôn mặt"}
           </Button>
           <Button variant="ghost" size="sm" onClick={() => setShowFallback(true)}>
             Dùng phương thức thay thế (nhập lý do)

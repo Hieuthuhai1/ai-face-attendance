@@ -79,6 +79,28 @@ describe("provider service", () => {
     expect(ok.data?.providerSubjectId).toBe("mock_u1");
   });
 
+  it("mock: enrollFace chấp nhận data URL thật (không phụ thuộc fixture)", async () => {
+    const p = new MockFaceRecognitionProvider();
+    const real = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQ==";
+    const ok = await p.enrollFace({
+      employeeId: "u2",
+      images: [
+        { data: real, mimeType: "image/jpeg" },
+        { data: real, mimeType: "image/jpeg" },
+      ],
+    });
+    expect(ok.ok).toBe(true);
+
+    const blurry = await p.enrollFace({
+      employeeId: "u2",
+      images: [
+        { data: `${real}:blurry`, mimeType: "image/jpeg" },
+        { data: `${real}:blurry`, mimeType: "image/jpeg" },
+      ],
+    });
+    expect(blurry.ok).toBe(false);
+  });
+
   it("health: mock ở dev configured+demo; production NOT CONFIGURED", () => {
     const dev = getProviderHealth({ NODE_ENV: "development", FACE_PROVIDER: "mock" } as never);
     expect(dev).toMatchObject({ configured: true, demo: true });

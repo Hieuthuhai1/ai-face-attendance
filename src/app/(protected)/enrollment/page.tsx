@@ -16,11 +16,16 @@ export default function EnrollmentPage() {
 
 async function EnrollmentData() {
   const [enrollment, health] = await Promise.all([getMyEnrollment(), getProviderHealth()]);
-  const state: "none" | "pending" | "active" | "rejected" | "revoked" | "failed" | "needs_review" =
-    enrollment.state === "none" ? "none" : enrollment.state;
+  const reason = enrollment.state === "none" ? null : enrollment.reason;
 
   // Dynamic import client component to avoid SSR issues
   const { EnrollmentWorkflow } = await import("@/features/face-enrollment/enrollment-workflow");
 
-  return <EnrollmentWorkflow initialState={state} providerDemo={health.demo && health.configured} />;
+  return (
+    <EnrollmentWorkflow
+      initialState={enrollment.state}
+      statusReason={reason}
+      providerDemo={health.demo && health.configured}
+    />
+  );
 }

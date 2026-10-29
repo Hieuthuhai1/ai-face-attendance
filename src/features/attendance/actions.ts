@@ -49,7 +49,9 @@ async function myContext(supabase: Db, userId: string) {
     .from("employees")
     .select("id, organization_id, employee_code, employment_status")
     .eq("profile_id", userId)
-    .single();
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
   if (!employee || (employee as { employment_status: string }).employment_status !== "active") {
     // Tự động tạo employee nếu chưa có (idempotent)
     const { data: newEmpId, error: rpcError } = await supabase.rpc("ensure_self_employee");
@@ -60,25 +62,35 @@ async function myContext(supabase: Db, userId: string) {
       .from("employees")
       .select("id, organization_id, employee_code, employment_status")
       .eq("id", newEmpId)
-      .single();
+      .maybeSingle();
     if (!newEmployee) return null;
-    return { emp: newEmployee as { id: string; organization_id: string; employee_code: string }, tz: "Asia/Ho_Chi_Minh", subjectId: null };
+    const empNew = newEmployee as { id: string; organization_id: string; employee_code: string };
+    const { data: orgNew } = await supabase
+      .from("organizations")
+      .select("timezone")
+      .eq("id", empNew.organization_id)
+      .maybeSingle();
+    const tzNew = ((orgNew as { timezone?: string } | null)?.timezone) ?? "Asia/Ho_Chi_Minh";
+    return { emp: empNew, tz: tzNew, subjectId: null, enrollmentState: "none" };
   }
   const emp = employee as { id: string; organization_id: string; employee_code: string };
   const { data: org } = await supabase
     .from("organizations")
     .select("timezone")
     .eq("id", emp.organization_id)
-    .single();
+    .maybeSingle();
   const tz = ((org as { timezone?: string } | null)?.timezone) ?? "Asia/Ho_Chi_Minh";
   const { data: enrollment } = await supabase
     .from("face_enrollments")
-    .select("provider_subject_id")
+    .select("status, provider_subject_id")
     .eq("employee_id", emp.id)
-    .eq("status", "active")
+    .order("created_at", { ascending: false })
     .limit(1)
-    .single();
-  return { emp, tz, subjectId: (enrollment as { provider_subject_id: string } | null)?.provider_subject_id ?? null };
+    .maybeSingle();
+  const row = enrollment as { status: string; provider_subject_id: string | null } | null;
+  const enrollmentState = row?.status ?? "none";
+  const subjectId = enrollmentState === "active" ? (row?.provider_subject_id ?? null) : null;
+  return { emp, tz, subjectId, enrollmentState };
 }
 
 async function recordViaRpc(
@@ -160,6 +172,7 @@ export async function getTodayStatus() {
   return {
     eligible: true as const,
     hasEnrollment: ctx.subjectId !== null,
+    enrollmentState: ctx.enrollmentState,
     shift: resolved
       ? {
           name: resolvedMeta?.name ?? "",
@@ -225,7 +238,25 @@ export async function verifyCheck(input: {
   const ctx = await myContext(supabase, userId);
   if (!ctx) return { ok: false, error: { code: "NOT_ELIGIBLE", message: "Tài khoản chưa phải nhân viên đang làm việc.", category: "permanent", hint: "Liên hệ HR.", showFallback: false } };
   if (!ctx.subjectId) {
-    return { ok: false, error: { code: "NO_ENROLLMENT", message: "Chưa có mẫu khuôn mặt active. Hãy đăng ký và chờ HR duyệt.", category: "permanent", hint: "Đăng ký khuôn mặt trước khi chấm công.", showFallback: true } };
+    const waiting = ctx.enrollmentState === "pending" || ctx.enrollmentState === "needs_review";
+    return {
+      ok: false,
+      error: waiting
+        ? {
+            code: "NO_ENROLLMENT",
+            message: "Đăng ký khuôn mặt đang chờ duyệt. Bạn có thể dùng phương thức thay thế để chấm công.",
+            category: "permanent",
+            hint: "HR cần duyệt đăng ký trước khi chấm công bằng khuôn mặt.",
+            showFallback: true,
+          }
+        : {
+            code: "NO_ENROLLMENT",
+            message: "Chưa có mẫu khuôn mặt đang hoạt động. Hãy đăng ký khuôn mặt trước.",
+            category: "permanent",
+            hint: "Đăng ký khuôn mặt trước khi chấm công.",
+            showFallback: true,
+          },
+    };
   }
 
   const rl = checkRateLimit(`verify:${userId}`, VERIFY_LIMIT.max, VERIFY_LIMIT.windowMs);
@@ -271,7 +302,12 @@ export async function verifyCheck(input: {
     }
   }
 
-  const provider = getFaceProvider();
+  let provider;
+  try {
+    provider = getFaceProvider();
+  } catch {
+    return { ok: false, error: mapVerifyCode("not_configured") };
+  }
   const imageInput = frameToImageInput(input.frameDataUrl, provider.isDemo && input.fixture && FIXTURES.includes(input.fixture) ? input.fixture : undefined);
 
   let livenessStatus: string = "unknown";
