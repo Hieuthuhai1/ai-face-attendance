@@ -1254,16 +1254,30 @@ REVIEW_BAND_LOW=0.60
   (mặc định **bật** để đăng ký xong dùng được ngay; tắt để buộc HR duyệt).
 - **Trang thu hồi của HR**: dùng `revokeEmployeeEnrollment(employeeId)`.
 
-**Bắt buộc khi deploy:** apply migration mới
-(`supabase db push` hoặc chạy file SQL trên Supabase SQL editor). Thiếu migration
-thì RPC không tồn tại và đăng ký vẫn lỗi.
+**Migration đã áp dụng:**
+- Local: `supabase migration up` ✅ (3 file: `20261018120000`, `20261023120000`,
+  `20261029120000`).
+- Staging remote `vbqfcrptytzogskmornm`: `supabase db push` ✅ (5 file, gồm cả
+  `20261009136000`, `20261009137000`).
+- Verify: RPC tồn tại; helper `face_enrollment_persist` bị revoke execute với
+  `anon`/`authenticated`; cột `failed_reason`/`disabled_at` có; test transaction
+  auto-approve on → `active`, off → `pending`; audit `enrollment.submitted`;
+  REST trả `401 NOT_AUTHENTICATED` (đúng) thay vì `404`.
+
+**Deploy:**
+- Commit `a81b906` đã push lên `main`.
+- Vercel production: https://ai-face-attendance-zeta.vercel.app
+- `ALLOW_MOCK_IN_PRODUCTION=true` (DEMO, UI có banner) →
+  `/api/health/face` trả `configured:true, demo:true`. **Không dùng chấm công
+  thật**; khi có AWS credentials thì set `FACE_PROVIDER=aws-rekognition` +
+  `FACE_PROVIDER_API_KEY`/`FACE_PROVIDER_SECRET_KEY` và bỏ cờ này.
 
 **Kết quả kiểm tra:**
 - `npm test` ✅ 118/118 pass (thêm regression test mock enroll với data URL thật)
 - `npx tsc --noEmit` ✅ không phát sinh lỗi mới ở các file đã sửa
 - `npm run lint` ✅ không phát sinh lỗi mới ở các file đã sửa
 - `npm run build` ✅ (26 routes; Next 16 cảnh báo bảo mật — cần `next upgrade --agent=security`)
-- Integration/RLS SQL chưa chạy: Docker Desktop không bật trong phiên này.
+- DB: đã test RPC trực tiếp trên local; migration đã apply lên staging.
 
-**Next:** apply migration → test browser: đăng ký (user thường) → trạng thái
-active (hoặc pending nếu tắt auto-approve) → chấm công vào/ra → thu hồi → đăng ký lại.
+**Next:** test browser trên production (DEMO): đăng ký → active → chấm công →
+thu hồi → đăng ký lại. Sau đó cấu hình AWS credentials cho production thật.
