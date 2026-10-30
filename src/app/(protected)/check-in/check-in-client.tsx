@@ -10,9 +10,11 @@ type TodayStatus = Awaited<ReturnType<typeof getTodayStatus>>;
 export function CheckInClient({
   status,
   providerDemo,
+  showDevControls = false,
 }: {
   status: TodayStatus;
   providerDemo: boolean;
+  showDevControls?: boolean;
 }) {
   const [direction, setDirection] = useState<"check_in" | "check_out">(
     status.eligible && status.canCheckOut ? "check_out" : "check_in",
@@ -49,6 +51,7 @@ export function CheckInClient({
         direction={direction}
         shift={status.shift}
         providerDemo={providerDemo}
+        showDevControls={showDevControls}
         status={status}
       />
     </div>

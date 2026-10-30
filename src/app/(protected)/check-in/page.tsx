@@ -17,5 +17,5 @@ export default function CheckInPage() {
 
 async function CheckInData() {
   const [status, health] = await Promise.all([getTodayStatus(), getProviderHealth()]);
-  return <CheckInClient status={status} providerDemo={health.demo && health.configured} />;
+  return <CheckInClient status={status} providerDemo={health.demo && health.configured} showDevControls={process.env.NODE_ENV !== "production"} />;
 }

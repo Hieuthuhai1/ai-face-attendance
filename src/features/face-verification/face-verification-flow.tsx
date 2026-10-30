@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
@@ -33,6 +33,8 @@ export interface FaceVerificationFlowProps {
   shift?: { name: string; start_time: string; end_time: string; overnight: boolean } | null;
   /** Demo mode */
   providerDemo?: boolean;
+  /** Hiện bộ chọn kịch bản kiểm thử (chỉ môi trường dev) */
+  showDevControls?: boolean;
   /** Callback khi verification thành công */
   onSuccess?: (result: { direction: "check_in" | "check_out"; occurred_at: string }) => void;
   /** Callback khi verification thất bại */
@@ -117,13 +119,43 @@ const FAILED_META: Record<string, { title: string; hint: string; category?: "ret
 
 export function FaceVerificationFlow(props: FaceVerificationFlowProps) {
   const router = useRouter();
-  const { direction, shift, providerDemo = false, onSuccess, onError, onComplete, status } = props;
+  const { direction, shift, providerDemo = false, showDevControls = false, onSuccess, onError, onComplete, status } = props;
 
   const [fixture, setFixture] = useState<FaceFixture>("good");
   const keyRef = useRef("");
   const [ui, setUi] = useState<UiState>({ kind: "idle" });
   const [showFallback, setShowFallback] = useState(false);
   const [reason, setReason] = useState("");
+  const [now, setNow] = useState<Date | null>(null);
+
+  useEffect(() => {
+    const tick = () => setNow(new Date());
+    const raf = window.requestAnimationFrame(tick);
+    const timer = window.setInterval(tick, 1000);
+    return () => {
+      window.cancelAnimationFrame(raf);
+      window.clearInterval(timer);
+    };
+  }, []);
+
+  const timeLabel = now
+    ? new Intl.DateTimeFormat("vi-VN", {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: false,
+        timeZone: "Asia/Ho_Chi_Minh",
+      }).format(now)
+    : "--:--:--";
+  const dateLabel = now
+    ? new Intl.DateTimeFormat("vi-VN", {
+        weekday: "long",
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        timeZone: "Asia/Ho_Chi_Minh",
+      }).format(now)
+    : "";
 
   function newClientKey(): string {
     return `evt_${crypto.randomUUID()}`;
@@ -234,11 +266,13 @@ export function FaceVerificationFlow(props: FaceVerificationFlowProps) {
           </div>
           <div>
             <h1 className="text-xl font-bold text-slate-900">Xác minh khuôn mặt</h1>
-            <p className="text-sm text-slate-500" id="current-time">Đang tải thời gian...</p>
+            <p className="text-sm text-slate-500 tabular-nums" id="current-time">
+              {timeLabel} · Giờ Việt Nam
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-2 sm:ml-auto">
-          <span className="hidden sm:block px-3 py-1 text-xs font-medium bg-white rounded-full text-slate-600" id="current-date"></span>
+          <span className="hidden sm:block px-3 py-1 text-xs font-medium bg-white rounded-full text-slate-600" id="current-date">{dateLabel}</span>
         </div>
       </div>
 
@@ -322,7 +356,7 @@ export function FaceVerificationFlow(props: FaceVerificationFlowProps) {
       ) : (
         <Card>
           <CardTitle>Xác minh khuôn mặt — {direction === "check_in" ? "vào" : "ra"}</CardTitle>
-          {providerDemo ? (
+          {providerDemo && showDevControls ? (
             <select value={fixture} onChange={(e) => setFixture(e.target.value as FaceFixture)} aria-label="Kịch bản mock" className="mt-2 h-10 rounded-lg border border-slate-300 px-3 text-sm">
               <option value="good">good — pass (confidence cao)</option>
               <option value="blurry">blurry — confidence thấp → HR rà soát</option>
