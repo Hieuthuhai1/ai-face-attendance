@@ -1267,7 +1267,7 @@ REVIEW_BAND_LOW=0.60
 **Deploy:**
 - Commit `a81b906` đã push lên `main`.
 - Vercel production: https://ai-face-attendance-zeta.vercel.app
-- `ALLOW_MOCK_IN_PRODUCTION=true` (DEMO, UI có banner) →
+- `ALLOW_MOCK_IN_PRODUCTION=true` →
   `/api/health/face` trả `configured:true, demo:true`. **Không dùng chấm công
   thật**; khi có AWS credentials thì set `FACE_PROVIDER=aws-rekognition` +
   `FACE_PROVIDER_API_KEY`/`FACE_PROVIDER_SECRET_KEY` và bỏ cờ này.
@@ -1281,3 +1281,38 @@ REVIEW_BAND_LOW=0.60
 
 **Next:** test browser trên production (DEMO): đăng ký → active → chấm công →
 thu hồi → đăng ký lại. Sau đó cấu hình AWS credentials cho production thật.
+
+## Phase 22 — Bỏ nhãn DEMO + thiết kế lại trạng thái tải (completed 2026-10-30)
+
+**Đã thay đổi:**
+- Xóa `src/components/ui/demo-banner.tsx` cùng mọi usage/export; bỏ
+  `SHOW_FACE_DEMO_BANNER` khỏi `src/config/app.ts` và env Vercel
+  `NEXT_PUBLIC_FACE_DEMO_BANNER`.
+- `enrollment-workflow.tsx`: badge provider trung tính ("Dịch vụ nhận diện sẵn
+  sàng"), bỏ badge "DEMO MODE"; bộ chọn kịch bản mock chỉ hiện ở dev
+  (`showDevControls` truyền từ server).
+- `face-verification-flow.tsx`: bỏ banner DEMO; bộ chọn fixture chỉ hiện ở dev;
+  header hiển thị đồng hồ thật (giờ Việt Nam) thay vì "Đang tải thời gian...".
+- **Loader mới** `src/components/ui/loading-screen.tsx`:
+  - `AppLoadingScreen`: màn chờ toàn trang (logo, khung quét khuôn mặt, progress
+    bar, thông điệp bảo mật).
+  - `ScanLoader`: fallback gọn cho Suspense; `LoadingState` dùng component này.
+  - `PageSkeleton`: skeleton header + thẻ + bảng cho chuyển trang nội bộ.
+  - Thêm icon `scan-face`; keyframes `scan-sweep`/`loader-bar`/`loader-dot`/
+    `float-soft` trong `globals.css`; tôn trọng `prefers-reduced-motion`.
+- `src/app/loading.tsx` + `src/app/(protected)/loading.tsx`: loading cho lần tải
+  đầu và chuyển trang.
+
+**Deploy:**
+- Commit `76ec5a2`, `e9500d1`, `67f0c95` đã push `main`.
+- Vercel production: https://ai-face-attendance-zeta.vercel.app
+- Health: `configured:true, provider:"mock", demo:true` — **vẫn là mock**; UI
+  không còn nhãn DEMO. Cần cấu hình AWS trước khi dùng chấm công thật.
+- Verify production: login `nv.a@demo.vn` → `/check-in` không còn câu DEMO, không
+  còn select fixture, đồng hồ chạy đúng giờ Việt Nam.
+
+**Kết quả kiểm tra:**
+- `npm test` ✅ 118 pass / 17 skip
+- `npx tsc --noEmit` ✅ không lỗi mới ở file đã sửa
+- `npm run lint` ✅ không lỗi mới ở file đã sửa
+- `npm run build` ✅ (retry 1 lần do cảnh báo bảo mật Next 16)
