@@ -6,7 +6,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { DemoBanner } from "@/components/ui/demo-banner";
 import { Icon, type IconName } from "@/components/ui/icon";
 import { CameraCapture } from "@/features/face-enrollment/camera-capture";
 import { CONSENT_SECTIONS, CONSENT_VERSION } from "@/features/face-enrollment/consent";
@@ -68,7 +67,6 @@ export function EnrollmentFlow(props: { initialState: EnrollmentState; providerD
 
   return (
     <div className="flex flex-col gap-4">
-      <DemoBanner />
       <Card>
         <div className="flex items-center justify-between gap-2">
           <CardTitle>Trạng thái đăng ký</CardTitle>
@@ -109,7 +107,7 @@ export function EnrollmentFlow(props: { initialState: EnrollmentState; providerD
 
           {props.providerDemo ? (
             <Card>
-              <CardTitle>Kịch bản DEMO (chỉ local/test)</CardTitle>
+              <CardTitle>Kịch bản kiểm thử (chỉ local/test)</CardTitle>
               <CardDescription>Mock provider không đọc ảnh thật — kết quả theo kịch bản chọn sẵn.</CardDescription>
               <select
                 value={fixture}

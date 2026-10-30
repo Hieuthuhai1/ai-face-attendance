@@ -5,7 +5,6 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
-import { DemoBanner } from "@/components/ui/demo-banner";
 import { Icon } from "@/components/ui/icon";
 import { verifyCheck, fallbackCheck, type CheckResult, type AttendanceError, getTodayStatus } from "@/features/attendance/actions";
 import type { FaceFixture } from "@/server/face/types";
@@ -227,8 +226,6 @@ export function FaceVerificationFlow(props: FaceVerificationFlowProps) {
 
   return (
     <div className="flex flex-col gap-4">
-      <DemoBanner />
-
       {/* Header with current time and date */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 rounded-xl bg-[var(--brand-soft)] border border-[var(--brand)]/20">
         <div className="flex items-center gap-3">

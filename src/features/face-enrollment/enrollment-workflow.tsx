@@ -33,6 +33,8 @@ interface EnrollmentWorkflowProps {
   employeeId?: string;
   /** Provider demo mode */
   providerDemo?: boolean;
+  /** Hiện bộ chọn kịch bản kiểm thử (chỉ môi trường dev) */
+  showDevControls?: boolean;
   /** Callback khi enrollment thành công */
   onSuccess?: () => void;
   /** Callback khi enrollment thất bại */
@@ -95,6 +97,7 @@ export function EnrollmentWorkflow({
   statusReason = null,
   employeeId,
   providerDemo = false,
+  showDevControls = false,
   onSuccess,
   onError,
   onComplete,
@@ -203,16 +206,13 @@ export function EnrollmentWorkflow({
     <div className="flex flex-col gap-4">
       {/* Provider status */}
       <div className="flex flex-wrap items-center gap-2">
-        <Badge tone={health === null ? "neutral" : health.configured ? (health.demo ? "warning" : "success") : "danger"}>
+        <Badge tone={health === null ? "neutral" : health.configured ? "success" : "danger"}>
           {health === null
             ? "Đang kiểm tra dịch vụ…"
             : health.configured
-              ? health.demo
-                ? "DEMO — không dùng chấm công thật"
-                : "Dịch vụ nhận diện sẵn sàng"
+              ? "Dịch vụ nhận diện sẵn sàng"
               : "Dịch vụ nhận diện chưa cấu hình"}
         </Badge>
-        {providerDemo ? <Badge tone="info">DEMO MODE</Badge> : null}
       </div>
 
       {providerBlocked ? (
@@ -393,9 +393,9 @@ export function EnrollmentWorkflow({
             <CameraCapture onCapture={onCapture} captureLabel="Chụp & đăng ký" showGuide showPrivacyNotice />
           </div>
 
-          {providerDemo ? (
+          {providerDemo && showDevControls ? (
             <label className="mt-4 flex flex-col gap-1 text-sm">
-              <span className="font-medium text-slate-700">Kịch bản DEMO (chỉ local/test)</span>
+              <span className="font-medium text-slate-700">Kịch bản kiểm thử (chỉ môi trường dev)</span>
               <select
                 value={fixture}
                 onChange={(e) => setFixture(e.target.value as FaceFixture)}

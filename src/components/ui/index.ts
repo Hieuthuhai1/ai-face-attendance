@@ -13,11 +13,11 @@ export { Pagination, CompactPagination, LoadMore, pageItems, type PaginationProp
 export { Toast, Toaster, toast, type ToastTone } from "./toast";
 export { Skeleton, TableSkeleton, CardSkeleton } from "./skeleton";
 export { LoadingState, EmptyState, ErrorState } from "./states";
+export { AppLoadingScreen, ScanLoader, FaceScanMark, PageSkeleton } from "./loading-screen";
 export { Tooltip } from "./tooltip";
 export { StatCard, type StatCardProps } from "./stat-card";
 export { StatusIndicator, type StatusIndicatorProps } from "./status-indicator";
 export { Icon, type IconName } from "./icon";
-export { DemoBanner } from "./demo-banner";
 export { Avatar, AvatarGroup, AvatarUpload, type AvatarProps } from "./avatar";
 export { Tabs, TabPanel, type TabsProps, type TabItem } from "./tabs";
 export { Stepper, CompactStepper, StepContent, StepperActions, type StepperProps, type Step } from "./stepper";

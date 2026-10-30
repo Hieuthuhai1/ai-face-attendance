@@ -104,11 +104,14 @@ const PATHS: Record<string, React.ReactNode> = {
       <path d="M3 3v18" />
     </>
   ),
-  alert: (
+  "scan-face": (
     <>
-      <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
-      <path d="M12 9v4" />
-      <path d="M12 17h.01" />
+      <path d="M4 8V6a2 2 0 012-2h2" />
+      <path d="M16 4h2a2 2 0 012 2v2" />
+      <path d="M20 16v2a2 2 0 01-2 2h-2" />
+      <path d="M8 20H6a2 2 0 01-2-2v-2" />
+      <circle cx="12" cy="10.5" r="2.1" />
+      <path d="M8.6 16c.8-1.7 2-2.5 3.4-2.5s2.6.8 3.4 2.5" />
     </>
   ),
 };

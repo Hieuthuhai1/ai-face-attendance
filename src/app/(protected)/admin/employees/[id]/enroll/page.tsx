@@ -36,6 +36,7 @@ async function EnrollmentData({ params }: { params: Promise<{ id: string }> }) {
       statusReason={reason}
       employeeId={id}
       providerDemo={health.demo && health.configured}
+      showDevControls={process.env.NODE_ENV !== "production"}
     />
   );
 }

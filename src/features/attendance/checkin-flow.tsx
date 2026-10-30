@@ -4,7 +4,6 @@ import { useRef, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
-import { DemoBanner } from "@/components/ui/demo-banner";
 import { Icon } from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
 import { CameraCapture } from "@/features/face-enrollment/camera-capture";
@@ -152,8 +151,6 @@ export function CheckInFlow(props: { status: TodayStatus; providerDemo: boolean 
 
   return (
     <div className="flex flex-col gap-4">
-      <DemoBanner />
-
       {/* Header with current time and date */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 rounded-xl bg-[var(--brand-soft)] border border-[var(--brand)]/20">
         <div className="flex items-center gap-3">

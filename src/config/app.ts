@@ -2,10 +2,6 @@
 
 export const APP_TZ = process.env.NEXT_PUBLIC_APP_TZ ?? "Asia/Ho_Chi_Minh";
 
-/** Hiển thị banner DEMO khi dùng mock provider ở client. */
-export const SHOW_FACE_DEMO_BANNER =
-  process.env.NEXT_PUBLIC_FACE_DEMO_BANNER !== "false";
-
 /** Ngưỡng verify khuôn mặt — cấu hình được, không hardcode ở call-site.
  *  GIÁM SÁT: Giảm ngưỡng cho testing/demo (mặc định 0.72 / 0.6) */
 export const VERIFY_THRESHOLD = Number(process.env.VERIFY_THRESHOLD ?? 0.55);

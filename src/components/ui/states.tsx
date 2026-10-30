@@ -1,16 +1,10 @@
 import type { ReactNode } from "react";
 import { Button } from "./button";
 import { Icon } from "./icon";
+import { ScanLoader } from "./loading-screen";
 
 export function LoadingState({ message = "Đang tải dữ liệu…" }: { message?: string }) {
-  return (
-    <div role="status" aria-live="polite" className="flex flex-col items-center gap-2 py-10">
-      <span className="animate-spin text-[var(--info)]">
-        <Icon name="refresh" size={24} />
-      </span>
-      <p className="text-sm text-slate-600">{message}</p>
-    </div>
-  );
+  return <ScanLoader message={message} />;
 }
 
 export function EmptyState({

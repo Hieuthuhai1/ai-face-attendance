@@ -26,6 +26,7 @@ async function EnrollmentData() {
       initialState={enrollment.state}
       statusReason={reason}
       providerDemo={health.demo && health.configured}
+      showDevControls={process.env.NODE_ENV !== "production"}
     />
   );
 }
