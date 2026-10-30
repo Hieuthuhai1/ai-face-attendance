@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { connection } from "next/server";
 import { requireUser } from "@/server/auth";
 import { AppShell } from "./app-shell";
 import { signOut } from "@/features/auth/actions";
@@ -9,6 +10,8 @@ import type { Role } from "@/types/db";
  * `connection()` khai báo dynamic tường minh (đọc cookies phía dưới).
  */
 export async function ShellHost({ children }: { children: ReactNode }) {
+  // Đọc session là dynamic — khai báo sớm để không bị prerender tĩnh.
+  await connection();
   let user: { displayName: string; email: string; role: Role } | null = null;
   try {
     const { profile } = await requireUser();

@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { connection } from "next/server";
 import { getProviderHealth } from "@/server/face/public";
 import { getTodayStatus } from "@/features/attendance/actions";
 import { LoadingState } from "@/components/ui/states";
@@ -16,6 +17,7 @@ export default function CheckInPage() {
 }
 
 async function CheckInData() {
+  await connection();
   const [status, health] = await Promise.all([getTodayStatus(), getProviderHealth()]);
   return <CheckInClient status={status} providerDemo={health.demo && health.configured} showDevControls={process.env.NODE_ENV !== "production"} />;
 }

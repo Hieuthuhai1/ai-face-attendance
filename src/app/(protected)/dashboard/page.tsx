@@ -1,6 +1,9 @@
 import { Suspense } from "react";
-import { requireRole } from "@/server/auth";
+import { connection } from "next/server";
+import { requireUser } from "@/server/auth";
 import { getFullDashboardData } from "@/features/dashboard/actions";
+import { EmployeeToday } from "@/features/dashboard/employee-today";
+import type { Profile } from "@/types/db";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import { DataTable } from "@/components/ui/data-table";
@@ -9,7 +12,7 @@ import { StatCard } from "@/components/ui/stat-card";
 import { StatusIndicator } from "@/components/ui/status-indicator";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/app/app-shell";
-import { Icon } from "@/components/ui/icon";
+import { RefreshButton } from "@/components/ui/refresh-button";
 import { SimpleLineChart } from "@/components/ui/charts/line-chart";
 import { SimpleBarChart } from "@/components/ui/charts/bar-chart";
 import { SimplePieChart } from "@/components/ui/charts/pie-chart";
@@ -48,21 +51,41 @@ export default function DashboardPage({
   searchParams: Promise<{ date?: string; departmentId?: string; shiftId?: string; employeeId?: string; status?: string }>;
 }) {
   return (
-    <main className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-4 py-6">
-      <Suspense fallback={<LoadingState message="Đang tải tổng quan chấm công…" />}>
-        <DashboardContent searchParams={searchParams} />
-      </Suspense>
-    </main>
+    <Suspense
+      fallback={
+        <div className="mx-auto w-full max-w-7xl px-4 py-6">
+          <LoadingState message="Đang tải tổng quan chấm công…" />
+        </div>
+      }
+    >
+      <DashboardRouter searchParams={searchParams} />
+    </Suspense>
   );
 }
 
-async function DashboardContent({
+/** Nhân viên thấy trang "Hôm nay" cá nhân; quản lý/HR thấy dashboard phân tích. */
+async function DashboardRouter({
   searchParams,
 }: {
   searchParams: Promise<{ date?: string; departmentId?: string; shiftId?: string; employeeId?: string; status?: string }>;
 }) {
-  const { profile } = await requireRole(["manager", "hr_admin", "system_admin"]);
+  await connection();
+  const { profile } = await requireUser();
+  if (profile.role === "employee") {
+    return <EmployeeToday profile={profile} />;
+  }
+  return <DashboardContent profile={profile} searchParams={searchParams} />;
+}
+
+async function DashboardContent({
+  profile,
+  searchParams,
+}: {
+  profile: Profile;
+  searchParams: Promise<{ date?: string; departmentId?: string; shiftId?: string; employeeId?: string; status?: string }>;
+}) {
   const params = await searchParams;
+  await connection();
   const filters = {
     date: params.date ?? new Date().toISOString().slice(0, 10),
     departmentId: params.departmentId,
@@ -75,7 +98,7 @@ async function DashboardContent({
 
   if (!result.ok) {
     return (
-      <div className="flex flex-col gap-5">
+      <main className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-4 py-6">
         <PageHeader
           title="Tổng quan chấm công"
           description={`Ngày ${filters.date} · ${profile.role}`}
@@ -83,9 +106,8 @@ async function DashboardContent({
         <ErrorState
           title="Không thể tải dữ liệu"
           description={result.message}
-          onRetry={() => window.location.reload()}
         />
-      </div>
+      </main>
     );
   }
 
@@ -98,7 +120,7 @@ async function DashboardContent({
   });
 
   return (
-    <div className="flex flex-col gap-5">
+    <main className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-4 py-6">
       {/* Page Header */}
       <PageHeader
         title="Tổng quan chấm công"
@@ -108,9 +130,7 @@ async function DashboardContent({
             <span className="text-xs text-slate-500">
               Cập nhật: {new Date(data.lastUpdated).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}
             </span>
-            <Button onClick={() => window.location.reload()} variant="secondary" size="sm">
-              <Icon name="refresh" size={14} /> Làm mới
-            </Button>
+            <RefreshButton />
           </div>
         }
       />
@@ -161,9 +181,12 @@ async function DashboardContent({
           </label>
           <div className="flex items-end gap-2 sm:col-span-6">
             <Button type="submit">Lọc</Button>
-            <Button type="button" variant="secondary" onClick={() => window.location.assign("/dashboard")}>
+            <Link
+              href="/dashboard"
+              className="inline-flex h-8 items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-3 text-sm font-medium hover:bg-slate-50"
+            >
               Xóa lọc
-            </Button>
+            </Link>
           </div>
         </form>
       </Card>
@@ -347,6 +370,6 @@ async function DashboardContent({
           </div>
         </Card>
       </div>
-    </div>
+    </main>
   );
 }

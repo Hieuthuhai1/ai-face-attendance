@@ -158,12 +158,19 @@ export async function getTodayStatus() {
   const todayStr = wallDateString(now, ctx.tz);
   const { data: events } = await supabase
     .from("attendance_events")
-    .select("event_type, status, occurred_at")
+    .select("event_type, status, occurred_at, method, confidence, liveness_status")
     .eq("employee_id", ctx.emp.id)
     .gte("occurred_at", `${resolved?.work_date ?? todayStr}T00:00:00`)
     .order("occurred_at", { ascending: false })
     .limit(10);
-  const evs = (events ?? []) as Array<{ event_type: string; status: string; occurred_at: string }>;
+  const evs = (events ?? []) as Array<{
+    event_type: string;
+    status: string;
+    occurred_at: string;
+    method: string;
+    confidence: number | null;
+    liveness_status: string | null;
+  }>;
   const lastSuccess = evs.find((e) => e.status === "success");
   const openCheckIn = lastSuccess?.event_type === "check_in";
   const resolvedMeta = resolved
@@ -182,6 +189,7 @@ export async function getTodayStatus() {
         }
       : null,
     lastEvent: evs[0] ?? null,
+    events: evs,
     canCheckIn: resolved !== null && !openCheckIn,
     canCheckOut: openCheckIn,
     todayCount: evs.length,
