@@ -1316,3 +1316,45 @@ thu hồi → đăng ký lại. Sau đó cấu hình AWS credentials cho product
 - `npx tsc --noEmit` ✅ không lỗi mới ở file đã sửa
 - `npm run lint` ✅ không lỗi mới ở file đã sửa
 - `npm run build` ✅ (retry 1 lần do cảnh báo bảo mật Next 16)
+
+## Phase 23 — Trang "Hôm nay" cá nhân cho nhân viên (completed 2026-10-30)
+
+**Vấn đề:**
+- Menu "Hôm nay" trỏ `/dashboard`, nhưng trang chỉ cho manager/HR; nhân viên bị
+  `requireRole` đẩy sang `/check-in` nên bấm "Hôm nay" luôn nhảy sang Chấm công.
+
+**Đã thay đổi:**
+- `src/app/(protected)/dashboard/page.tsx`: router theo role bằng `requireUser()`;
+  nhân viên → `EmployeeToday`, manager/HR → dashboard phân tích. `<main>` tách
+  theo từng nhánh; thêm `connection()` trước khi đọc session/`new Date()` để
+  tránh lỗi prerender "unstable value Date.now()".
+- `src/features/dashboard/employee-today.tsx` (mới): trang "Hôm nay" cá nhân —
+  thẻ ca làm + trạng thái + CTA chấm công vào/ra, 4 số liệu nhanh (giờ vào/ra,
+  thời gian làm, đi muộn), timeline lượt chấm công hôm nay, tóm tắt chấm công
+  gần đây, thao tác nhanh. Có empty state khi chưa có ca/chưa đăng ký khuôn mặt.
+- `src/components/app/live-clock.tsx` (mới): đồng hồ giờ Việt Nam (SSR-safe,
+  render `--:--:--` trước hydrate).
+- `src/components/ui/refresh-button.tsx` (mới): nút "Làm mới" client, thay
+  `onClick` truyền từ server component trong dashboard (lỗi "Event handlers
+  cannot be passed to Client Component props" trước đây làm HR thấy màn hình lỗi).
+- `src/features/attendance/actions.ts`: `getTodayStatus()` trả thêm `events`
+  (method, confidence, liveness) để timeline dùng lại, không thêm query mới.
+- `src/components/app/shell-host.tsx`, `src/app/(protected)/check-in/page.tsx`:
+  thêm `connection()` trước `requireUser` để giảm lỗi prerender Supabase
+  (`Date.now()` trong `_useSession`).
+
+**Deploy:**
+- Commit `a0b4514` đã push `main`.
+- Vercel production: https://ai-face-attendance-zeta.vercel.app (deployment
+  `d9hnougv7`).
+- Verify production: login `nv.a@demo.vn` → `/check-in` → bấm "Hôm nay" → vẫn ở
+  `/dashboard`, thấy "CA LÀM HÔM NAY"; login `hr@demo.vn` → `/dashboard` thấy
+  "Tổng quan chấm công" (không còn màn hình lỗi).
+- Health: `configured:true, provider:"mock", demo:true` — vẫn mock.
+
+**Kết quả kiểm tra:**
+- `npm test` ✅ 118 pass / 17 skip
+- `npx tsc --noEmit` ✅ không lỗi mới ở file đã sửa
+- `npm run lint` ✅ không lỗi mới ở file đã sửa
+- `npm run build` ✅ (retry 1 lần do cảnh báo bảo mật Next 16)
+- Verify local production (`next start -p 3100`): nhân viên + HR đều đúng.
