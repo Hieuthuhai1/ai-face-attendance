@@ -24,20 +24,32 @@ export function wallMinutes(date: Date, timeZone: string): number {
   return get("hour") * 60 + get("minute");
 }
 
-/** Trễ (phút), đã trừ grace, làm tròn xuống theo rounding. */
+/**
+ * Trễ (phút) trong cùng ngày làm: grace chỉ là ngưỡng miễn trừ, KHÔNG trừ vào
+ * số phút báo cáo. Ví dụ ca 08:00, check-in 09:00, grace 5 → trễ 60 phút.
+ * Ca qua đêm: check-in sau nửa đêm (trước 12:00) được cộng 24h để so đúng.
+ */
 export function minutesLate(
   actual: Date,
   shiftStart: string,
   graceMin: number,
   roundingMin: number,
   timeZone: string,
+  overnight = false,
 ): number {
-  const diff = wallMinutes(actual, timeZone) - parseTimeToMinutes(shiftStart) - graceMin;
-  if (diff <= 0) return 0;
+  const start = parseTimeToMinutes(shiftStart);
+  let actualMin = wallMinutes(actual, timeZone);
+  if (overnight && actualMin < 12 * 60 && actualMin < start) actualMin += 1440;
+  const diff = actualMin - start;
+  if (diff <= graceMin) return 0;
   return Math.floor(diff / roundingMin) * roundingMin;
 }
 
-/** Về sớm (phút), đã trừ grace, làm tròn xuống theo rounding. */
+/**
+ * Về sớm (phút) trong cùng ngày làm: grace chỉ là ngưỡng miễn trừ, KHÔNG trừ
+ * vào số phút báo cáo. Ví dụ ca kết thúc 17:00, check-out 16:00, grace 5 →
+ * về sớm 60 phút.
+ */
 export function minutesEarlyLeave(
   actual: Date,
   shiftEnd: string,
@@ -45,9 +57,17 @@ export function minutesEarlyLeave(
   roundingMin: number,
   timeZone: string,
 ): number {
-  const diff = parseTimeToMinutes(shiftEnd) - graceMin - wallMinutes(actual, timeZone);
-  if (diff <= 0) return 0;
+  const diff = parseTimeToMinutes(shiftEnd) - wallMinutes(actual, timeZone);
+  if (diff <= graceMin) return 0;
   return Math.floor(diff / roundingMin) * roundingMin;
+}
+
+/** ISO instant của 00:00 wall-clock ngày `dateStr` theo timeZone (tránh lệch UTC). */
+export function zonedStartOfDayIso(dateStr: string, timeZone: string): string {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  const utcMidnight = Date.UTC(y, m - 1, d);
+  const offsetMin = wallMinutes(new Date(utcMidnight + 12 * 3600000), timeZone) - 12 * 60;
+  return new Date(utcMidnight - offsetMin * 60000).toISOString();
 }
 
 /** Độ dài ca (phút); ca qua đêm cộng 24h. */

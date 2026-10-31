@@ -6,6 +6,7 @@ import {
   parseTimeToMinutes,
   shiftDurationMinutes,
   wallMinutes,
+  zonedStartOfDayIso,
 } from "@/lib/attendance/rules";
 
 const TZ = "Asia/Ho_Chi_Minh";
@@ -23,18 +24,32 @@ describe("attendance rules (Phase 3)", () => {
     expect(wallMinutes(at("2026-10-09T01:10:00Z"), TZ)).toBe(490);
   });
 
-  it("đúng giờ trong grace → 0; trễ trừ grace + làm tròn xuống", () => {
+  it("đi muộn: grace chỉ miễn trừ, quá grace báo đủ số phút", () => {
+    // Trong grace 5' → 0
     expect(minutesLate(at("2026-10-09T01:03:00Z"), "08:00", 5, 1, TZ)).toBe(0);
-    expect(minutesLate(at("2026-10-09T01:10:00Z"), "08:00", 5, 1, TZ)).toBe(5);
-    // trễ 12', grace 5 → 7, rounding 5 → 5
-    expect(minutesLate(at("2026-10-09T01:12:00Z"), "08:00", 5, 5, TZ)).toBe(5);
+    // 08:10+07, grace 5 → trễ 10' (không trừ grace khỏi số báo cáo)
+    expect(minutesLate(at("2026-10-09T01:10:00Z"), "08:00", 5, 1, TZ)).toBe(10);
+    // 09:00+07, ca 08:00 → trễ đúng 60'
+    expect(minutesLate(at("2026-10-09T02:00:00Z"), "08:00", 5, 1, TZ)).toBe(60);
+    // rounding 5: trễ 12' → 10'
+    expect(minutesLate(at("2026-10-09T01:12:00Z"), "08:00", 5, 5, TZ)).toBe(10);
+    // Ca qua đêm 22:00, check-in 00:30 hôm sau → trễ 150'
+    expect(minutesLate(at("2026-10-09T17:30:00Z"), "22:00", 10, 1, TZ, true)).toBe(150);
   });
 
-  it("về sớm trừ grace", () => {
-    // 16:50+07 checkout, hết ca 17:00 grace 5 → 5'
-    expect(minutesEarlyLeave(at("2026-10-09T09:50:00Z"), "17:00", 5, 1, TZ)).toBe(5);
+  it("về sớm: grace chỉ miễn trừ, quá grace báo đủ số phút", () => {
+    // 16:50+07 checkout, hết ca 17:00, grace 5 → về sớm 10'
+    expect(minutesEarlyLeave(at("2026-10-09T09:50:00Z"), "17:00", 5, 1, TZ)).toBe(10);
+    // 16:00+07 checkout → về sớm đúng 60'
+    expect(minutesEarlyLeave(at("2026-10-09T09:00:00Z"), "17:00", 5, 1, TZ)).toBe(60);
     // 17:00 checkout → 0
     expect(minutesEarlyLeave(at("2026-10-09T10:00:00Z"), "17:00", 5, 1, TZ)).toBe(0);
+    // Trong grace 5' → 0
+    expect(minutesEarlyLeave(at("2026-10-09T09:58:00Z"), "17:00", 5, 1, TZ)).toBe(0);
+  });
+
+  it("mốc 00:00 theo timezone tổ chức (không lệch UTC)", () => {
+    expect(zonedStartOfDayIso("2026-10-09", TZ)).toBe("2026-10-08T17:00:00.000Z");
   });
 
   it("độ dài ca, gồm qua đêm", () => {

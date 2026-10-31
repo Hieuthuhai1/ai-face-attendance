@@ -11,6 +11,7 @@ import { EmptyState } from "@/components/ui/states";
 import { PageHeader } from "@/components/app/app-shell";
 import { LiveClock } from "@/components/app/live-clock";
 import { APP_TZ } from "@/config/app";
+import { minutesEarlyLeave, minutesLate } from "@/lib/attendance/rules";
 import type { Profile } from "@/types/db";
 
 type TodayStatus = Awaited<ReturnType<typeof getTodayStatus>>;
@@ -145,9 +146,10 @@ export async function EmployeeToday({ profile }: { profile: Profile }) {
   const todayRow = history.rows.find((r) => r.work_date === todayStr) ?? null;
 
   const events = [...status.events].sort((a, b) => a.occurred_at.localeCompare(b.occurred_at));
-  const firstIn = events.find((e) => e.event_type === "check_in" && e.status === "success") ?? null;
-  const lastOut =
-    [...events].reverse().find((e) => e.event_type === "check_out" && e.status === "success") ?? null;
+  // Lượt failed vẫn hiện trong timeline nhưng không được tính là giờ vào/ra.
+  const countedEvents = events.filter((e) => e.status !== "failed");
+  const firstIn = countedEvents.find((e) => e.event_type === "check_in") ?? null;
+  const lastOut = [...countedEvents].reverse().find((e) => e.event_type === "check_out") ?? null;
 
   const computedWorked = firstIn
     ? minutesBetween(firstIn.occurred_at, lastOut?.occurred_at ?? new Date().toISOString())
@@ -180,7 +182,31 @@ export async function EmployeeToday({ profile }: { profile: Profile }) {
   const weekMinutes = weekRows.reduce((sum, r) => sum + r.total_work_min, 0);
   const lateCount = weekRows.filter((r) => r.late_min > 0).length;
 
-  const lateMinutes = todayRow?.late_min ?? 0;
+  // Ưu tiên số liệu server đã chốt, nhưng vẫn tính dự phòng từ event để trang
+  // Hôm nay đúng ngay sau khi chấm công (kể cả khi summary chưa kịp cập nhật).
+  const computedLate =
+    firstIn && status.shift
+      ? minutesLate(
+          new Date(firstIn.occurred_at),
+          status.shift.start_time,
+          status.shift.grace_in_min,
+          status.shift.rounding_min,
+          APP_TZ,
+          status.shift.overnight,
+        )
+      : 0;
+  const computedEarly =
+    lastOut && status.shift
+      ? minutesEarlyLeave(
+          new Date(lastOut.occurred_at),
+          status.shift.end_time,
+          status.shift.grace_out_min,
+          status.shift.rounding_min,
+          APP_TZ,
+        )
+      : 0;
+  const lateMinutes = Math.max(todayRow?.late_min ?? 0, computedLate);
+  const earlyMinutes = Math.max(todayRow?.early_leave_min ?? 0, computedEarly);
   const firstInLabel = firstIn ? formatTime(firstIn.occurred_at) : todayRow?.first_in ? formatTime(todayRow.first_in) : "--:--";
   const lastOutLabel = lastOut ? formatTime(lastOut.occurred_at) : todayRow?.last_out ? formatTime(todayRow.last_out) : "--:--";
 
@@ -269,7 +295,7 @@ export async function EmployeeToday({ profile }: { profile: Profile }) {
       </Card>
 
       {/* Số liệu nhanh hôm nay */}
-      <section aria-label="Số liệu hôm nay" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <section aria-label="Số liệu hôm nay" className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
         <StatCard
           label="Giờ vào"
           value={firstInLabel}
@@ -291,6 +317,13 @@ export async function EmployeeToday({ profile }: { profile: Profile }) {
           icon="alert"
           tone={lateMinutes > 0 ? "warning" : "neutral"}
           hint={lateMinutes > 0 ? "Có ghi nhận đi muộn" : "Đúng giờ"}
+        />
+        <StatCard
+          label="Về sớm"
+          value={earlyMinutes > 0 ? `${earlyMinutes}′` : "0′"}
+          icon="clock"
+          tone={earlyMinutes > 0 ? "warning" : "neutral"}
+          hint={earlyMinutes > 0 ? "Có ghi nhận về sớm" : "Đủ giờ"}
         />
       </section>
 

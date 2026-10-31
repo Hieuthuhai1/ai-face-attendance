@@ -11,7 +11,7 @@ import { idempotencyKeySchema } from "@/lib/validation";
 import { logger } from "@/server/logger";
 import type { FaceFixture, FaceImageInput } from "@/server/face/types";
 import { decideVerification, resolveShiftFor, wallDateString } from "@/server/attendance/decision";
-import { minutesEarlyLeave, minutesLate, wallMinutes } from "@/lib/attendance/rules";
+import { minutesEarlyLeave, minutesLate, wallMinutes, zonedStartOfDayIso } from "@/lib/attendance/rules";
 
 /** Error classification for UI handling */
 export type ErrorCategory = "retryable" | "permanent" | "configuration" | "requires_fallback";
@@ -156,13 +156,17 @@ export async function getTodayStatus() {
   });
   const resolved = resolveShiftFor(now, wallMinutes(now, ctx.tz), list, ctx.tz);
   const todayStr = wallDateString(now, ctx.tz);
-  const { data: events } = await supabase
+  const workDate = resolved?.work_date ?? todayStr;
+  const dayStartIso = zonedStartOfDayIso(workDate, ctx.tz);
+  let eventQuery = supabase
     .from("attendance_events")
-    .select("event_type, status, occurred_at, method, confidence, liveness_status")
+    .select("event_type, status, occurred_at, method, confidence, liveness_status, shift_assignment_id")
     .eq("employee_id", ctx.emp.id)
-    .gte("occurred_at", `${resolved?.work_date ?? todayStr}T00:00:00`)
+    .gte("occurred_at", dayStartIso)
     .order("occurred_at", { ascending: false })
-    .limit(10);
+    .limit(50);
+  if (resolved) eventQuery = eventQuery.eq("shift_assignment_id", resolved.assignment_id);
+  const { data: events } = await eventQuery;
   const evs = (events ?? []) as Array<{
     event_type: string;
     status: string;
@@ -170,11 +174,17 @@ export async function getTodayStatus() {
     method: string;
     confidence: number | null;
     liveness_status: string | null;
+    shift_assignment_id: string | null;
   }>;
-  const lastSuccess = evs.find((e) => e.status === "success");
-  const openCheckIn = lastSuccess?.event_type === "check_in";
+  // Chỉ event được tính công mới quyết định trạng thái vào/ra; event failed
+  // vẫn hiển thị trong timeline nhưng không làm lệch giờ vào/ra.
+  const counted = evs.filter((e) => e.status !== "failed");
+  const lastCounted = counted[0] ?? null;
+  const openCheckIn = lastCounted?.event_type === "check_in";
   const resolvedMeta = resolved
-    ? (list.find((l) => l.id === resolved.assignment_id)?.meta as { name: string } | undefined)
+    ? (list.find((l) => l.id === resolved.assignment_id)?.meta as
+        | { name: string; grace_in_min: number; grace_out_min: number; rounding_min: number }
+        | undefined)
     : undefined;
   return {
     eligible: true as const,
@@ -186,13 +196,16 @@ export async function getTodayStatus() {
           start_time: resolved.shift.start_time,
           end_time: resolved.shift.end_time,
           overnight: resolved.shift.overnight,
+          grace_in_min: resolvedMeta?.grace_in_min ?? 0,
+          grace_out_min: resolvedMeta?.grace_out_min ?? 0,
+          rounding_min: resolvedMeta?.rounding_min ?? 1,
         }
       : null,
-    lastEvent: evs[0] ?? null,
+    lastEvent: lastCounted,
     events: evs,
     canCheckIn: resolved !== null && !openCheckIn,
     canCheckOut: openCheckIn,
-    todayCount: evs.length,
+    todayCount: counted.length,
   };
 }
 
@@ -294,9 +307,9 @@ export async function verifyCheck(input: {
   if (!resolved) {
     return { ok: false, error: { code: "NO_SHIFT", message: "Hôm nay bạn không có ca làm. Liên hệ HR nếu cần bổ sung.", category: "permanent", hint: "Liên hệ HR để phân ca.", showFallback: false } };
   }
-  const meta = list.find((l) => l.id === resolved.assignment_id)?.meta as {
-    grace_in_min: number; grace_out_min: number; rounding_min: number;
-  };
+  const meta = list.find((l) => l.id === resolved.assignment_id)?.meta as
+    | { grace_in_min: number; grace_out_min: number; rounding_min: number }
+    | undefined;
 
   if (input.direction === "check_out") {
     const status = await getTodayStatus();
@@ -374,6 +387,8 @@ export async function verifyCheck(input: {
   if (decision.outcome === "failed") {
     await failedEvent(decision.reason);
     revalidatePath("/check-in");
+    revalidatePath("/dashboard");
+    revalidatePath("/history");
     if (decision.reason === "LIVENESS_FAILED") {
       return { ok: false, error: { code: "LIVENESS_FAILED", message: "Không xác định được người thật. Thử lại đủ sáng/nhìn thẳng, hoặc dùng phương thức thay thế.", category: "retryable", hint: "Thử lại đủ sáng, nhìn thẳng. Không dùng ảnh/màn hình.", showFallback: true } };
     }
@@ -382,10 +397,10 @@ export async function verifyCheck(input: {
 
   const eventStatus = decision.outcome === "success" ? "success" : "pending_review";
   const late = input.direction === "check_in"
-    ? minutesLate(now, resolved.shift.start_time, meta.grace_in_min, meta.rounding_min, ctx.tz)
+    ? minutesLate(now, resolved.shift.start_time, meta?.grace_in_min ?? 0, meta?.rounding_min ?? 1, ctx.tz, resolved.shift.overnight)
     : 0;
   const early = input.direction === "check_out"
-    ? minutesEarlyLeave(now, resolved.shift.end_time, meta.grace_out_min, meta.rounding_min, ctx.tz)
+    ? minutesEarlyLeave(now, resolved.shift.end_time, meta?.grace_out_min ?? 0, meta?.rounding_min ?? 1, ctx.tz)
     : 0;
   const note = provider.isDemo ? "[DEMO] mock verification — không phải chấm công production" : null;
 
@@ -420,6 +435,8 @@ export async function verifyCheck(input: {
     return { ok: false, error: { code: "RECORD_FAILED", message: "Không ghi được chấm công, vui lòng thử lại.", category: "retryable", hint: "Thử lại, hệ thống sẽ không tạo trùng nhờ idempotency key.", showFallback: true } };
   }
   revalidatePath("/check-in");
+  revalidatePath("/dashboard");
+  revalidatePath("/history");
   if (eventStatus === "pending_review") {
     return {
       ok: true, direction: input.direction, occurred_at: (data as { occurred_at: string }).occurred_at,
@@ -465,24 +482,32 @@ export async function fallbackCheck(input: {
   const now = new Date();
   const { data: assignments } = await supabase
     .from("shift_assignments")
-    .select("id, shift_id, effective_from, effective_to, work_shifts!inner(start_time, end_time, overnight)")
+    .select("id, shift_id, effective_from, effective_to, work_shifts!inner(start_time, end_time, overnight, grace_in_min, grace_out_min, rounding_min)")
     .eq("employee_id", ctx.emp.id);
   const list = ((assignments ?? []) as unknown as Array<Record<string, unknown>>).map((a) => {
-    const s = a.work_shifts as { start_time: string; end_time: string; overnight: boolean };
+    const s = a.work_shifts as { start_time: string; end_time: string; overnight: boolean; grace_in_min: number; grace_out_min: number; rounding_min: number };
     return {
       id: a.id as string, shift_id: a.shift_id as string,
       effective_from: a.effective_from as string, effective_to: (a.effective_to as string) ?? null,
       shift: { start_time: (s.start_time as string).slice(0, 5), end_time: (s.end_time as string).slice(0, 5), overnight: s.overnight as boolean },
+      meta: s,
     };
   });
   const resolved = resolveShiftFor(now, wallMinutes(now, ctx.tz), list, ctx.tz);
   if (!resolved) return { ok: false, error: { code: "NO_SHIFT", message: "Hôm nay bạn không có ca làm.", category: "permanent", hint: "Liên hệ HR để phân ca.", showFallback: false } };
+  const meta = list.find((l) => l.id === resolved.assignment_id)?.meta;
+  const late = input.direction === "check_in"
+    ? minutesLate(now, resolved.shift.start_time, meta?.grace_in_min ?? 0, meta?.rounding_min ?? 1, ctx.tz, resolved.shift.overnight)
+    : 0;
+  const early = input.direction === "check_out"
+    ? minutesEarlyLeave(now, resolved.shift.end_time, meta?.grace_out_min ?? 0, meta?.rounding_min ?? 1, ctx.tz)
+    : 0;
 
   const { data, error } = await recordViaRpc(supabase, {
     employee_id: ctx.emp.id, assignment_id: resolved.assignment_id, event_type: input.direction,
     status: "fallback", method: "pin_fallback", verification_ref: null, liveness: null, confidence: null,
     idempotency_key: input.idempotencyKey, note: input.reason.trim().slice(0, 500),
-    work_date: resolved.work_date, shift_id: resolved.shift_id, late_min: 0, early_leave_min: 0,
+    work_date: resolved.work_date, shift_id: resolved.shift_id, late_min: late, early_leave_min: early,
   });
   if (error?.code === "23505") {
     return { ok: false, error: { code: "DUPLICATE", message: "Yêu cầu đã được ghi nhận trước đó.", category: "retryable", hint: "Không cần gửi lại.", showFallback: false } };
@@ -492,10 +517,16 @@ export async function fallbackCheck(input: {
     return { ok: false, error: { code: "RECORD_FAILED", message: "Không ghi được, vui lòng thử lại.", category: "retryable", hint: "Thử lại, hệ thống sẽ không tạo trùng nhờ idempotency key.", showFallback: false } };
   }
   revalidatePath("/check-in");
+  revalidatePath("/dashboard");
+  revalidatePath("/history");
   return {
     ok: true, direction: input.direction, occurred_at: (data as { occurred_at: string }).occurred_at,
-    status: "fallback", late_min: 0, early_leave_min: 0,
-    message: "Đã ghi nhận phương thức thay thế, chờ HR xác nhận.",
+    status: "fallback", late_min: late, early_leave_min: early,
+    message: late > 0
+      ? `Đã ghi nhận phương thức thay thế (trễ ${late}′), chờ HR xác nhận.`
+      : early > 0
+        ? `Đã ghi nhận phương thức thay thế (về sớm ${early}′), chờ HR xác nhận.`
+        : "Đã ghi nhận phương thức thay thế, chờ HR xác nhận.",
     verification_ref: null,
     confidence: null,
     liveness: null,
