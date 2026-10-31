@@ -33,8 +33,8 @@ describe("attendance rules (Phase 3)", () => {
     expect(minutesLate(at("2026-10-09T02:00:00Z"), "08:00", 5, 1, TZ)).toBe(60);
     // rounding 5: trễ 12' → 10'
     expect(minutesLate(at("2026-10-09T01:12:00Z"), "08:00", 5, 5, TZ)).toBe(10);
-    // Ca qua đêm 22:00, check-in 00:30 hôm sau → trễ 150'
-    expect(minutesLate(at("2026-10-09T17:30:00Z"), "22:00", 10, 1, TZ, true)).toBe(150);
+    // Ca qua đêm 22:00-06:00, check-in 00:30 hôm sau → trễ 150'
+    expect(minutesLate(at("2026-10-09T17:30:00Z"), "22:00", 10, 1, TZ, true, "06:00")).toBe(150);
   });
 
   it("về sớm: grace chỉ miễn trừ, quá grace báo đủ số phút", () => {

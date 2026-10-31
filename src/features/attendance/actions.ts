@@ -397,7 +397,7 @@ export async function verifyCheck(input: {
 
   const eventStatus = decision.outcome === "success" ? "success" : "pending_review";
   const late = input.direction === "check_in"
-    ? minutesLate(now, resolved.shift.start_time, meta?.grace_in_min ?? 0, meta?.rounding_min ?? 1, ctx.tz, resolved.shift.overnight)
+    ? minutesLate(now, resolved.shift.start_time, meta?.grace_in_min ?? 0, meta?.rounding_min ?? 1, ctx.tz, resolved.shift.overnight, resolved.shift.end_time)
     : 0;
   const early = input.direction === "check_out"
     ? minutesEarlyLeave(now, resolved.shift.end_time, meta?.grace_out_min ?? 0, meta?.rounding_min ?? 1, ctx.tz)
@@ -497,7 +497,7 @@ export async function fallbackCheck(input: {
   if (!resolved) return { ok: false, error: { code: "NO_SHIFT", message: "Hôm nay bạn không có ca làm.", category: "permanent", hint: "Liên hệ HR để phân ca.", showFallback: false } };
   const meta = list.find((l) => l.id === resolved.assignment_id)?.meta;
   const late = input.direction === "check_in"
-    ? minutesLate(now, resolved.shift.start_time, meta?.grace_in_min ?? 0, meta?.rounding_min ?? 1, ctx.tz, resolved.shift.overnight)
+    ? minutesLate(now, resolved.shift.start_time, meta?.grace_in_min ?? 0, meta?.rounding_min ?? 1, ctx.tz, resolved.shift.overnight, resolved.shift.end_time)
     : 0;
   const early = input.direction === "check_out"
     ? minutesEarlyLeave(now, resolved.shift.end_time, meta?.grace_out_min ?? 0, meta?.rounding_min ?? 1, ctx.tz)

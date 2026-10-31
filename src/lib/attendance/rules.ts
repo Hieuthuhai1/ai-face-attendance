@@ -36,10 +36,13 @@ export function minutesLate(
   roundingMin: number,
   timeZone: string,
   overnight = false,
+  shiftEnd?: string,
 ): number {
   const start = parseTimeToMinutes(shiftStart);
   let actualMin = wallMinutes(actual, timeZone);
-  if (overnight && actualMin < 12 * 60 && actualMin < start) actualMin += 1440;
+  if (overnight && shiftEnd && actualMin < start && isOvernightSpill(actualMin, shiftEnd, true)) {
+    actualMin += 1440;
+  }
   const diff = actualMin - start;
   if (diff <= graceMin) return 0;
   return Math.floor(diff / roundingMin) * roundingMin;

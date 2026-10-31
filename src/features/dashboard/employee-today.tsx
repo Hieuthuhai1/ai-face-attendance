@@ -193,6 +193,7 @@ export async function EmployeeToday({ profile }: { profile: Profile }) {
           status.shift.rounding_min,
           APP_TZ,
           status.shift.overnight,
+          status.shift.end_time,
         )
       : 0;
   const computedEarly =
