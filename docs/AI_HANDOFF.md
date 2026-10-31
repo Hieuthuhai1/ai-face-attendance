@@ -1358,3 +1358,52 @@ thu hồi → đăng ký lại. Sau đó cấu hình AWS credentials cho product
 - `npm run lint` ✅ không lỗi mới ở file đã sửa
 - `npm run build` ✅ (retry 1 lần do cảnh báo bảo mật Next 16)
 - Verify local production (`next start -p 3100`): nhân viên + HR đều đúng.
+
+## Phase 24 — Sửa đi muộn/về sớm + giờ vào/ra trang "Hôm nay" (completed 2026-10-31)
+
+**Vấn đề:**
+- Ca 08:00, check-in 09:00 nhưng bảng công báo trễ 55′ (do trừ grace 5′).
+- Ca kết thúc 17:00, check-out 16:00 nhưng báo về sớm 55′ (do trừ grace 5′).
+- Trang "Hôm nay" có lúc chưa cập nhật giờ vào/ra ngay sau khi chấm công do
+  router cache chưa revalidate `/dashboard`, và event `failed` bị tính vào
+  `first_in`/`last_out` của bảng công.
+
+**Đã thay đổi:**
+- `src/lib/attendance/rules.ts`:
+  - `minutesLate` / `minutesEarlyLeave`: grace chỉ là **ngưỡng miễn trừ**,
+    không trừ vào số phút báo cáo. Quá grace thì báo đủ số phút (09:00 vs
+    08:00 → 60′; 16:00 vs 17:00 → 60′), sau đó mới làm tròn theo `rounding_min`.
+  - `minutesLate` hỗ trợ ca qua đêm (check-in sau nửa đêm được cộng 24h).
+  - Thêm `zonedStartOfDayIso()` để lấy mốc 00:00 theo timezone tổ chức, tránh
+    lệch UTC khi truy vấn event đầu ngày.
+- `src/features/attendance/actions.ts`:
+  - `verifyCheck` / `fallbackCheck`: truyền `overnight` và tính đúng late/early;
+    fallback (PIN) không còn lưu 0′.
+  - `getTodayStatus`: lọc event theo `shift_assignment_id` của ca đang xử lý,
+    dùng mốc ngày theo timezone, tăng limit 50, chỉ event không `failed` mới
+    quyết định trạng thái vào/ra; trả thêm grace/rounding để trang tự tính.
+  - Revalidate `/dashboard` + `/history` sau mọi lần ghi nhận (kể cả failed)
+    để trang "Hôm nay" cập nhật giờ vào/ra ngay.
+- `src/features/dashboard/employee-today.tsx`: thêm thẻ **Về sớm**, 5 số liệu
+  nhanh; giờ vào/ra bỏ qua event `failed`; late/early lấy max(summary, tính từ
+  event) để đúng ngay cả khi summary chưa kịp cập nhật.
+- `supabase/migrations/20261030120000_summary_ignore_failed_events.sql`:
+  RPC `record_attendance_event` chỉ upsert bảng công khi `status <> 'failed'`.
+  Đã apply local + `supabase db push` lên staging.
+- `tests/attendance-rules.test.ts`: cập nhật kỳ vọng grace + thêm case 60′,
+  rounding, ca qua đêm, mốc 00:00 timezone.
+
+**Kết quả kiểm tra:**
+- `npm test` ✅ 119 pass / 17 skip (15 test files)
+- `npx tsc --noEmit` ✅ không lỗi mới ở file đã sửa (lỗi cũ ở settings/charts/
+  calendar/employee-directory vẫn còn, ngoài phạm vi phase này)
+- Verify local: seed thử event 09:00/16:00 + summary → trang "Hôm nay" hiện
+  Giờ vào 09:00, Giờ ra 16:00, Đi muộn 60′, Về sớm 60′; đã xoá dữ liệu test.
+- Migration local: applied; remote staging: `supabase db push` thành công.
+
+**Lưu ý:**
+- Production vẫn dùng mock provider (`ALLOW_MOCK_IN_PRODUCTION=true`); cần cấu
+  hình AWS Rekognition và bỏ flag trước khi chấm công thật.
+- Các bản ghi summary cũ (nếu có) vẫn giữ số phút đã lưu; trang "Hôm nay" tự
+  tính lại từ event và lấy max, còn báo cáo lịch sử chỉ đúng từ lần chấm công
+  mới sau khi deploy.
