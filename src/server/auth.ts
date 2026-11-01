@@ -13,7 +13,7 @@ export async function requireUser(): Promise<{ userId: string; profile: Profile 
 
   const { data: profile, error } = await supabase
     .from("profiles")
-    .select("id, email, display_name, role, organization_id, is_active")
+    .select("id, email, display_name, role, organization_id, is_active, locale")
     .eq("id", user.id)
     .single();
   if (error || !profile || !profile.is_active) redirect("/login");

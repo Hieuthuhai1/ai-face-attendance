@@ -9,6 +9,8 @@ export interface Profile {
   role: Role;
   organization_id: string | null;
   is_active: boolean;
+  /** UI language preference (added in Phase 25). */
+  locale?: "vi" | "en";
 }
 
 export interface Employee {

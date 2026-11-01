@@ -1,10 +1,11 @@
 "use server";
 
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { isOAuthProvider } from "@/features/auth/oauth";
 import { loginSchema } from "@/lib/validation";
+import { LOCALE_COOKIE, LOCALE_COOKIE_MAX_AGE, normalizeLocale } from "@/lib/i18n/config";
 
 export type AuthResult = { ok: true } | { ok: false; message: string };
 
@@ -13,11 +14,28 @@ export async function signInWithPassword(email: string, password: string): Promi
     return { ok: false, message: parsed.error.issues[0]?.message ?? "Dữ liệu không hợp lệ." };
   }
   const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithPassword({
+  const { data, error } = await supabase.auth.signInWithPassword({
     email: parsed.data.email,
     password: parsed.data.password,
   });
   if (error) return { ok: false, message: "Email hoặc mật khẩu chưa đúng." };
+
+  // Restore the saved display language for this browser/session.
+  if (data.user) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("locale")
+      .eq("id", data.user.id)
+      .maybeSingle();
+    const locale = normalizeLocale(profile?.locale);
+    const cookieStore = await cookies();
+    cookieStore.set(LOCALE_COOKIE, locale, {
+      path: "/",
+      maxAge: LOCALE_COOKIE_MAX_AGE,
+      sameSite: "lax",
+    });
+  }
+
   redirect("/dashboard");
 }
 

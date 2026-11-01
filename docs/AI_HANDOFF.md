@@ -1407,3 +1407,63 @@ thu hồi → đăng ký lại. Sau đó cấu hình AWS credentials cho product
 - Các bản ghi summary cũ (nếu có) vẫn giữ số phút đã lưu; trang "Hôm nay" tự
   tính lại từ event và lấy max, còn báo cáo lịch sử chỉ đúng từ lần chấm công
   mới sau khi deploy.
+
+## Phase 25 — Ngôn ngữ VI/EN + trang hồ sơ cá nhân (completed 2026-11-01)
+
+**Đã thay đổi:**
+- `src/lib/i18n/config.ts`: locale `vi | en`, cookie `app_locale` (1 năm),
+  chuẩn hoá giá trị lạ về `vi`.
+- `src/lib/i18n/dictionary.ts`: từ điển VI→EN (~1085 chuỗi UI) sinh từ code.
+- `src/lib/i18n/overrides.ts`: bản dịch tự nhiên cho nav/button/status phổ biến.
+- `src/lib/i18n/translate.ts`: tra cứu exact + không phân biệt hoa/thường +
+  pattern động (thứ trong tuần, tháng, `Trễ/Đi muộn N′`, `Về sớm N′`,
+  `Cập nhật: HH:mm`, `Khớp N%`, thông báo chưa đọc).
+- `src/components/app/language-provider.tsx`: provider client dịch text + thuộc
+  tính (`placeholder`, `title`, `aria-label`, `alt`) toàn DOM; MutationObserver
+  có debounce 600ms để không sửa DOM khi React đang hydrate Suspense; khi chọn
+  VI sẽ khôi phục nguyên văn. `LocaleBootstrap` áp locale hồ sơ khi chưa có cookie.
+- `src/app/layout.tsx`: bọc `LanguageProvider` + `Toaster`; root layout tĩnh
+  (không đọc cookie) để không chặn prerender.
+- `src/components/app/shell-host.tsx`: đọc cookie + locale hồ sơ, bootstrap khi cần.
+- `src/features/auth/actions.ts`, `src/app/auth/callback/route.ts`: set cookie
+  locale sau khi đăng nhập (password/OAuth).
+- `src/server/auth.ts`, `src/types/db.ts`: thêm `locale` vào profile.
+- `src/app/(protected)/settings/profile/page.tsx`,
+  `src/features/profile/profile-client.tsx`, `src/features/profile/actions.ts`:
+  trang hồ sơ cá nhân + chọn ngôn ngữ; lưu `profiles.locale` và cookie; hiển thị
+  thông tin nhân sự/phòng ban/tổ chức.
+- `src/components/app/app-shell.tsx`: dịch nav, breadcrumb, user menu, command
+  palette, shortcuts, aria-label; bỏ 2 link settings chưa có route.
+- `src/lib/supabase/middleware.ts`, `src/proxy.ts`: thêm `/settings` vào
+  protected matcher/prefix.
+- `supabase/migrations/20261101000000_profile_locale.sql`: thêm cột
+  `profiles.locale` (`vi` default, check `vi | en`).
+- `tests/i18n.test.ts`: 6 test cho từ điển + pattern động.
+
+**Migration:**
+- Local: applied (`alter table ... add column ...` + comment).
+- Remote staging `vbqfcrptytzogskmornm`: applied qua
+  `npx supabase db query --linked --file ...`.
+- Verify: `profiles.locale` tồn tại, default `'vi'`, not null.
+
+**Deploy:**
+- Commit: `bec1b30` (feat(i18n): add Vietnamese/English language switch and profile page).
+- Vercel production: https://ai-face-attendance-zeta.vercel.app
+- Verify: login `nv.a@demo.vn` → user menu → Hồ sơ cá nhân → Ngôn ngữ →
+  English: nav/header/nội dung chuyển EN; reload giữ EN; chuyển lại Tiếng Việt
+  giữ VI.
+
+**Kết quả kiểm tra:**
+- `npm test` ✅ 125 pass / 17 skip (16 file) — gồm 6 test i18n mới.
+- `npm run typecheck` ⚠️ còn lỗi cũ ở settings/charts/calendar/employee-directory;
+  không phát sinh lỗi mới ở file đã sửa.
+- `npm run build` ✅ (retry do cảnh báo bảo mật Next 16.4.0).
+- Browser flow (Playwright, production build `next start -p 3100`): PASS 13/13
+  bước VI→EN→VI, persistence sau reload.
+
+**Known issues:**
+- Full page load của route protected vẫn có cảnh báo hydration `React #418`
+  (pre-existing, không chặn chức năng; nghi do `Suspense fallback={children}`
+  trong protected layout). Cần xử lý riêng nếu muốn sạch console.
+- Next.js 16.4.0 có cảnh báo bảo mật; cần chạy `next upgrade --agent=security`.
+- Production vẫn mock provider (`ALLOW_MOCK_IN_PRODUCTION=true`).
