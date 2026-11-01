@@ -1447,7 +1447,7 @@ thu hồi → đăng ký lại. Sau đó cấu hình AWS credentials cho product
 - Verify: `profiles.locale` tồn tại, default `'vi'`, not null.
 
 **Deploy:**
-- Commit: `bec1b30` (feat(i18n): add Vietnamese/English language switch and profile page).
+- Commit: `1aad9ed` (feat(i18n): add Vietnamese/English language switch and profile page).
 - Vercel production: https://ai-face-attendance-zeta.vercel.app
 - Verify: login `nv.a@demo.vn` → user menu → Hồ sơ cá nhân → Ngôn ngữ →
   English: nav/header/nội dung chuyển EN; reload giữ EN; chuyển lại Tiếng Việt
