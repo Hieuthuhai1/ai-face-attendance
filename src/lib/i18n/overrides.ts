@@ -112,6 +112,11 @@ export const VI_TO_EN_OVERRIDES: Record<string, string> = {
   "Đăng nhập": "Sign in",
   "Đăng ký": "Register",
   "Đăng ký khuôn mặt": "Face enrollment",
+  "Ca làm hôm nay": "Today's shift",
+  "Khuôn mặt sẵn sàng": "Face ready",
+  "Chưa chấm công": "Not checked in yet",
+  "Vắng lượt": "Missed punches",
+  "CN": "Sun",
 
   // States
   "Đang tải": "Loading",

@@ -7,6 +7,10 @@ describe("i18n translateText", () => {
     expect(translateText("Thao tác", "en")).toBe("Actions");
     expect(translateText("Nhân viên", "en")).toBe("Employee");
     expect(translateText("Hồ sơ cá nhân", "en")).toBe("Personal profile");
+    expect(translateText("Ca làm hôm nay", "en")).toBe("Today's shift");
+    expect(translateText("Khuôn mặt sẵn sàng", "en")).toBe("Face ready");
+    expect(translateText("Chưa chấm công", "en")).toBe("Not checked in yet");
+    expect(translateText("CN", "en")).toBe("Sun");
   });
 
   it("translates weekdays inside dates", () => {
