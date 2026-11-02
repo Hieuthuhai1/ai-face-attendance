@@ -149,6 +149,8 @@ export const VI_TO_EN_OVERRIDES: Record<string, string> = {
   "Về sớm": "Early leave",
   "Sớm": "Early",
   "Đúng giờ": "On time",
+  "Đúng giờ - Không đi muộn": "On time - Not late",
+  "Đủ giờ - Không về sớm": "Full shift - Not early",
   "Vắng mặt": "Absent",
   "Có mặt": "Present",
   "Nghỉ phép": "Leave",

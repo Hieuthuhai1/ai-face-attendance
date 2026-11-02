@@ -1491,6 +1491,8 @@ thu hồi → đăng ký lại. Sau đó cấu hình AWS credentials cho product
 - `src/components/face-attendance/AttendanceReceipt.tsx`: thông báo theo đúng
   lượt — check-in chỉ báo đi muộn/đúng giờ; check-out báo về sớm/đủ giờ, không
   còn câu "Không muộn, không về sớm" trên receipt check-in.
+- `src/lib/i18n/overrides.ts`: thêm bản dịch EN cho 2 nhãn receipt mới
+  (“On time - Not late”, “Full shift - Not early”).
 - `src/features/dashboard/employee-today.tsx`: chỉ coi là đã ra khi event cuối
   là check-out; ca đang mở dùng lượt vào gần nhất, giờ ra `--:--`, về sớm `0′`;
   không lấy `last_out`/`early_leave_min` cũ từ summary của lượt trước.
