@@ -1509,3 +1509,10 @@ thu hồi → đăng ký lại. Sau đó cấu hình AWS credentials cho product
 **Deploy:**
 - Commit: `f004452` (fix(attendance): record check-out after switching direction
   and pair today's session).
+- Vercel production deployment: `dpl_Hxfd3WgpBEnnDSz7Edh45EtdZ3dW`
+  (alias https://ai-face-attendance-zeta.vercel.app), READY.
+- Verify production (Playwright, 2026-11-02): login `nv.a@demo.vn` → dashboard
+  và `/check-in` tải bình thường; bundle production chứa nhãn mới
+  “Đủ giờ - Không về sớm” và “Đúng giờ - Không đi muộn”. Không ghi/xoá dữ liệu
+  chấm công production trong lúc verify.
+- Production vẫn mock provider: health `provider:"mock", demo:true`.
