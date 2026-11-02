@@ -1448,10 +1448,13 @@ thu hồi → đăng ký lại. Sau đó cấu hình AWS credentials cho product
 
 **Deploy:**
 - Commit: `1aad9ed` (feat(i18n): add Vietnamese/English language switch and profile page).
-- Vercel production: https://ai-face-attendance-zeta.vercel.app
-- Verify: login `nv.a@demo.vn` → user menu → Hồ sơ cá nhân → Ngôn ngữ →
-  English: nav/header/nội dung chuyển EN; reload giữ EN; chuyển lại Tiếng Việt
-  giữ VI.
+- Commit bổ sung: `85b2c85` (fix(i18n): translate dashboard shift and face-ready labels).
+- Vercel production deployment: `dpl_AHsXzoWMU8LysBh8BTyJgWwruQoc`
+  (alias https://ai-face-attendance-zeta.vercel.app).
+- Verify production (Playwright, 2026-11-02): login `nv.a@demo.vn` → user menu →
+  Hồ sơ cá nhân → Ngôn ngữ → English: nav/header/nội dung chuyển EN, `html lang=en`;
+  dashboard có “Today’s shift”/“Face ready”, không còn “Ca làm hôm nay”/
+  “Khuôn mặt sẵn sàng”/“Hôm nay”/“Đi muộn”; chuyển lại Tiếng Việt giữ VI sau reload.
 
 **Kết quả kiểm tra:**
 - `npm test` ✅ 125 pass / 17 skip (16 file) — gồm 6 test i18n mới.
