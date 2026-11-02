@@ -48,11 +48,13 @@ export function CheckInClient({
         </Button>
       </div>
       <FaceVerificationFlow
+        key={direction}
         direction={direction}
         shift={status.shift}
         providerDemo={providerDemo}
         showDevControls={showDevControls}
         status={status}
+        onComplete={() => setDirection(direction === "check_in" ? "check_out" : "check_in")}
       />
     </div>
   );

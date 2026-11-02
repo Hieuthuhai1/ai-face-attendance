@@ -311,7 +311,7 @@ export function FaceVerificationFlow(props: FaceVerificationFlowProps) {
         <AttendanceReceipt
           employeeName="Nhân viên"
           employeeCode="NV001"
-          action={direction}
+          action={ui.res.direction}
           occurredAt={ui.res.occurred_at}
           shiftName={shift?.name || "Ca làm"}
           shiftTime={`${shift?.start_time || "--:--"}–${shift?.end_time || "--:--"}${shift?.overnight ? " (qua đêm)" : ""}`}

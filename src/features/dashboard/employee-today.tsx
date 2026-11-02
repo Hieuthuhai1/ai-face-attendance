@@ -149,13 +149,21 @@ export async function EmployeeToday({ profile }: { profile: Profile }) {
   // Lượt failed vẫn hiện trong timeline nhưng không được tính là giờ vào/ra.
   const countedEvents = events.filter((e) => e.status !== "failed");
   const firstIn = countedEvents.find((e) => e.event_type === "check_in") ?? null;
-  const lastOut = [...countedEvents].reverse().find((e) => e.event_type === "check_out") ?? null;
+  const lastIn = [...countedEvents].reverse().find((e) => e.event_type === "check_in") ?? null;
+  // Chỉ coi là đã ra khi lượt gần nhất là check-out. Nếu người dùng check-in
+  // lại sau khi đã ra, lượt ra cũ không được hiển thị như giờ ra hiện tại.
+  const lastOut =
+    countedEvents.length > 0 && countedEvents[countedEvents.length - 1]?.event_type === "check_out"
+      ? countedEvents[countedEvents.length - 1] ?? null
+      : null;
 
-  const computedWorked = firstIn
-    ? minutesBetween(firstIn.occurred_at, lastOut?.occurred_at ?? new Date().toISOString())
+  // Ca đang mở: tính từ lượt vào gần nhất để không cộng khoảng nghỉ giữa 2 lượt.
+  const sessionStart = lastOut ? firstIn : (lastIn ?? firstIn);
+  const computedWorked = sessionStart
+    ? minutesBetween(sessionStart.occurred_at, lastOut?.occurred_at ?? new Date().toISOString())
     : 0;
   const workedMin =
-    todayRow && todayRow.total_work_min > 0 ? todayRow.total_work_min : computedWorked;
+    lastOut && todayRow && todayRow.total_work_min > 0 ? todayRow.total_work_min : computedWorked;
 
   const isOpen = status.canCheckOut;
   const completed = lastOut !== null;
@@ -207,9 +215,14 @@ export async function EmployeeToday({ profile }: { profile: Profile }) {
         )
       : 0;
   const lateMinutes = Math.max(todayRow?.late_min ?? 0, computedLate);
-  const earlyMinutes = Math.max(todayRow?.early_leave_min ?? 0, computedEarly);
+  // Khi ca đang mở, không lấy early/last_out cũ từ summary của lượt trước.
+  const earlyMinutes = lastOut ? computedEarly : 0;
   const firstInLabel = firstIn ? formatTime(firstIn.occurred_at) : todayRow?.first_in ? formatTime(todayRow.first_in) : "--:--";
-  const lastOutLabel = lastOut ? formatTime(lastOut.occurred_at) : todayRow?.last_out ? formatTime(todayRow.last_out) : "--:--";
+  const lastOutLabel = lastOut
+    ? formatTime(lastOut.occurred_at)
+    : !status.canCheckOut && todayRow?.last_out
+      ? formatTime(todayRow.last_out)
+      : "--:--";
 
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-col gap-5 px-4 py-6">

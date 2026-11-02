@@ -85,7 +85,10 @@ export function AttendanceReceipt({
   const date = new Date(occurredAt);
   const timeStr = date.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
   const dateStr = date.toLocaleDateString("vi-VN", { weekday: "long", day: "2-digit", month: "2-digit", year: "numeric" });
-  const actionLabel = action === "check_in" ? "Check-in" : "Check-out";
+  const isCheckIn = action === "check_in";
+  const actionLabel = isCheckIn ? "Check-in" : "Check-out";
+  const hasLate = Boolean(lateMinutes && lateMinutes > 0);
+  const hasEarly = Boolean(earlyMinutes && earlyMinutes > 0);
 
   return (
     <div className={cn("rounded-2xl border p-6 shadow-sm", config.borderColor, config.bgColor, className)}>
@@ -121,10 +124,10 @@ export function AttendanceReceipt({
         </div>
       </div>
 
-      {/* Late/Early indicators */}
-      {(lateMinutes && lateMinutes > 0) || (earlyMinutes && earlyMinutes > 0) ? (
+      {/* Late/Early indicators — chỉ hiển thị đúng loại của lượt chấm công này. */}
+      {hasLate || hasEarly ? (
         <div className="flex gap-3 mb-6">
-          {lateMinutes && lateMinutes > 0 && (
+          {hasLate && (
             <div className="flex-1 rounded-xl bg-[var(--warning-bg)] border border-[var(--warning)] p-4">
               <div className="flex items-center gap-2 text-[var(--warning)]">
                 <Icon name="clock" size={20} />
@@ -133,7 +136,7 @@ export function AttendanceReceipt({
               <p className="mt-1 text-2xl font-bold text-[var(--warning)]">{lateMinutes} phút</p>
             </div>
           )}
-          {earlyMinutes && earlyMinutes > 0 && (
+          {hasEarly && (
             <div className="flex-1 rounded-xl bg-[var(--info-bg)] border border-[var(--info)] p-4">
               <div className="flex items-center gap-2 text-[var(--info)]">
                 <Icon name="clock" size={20} />
@@ -146,7 +149,9 @@ export function AttendanceReceipt({
       ) : (
         <div className="flex items-center justify-center gap-2 mb-6 p-4 rounded-xl bg-[var(--success-bg)] border border-[var(--success)]">
           <Icon name="check" size={20} className="text-[var(--success)]" />
-          <span className="font-medium text-[var(--success)]">Đúng giờ - Không muộn, không về sớm</span>
+          <span className="font-medium text-[var(--success)]">
+            {isCheckIn ? "Đúng giờ - Không đi muộn" : "Đủ giờ - Không về sớm"}
+          </span>
         </div>
       )}
 
