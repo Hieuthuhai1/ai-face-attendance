@@ -1513,6 +1513,9 @@ thu hồi → đăng ký lại. Sau đó cấu hình AWS credentials cho product
   and pair today's session).
 - Vercel production deployment: `dpl_Hxfd3WgpBEnnDSz7Edh45EtdZ3dW`
   (alias https://ai-face-attendance-zeta.vercel.app), READY.
+- Commit bổ sung i18n: `d1dabe4` (dịch 2 nhãn receipt mới) — deployment
+  `dpl_HoDM6VqgUz3fxfPDJKXW2zNhNK6n`, READY; bundle production có
+  “Full shift - Not early” / “On time - Not late”.
 - Verify production (Playwright, 2026-11-02): login `nv.a@demo.vn` → dashboard
   và `/check-in` tải bình thường; bundle production chứa nhãn mới
   “Đủ giờ - Không về sớm” và “Đúng giờ - Không đi muộn”. Không ghi/xoá dữ liệu
