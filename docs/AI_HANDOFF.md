@@ -1470,3 +1470,42 @@ thu hồi → đăng ký lại. Sau đó cấu hình AWS credentials cho product
   trong protected layout). Cần xử lý riêng nếu muốn sạch console.
 - Next.js 16.4.0 có cảnh báo bảo mật; cần chạy `next upgrade --agent=security`.
 - Production vẫn mock provider (`ALLOW_MOCK_IN_PRODUCTION=true`).
+
+## Phase 26 — Sửa check-out trước 17:00 + đồng bộ trang "Hôm nay" (2026-11-02)
+
+**Vấn đề:**
+- Sau khi check-in, receipt vẫn hiển thị. Bấm "Chấm công ra" chỉ đổi nhãn
+  receipt cũ thành "Check-out" (vì `AttendanceReceipt` dùng `direction` hiện
+  tại), không ghi event check-out mới → báo "không về sớm" và trang "Hôm nay"
+  không có giờ ra.
+- Trang "Hôm nay" lấy bất kỳ check-out nào trong ngày làm `last_out`; nếu người
+  dùng check-in lại sau khi đã ra, giờ ra/về sớm của lượt cũ vẫn hiện dù ca mới
+  đang mở.
+
+**Đã thay đổi:**
+- `src/app/(protected)/check-in/check-in-client.tsx`: `key={direction}` để
+  remount flow khi đổi chiều; `onComplete` tự chuyển sang chiều còn lại sau khi
+  bấm "Tiếp tục".
+- `src/features/face-verification/face-verification-flow.tsx`: receipt dùng
+  `ui.res.direction` (chiều của event đã ghi), không dùng state chiều hiện tại.
+- `src/components/face-attendance/AttendanceReceipt.tsx`: thông báo theo đúng
+  lượt — check-in chỉ báo đi muộn/đúng giờ; check-out báo về sớm/đủ giờ, không
+  còn câu "Không muộn, không về sớm" trên receipt check-in.
+- `src/features/dashboard/employee-today.tsx`: chỉ coi là đã ra khi event cuối
+  là check-out; ca đang mở dùng lượt vào gần nhất, giờ ra `--:--`, về sớm `0′`;
+  không lấy `last_out`/`early_leave_min` cũ từ summary của lượt trước.
+
+**Kết quả kiểm tra:**
+- `npm test` ✅ 125 pass / 17 skip.
+- `npx eslint` 4 file đã sửa ✅ không lỗi.
+- `npm run build` ✅ (retry do cảnh báo bảo mật Next 16.4.0).
+- `npm run typecheck` ⚠️ còn lỗi cũ ở settings/charts/calendar/
+  employee-directory; không phát sinh lỗi mới ở file đã sửa.
+- Verify local production (`next start -p 3100`, Playwright + fallback PIN):
+  check-in → bấm "Chấm công ra" khi receipt còn hiện (receipt cũ biến mất, camera
+  check-out hiện) → check-out 11:54 → receipt "Về sớm 302 phút" → trang "Hôm nay"
+  hiện Giờ ra 11:54, Về sớm 302′. Đã xoá event/summary test khỏi local DB.
+
+**Deploy:**
+- Commit: `f004452` (fix(attendance): record check-out after switching direction
+  and pair today's session).
