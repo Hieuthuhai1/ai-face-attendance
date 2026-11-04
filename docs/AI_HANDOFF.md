@@ -1521,3 +1521,65 @@ thu hồi → đăng ký lại. Sau đó cấu hình AWS credentials cho product
   “Đủ giờ - Không về sớm” và “Đúng giờ - Không đi muộn”. Không ghi/xoá dữ liệu
   chấm công production trong lúc verify.
 - Production vẫn mock provider: health `provider:"mock", demo:true`.
+
+## Phase 27 — Khôi phục local face matcher + sửa PROVIDER_UNAVAILABLE (2026-11-04)
+
+**Vấn đề:** đăng ký khuôn mặt trên production trả `PROVIDER_UNAVAILABLE`
+(“Dịch vụ nhận diện đang bận…”). Health báo `provider:"local"` nhưng source
+provider `local`, bảng `face_templates`, model files và dependency tfjs/sharp
+không còn trong repo (chỉ có trong bundle đã deploy).
+
+**Nguyên nhân gốc:** deployment production cũ đang dùng
+`SUPABASE_SERVICE_ROLE_KEY` sai (key không phải `service_role` của project
+`vbqfcrptytzogskmornm`), nên insert descriptor vào `face_templates` thất bại →
+provider trả `provider_unavailable`. Đổi env trên Vercel **không** áp dụng cho
+deployment đã tạo; phải redeploy.
+
+**Đã khôi phục/bổ sung:**
+- `src/server/face/local.ts` — provider face-api chạy server (tiny face detector
+  + landmark 68 + face recognition, descriptor 128 chiều, Euclidean distance).
+- `src/lib/supabase/service.ts` — Supabase client service-role (server-only).
+- `supabase/migrations/20261103120000_face_templates.sql` — bảng
+  `public.face_templates` (RLS forced, không policy cho client).
+- `src/server/face/index.ts`, `public.ts` — nhánh `FACE_PROVIDER=local` fail
+  closed khi thiếu service key/model.
+- `EnrollInput.organizationId` + truyền `organizationId` từ `submitEnrollment`.
+- `public/models/face_recognition_model-{weights_manifest.json,shard1,shard2}`.
+- `package.json`: `@tensorflow/tfjs*`, `sharp`; `next.config.ts`:
+  `outputFileTracingIncludes` cho `public/models/**/*`.
+- `.env.example`: `FACE_PROVIDER=local`, `FACE_MATCH_DISTANCE`,
+  `FACE_LOCAL_MODEL_DIR`, `FACE_PROVIDER_TIMEOUT_MS`.
+
+**Env production:** thay `SUPABASE_SERVICE_ROLE_KEY` bằng service_role key đúng;
+`FACE_PROVIDER=local`, `FACE_MATCH_DISTANCE=0.45`,
+`FACE_PROVIDER_TIMEOUT_MS=25000`, `ALLOW_MOCK_IN_PRODUCTION=false`.
+
+**Verify thật (production, không dùng browser):**
+- `GET /api/health/face` → `{configured:true, provider:"local", demo:false}`.
+- Enroll ảnh test qua route chẩn đoán tạm → `ok:true`, quality `0.764`,
+  descriptor ghi được vào `face_templates`.
+- Verify cùng ảnh → `match:true`, confidence `1`.
+- RPC `submit_my_face_enrollment` bằng JWT `nv.b3@demo.vn` → enrollment `active`.
+- RPC `record_attendance_event` → tạo event `success` (sau đó đã xoá toàn bộ
+  event/enrollment/template test khỏi production).
+- Route chẩn đoán và `DIAG_SECRET` đã xoá trước deployment cuối.
+
+**Dữ liệu cũ:** 3 enrollment `provider='mock'` (active/pending) đã được
+chuyển `revoked` với lý do `provider_migrated_to_local` để người dùng đăng ký
+lại bằng local; `face_templates` hiện trống.
+
+**Tài khoản test mới (demo, mật khẩu gửi ngoài repo):**
+- `nv.b3@demo.vn` — NV005, phòng Kinh doanh, ca hành chính.
+- `nv.c3@demo.vn` — NV006, phòng Kỹ thuật, ca chiều.
+
+**Kết quả kiểm tra:** `npm test` ✅ 125 pass / 17 skip · `npm run build` ✅ ·
+`typecheck` ⚠️ chỉ còn lỗi cũ không liên quan (settings/charts/calendar/
+employee-directory) · secret scan sạch.
+
+**Commit:** `27d4366` (fix(face): restore local face matcher and descriptor
+storage).
+**Deployment:** `dpl_2Vk9xVjQC4VC4VMELNP4oYWLvCie` (có route chẩn đoán, đã
+thay thế bằng deployment cuối sau khi xoá route).
+**Known issues:** Next.js 16.4.0 vẫn cần chạy `next upgrade --agent=security`;
+browser tool của môi trường dev không hydrate được `/login` (Suspense fallback
+đứng yên), nên verify production bằng HTTP/RPC thay vì UI.
