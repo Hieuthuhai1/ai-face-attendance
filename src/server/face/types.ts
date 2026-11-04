@@ -82,6 +82,8 @@ export interface FaceImageInput {
 /** Enrollment input cho provider thật. */
 export interface EnrollInput {
   employeeId: string;
+  /** Bắt buộc với provider lưu template nội bộ (local). */
+  organizationId?: string;
   images: FaceImageInput[];
 }
 

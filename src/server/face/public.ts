@@ -38,5 +38,23 @@ export function getProviderHealth(env = process.env): ProviderHealth {
     return { configured: true, provider: "aws-rekognition", demo: false, message: "Credentials cấu hình — kiểm tra runtime." };
   }
 
+  if (configured === "local") {
+    const hasServiceKey = Boolean(env.SUPABASE_SERVICE_ROLE_KEY);
+    if (!hasServiceKey) {
+      return {
+        configured: false,
+        provider: "local",
+        demo: false,
+        message: "NOT CONFIGURED — thiếu SUPABASE_SERVICE_ROLE_KEY cho local face matcher.",
+      };
+    }
+    return {
+      configured: true,
+      provider: "local",
+      demo: false,
+      message: "Đối chiếu khuôn mặt trên server với mẫu đã đăng ký. Không có anti-spoof/liveness thật.",
+    };
+  }
+
   return { configured: false, provider: configured, demo: false, message: `Unknown provider: ${configured}` };
 }

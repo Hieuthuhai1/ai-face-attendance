@@ -1,6 +1,7 @@
 import "server-only";
 import { MockFaceRecognitionProvider } from "./mock";
 import { AwsRekognitionProvider } from "./aws-rekognition";
+import { LocalFaceRecognitionProvider } from "./local";
 import type { FaceRecognitionProvider, ProviderHealth } from "./types";
 import { getProviderHealth as getPublicProviderHealth } from "./public";
 
@@ -45,6 +46,17 @@ export function getFaceProvider(env = process.env): FaceRecognitionProvider {
       collectionId,
       verifyThreshold: Number(env.VERIFY_THRESHOLD ?? 0.72),
       reviewBandLow: Number(env.REVIEW_BAND_LOW ?? 0.6),
+    });
+  }
+
+  if (configured === "local") {
+    // Fail closed: local matcher cần service role để đọc/ghi descriptor.
+    if (!env.SUPABASE_SERVICE_ROLE_KEY) {
+      throw new ProviderNotConfiguredError("SUPABASE_SERVICE_ROLE_KEY là bắt buộc cho FACE_PROVIDER=local");
+    }
+    return new LocalFaceRecognitionProvider({
+      matchDistance: Number(env.FACE_MATCH_DISTANCE ?? 0.45),
+      modelDir: env.FACE_LOCAL_MODEL_DIR,
     });
   }
 

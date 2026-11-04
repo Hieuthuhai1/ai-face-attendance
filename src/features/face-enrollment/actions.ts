@@ -292,7 +292,7 @@ export async function submitEnrollment(input: {
   let enrollResult;
   try {
     enrollResult = await withProviderTimeout(
-      provider.enrollFace({ employeeId: employee.id, images: [imageInput, imageInput] }),
+      provider.enrollFace({ employeeId: employee.id, organizationId: employee.organization_id, images: [imageInput, imageInput] }),
       PROVIDER_TIMEOUT_MS,
     );
   } catch {

@@ -7,6 +7,10 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
+  // Local face matcher đọc model từ filesystem trong serverless function.
+  outputFileTracingIncludes: {
+    "/**": ["./public/models/**/*"],
+  },
   async headers() {
     return [
       {
