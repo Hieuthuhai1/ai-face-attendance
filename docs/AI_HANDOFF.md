@@ -1588,3 +1588,30 @@ sàng”, không có console error.
 browser tool của môi trường dev không hydrate được `/login` (Suspense fallback
 đứng yên) — chỉ là giới hạn tool, Playwright headless xác nhận UI production
 hoạt động bình thường.
+
+## Phase 28 — Ngưỡng khớp khuôn mặt 75% (2026-11-04)
+
+**Yêu cầu:** độ khớp khuôn mặt >= 75% mới chấm công thành công; dưới 75% ghi
+nhận chấm công thất bại và người dùng phải chấm lại.
+
+**Thay đổi:**
+- `src/config/app.ts`: mặc định `VERIFY_THRESHOLD=0.75`,
+  `REVIEW_BAND_LOW=0.75`. Review band bằng ngưỡng nên confidence < 0.75 đi
+  thẳng vào nhánh `failed` (ghi event `status='failed'`), không còn
+  `pending_review` do confidence thấp.
+- `FACE_MATCH_DISTANCE=0.25` (local provider: `confidence = 1 - distance`,
+  nên 0.25 tương đương khớp 75%).
+- `.env.example` cập nhật giá trị mẫu.
+- `tests/attendance-check.test.ts`: thêm test biên 75% (0.75 → success,
+  0.749 → failed NO_MATCH, không rơi vào review).
+
+**Env Vercel production:** `VERIFY_THRESHOLD=0.75`, `REVIEW_BAND_LOW=0.75`,
+`FACE_MATCH_DISTANCE=0.25` (secret), sau đó redeploy.
+
+**Kết quả:** `npm test` ✅ 129 pass / 17 skip · `npm run build` ✅ (retry do
+cảnh báo bảo mật Next 16.4.0).
+**Verify production:** route chẩn đoán tạm trả `verifyThreshold=0.75`,
+`reviewBandLow=0.75`; confidence `0.75` → `success`, `0.749`/`0.6` →
+`failed NO_MATCH`. Route đã xoá trước deployment cuối.
+**Deployment cuối:** `dpl_Ek1UGUpifJVs3gQdE3s56tih9qEm` (alias
+https://ai-face-attendance-zeta.vercel.app), READY.

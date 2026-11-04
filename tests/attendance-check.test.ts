@@ -37,6 +37,24 @@ describe("verify decision (không kết luận gian lận từ confidence)", () 
   });
 });
 
+describe("verify decision — chính sách production >= 75%", () => {
+  const P = { threshold: 0.75, reviewBandLow: 0.75 };
+  it("đúng 75% → success", () => {
+    expect(decideVerification({ liveness: "pass", confidence: 0.75, ...P })).toEqual({ outcome: "success" });
+  });
+  it("trên 75% → success", () => {
+    expect(decideVerification({ liveness: "pass", confidence: 0.9, ...P })).toEqual({ outcome: "success" });
+  });
+  it("dưới 75% (0.749) → failed NO_MATCH, phải chấm lại", () => {
+    expect(decideVerification({ liveness: "pass", confidence: 0.749, ...P })).toEqual({
+      outcome: "failed", reason: "NO_MATCH",
+    });
+  });
+  it("dưới 75% không rơi vào pending_review", () => {
+    expect(decideVerification({ liveness: "pass", confidence: 0.6, ...P }).outcome).toBe("failed");
+  });
+});
+
 describe("resolveShiftFor (ca qua đêm)", () => {
   const TZ = "Asia/Ho_Chi_Minh";
   it("wall date theo timezone", () => {
