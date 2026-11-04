@@ -1,6 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/cn";
+import { formatDateInZone, formatTimeInZone } from "@/lib/datetime";
 import { Icon } from "@/components/ui/icon";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -82,9 +83,8 @@ export function AttendanceReceipt({
   className,
 }: AttendanceReceiptProps) {
   const config = STATUS_CONFIG[status];
-  const date = new Date(occurredAt);
-  const timeStr = date.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
-  const dateStr = date.toLocaleDateString("vi-VN", { weekday: "long", day: "2-digit", month: "2-digit", year: "numeric" });
+  const timeStr = formatTimeInZone(occurredAt, undefined, true);
+  const dateStr = formatDateInZone(occurredAt);
   const isCheckIn = action === "check_in";
   const actionLabel = isCheckIn ? "Check-in" : "Check-out";
   const hasLate = Boolean(lateMinutes && lateMinutes > 0);
@@ -210,7 +210,7 @@ export function AttendanceReceipt({
 
       {/* Timestamp footer */}
       <p className="mt-4 text-center text-xs text-slate-400 font-mono">
-        Bản ghi được tạo lúc {new Date(occurredAt).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", second: "2-digit" })} · Giờ do máy chủ ghi nhận
+        Bản ghi được tạo lúc {formatTimeInZone(occurredAt, undefined, true)} · Giờ do máy chủ ghi nhận
       </p>
     </div>
   );

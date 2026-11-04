@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 import { DataTable } from "@/components/ui/data-table";
 import { StatusIndicator } from "@/components/ui/status-indicator";
 import { LoadingState } from "@/components/ui/states";
+import { formatTimeInZone } from "@/lib/datetime";
 import { HistoryPagination } from "./pagination-client";
 
 const STATUS_MAP: Record<string, "success" | "error" | "pending" | "approved" | "rejected" | "ontime" | "late" | "early_leave" | "absent" | "incomplete" | "needs_review" | "idle" | "loading"> = {
@@ -63,9 +64,9 @@ async function HistoryData({ searchParams }: { searchParams: Promise<{ month?: s
               header: "Vào – Ra",
               render: (r) => (
                 <span className="tnum">
-                  {r.first_in ? new Date(r.first_in).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }) : "—"}
+                  {r.first_in ? formatTimeInZone(r.first_in) : "—"}
                   {" – "}
-                  {r.last_out ? new Date(r.last_out).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }) : "—"}
+                  {r.last_out ? formatTimeInZone(r.last_out) : "—"}
                 </span>
               ),
             },
@@ -81,9 +82,9 @@ async function HistoryData({ searchParams }: { searchParams: Promise<{ month?: s
           cardStatus={(r) => <StatusIndicator status={STATUS_MAP[r.status] ?? "idle"} />}
           cardMeta={(r) => (
             <span className="tnum">
-              Vào {r.first_in ? new Date(r.first_in).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }) : "—"}
+              Vào {r.first_in ? formatTimeInZone(r.first_in) : "—"}
               {" · Ra "}
-              {r.last_out ? new Date(r.last_out).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }) : "—"}
+              {r.last_out ? formatTimeInZone(r.last_out) : "—"}
               {r.late_min > 0 ? ` · Trễ ${r.late_min}′` : r.early_leave_min > 0 ? ` · Sớm ${r.early_leave_min}′` : ""}
               {r.adjustment_status ? ` · Chỉnh công: ${r.adjustment_status}` : ""}
             </span>

@@ -1615,3 +1615,31 @@ cảnh báo bảo mật Next 16.4.0).
 `failed NO_MATCH`. Route đã xoá trước deployment cuối.
 **Deployment cuối:** `dpl_Ek1UGUpifJVs3gQdE3s56tih9qEm` (alias
 https://ai-face-attendance-zeta.vercel.app), READY.
+
+## Phase 29 — Sửa giờ vào/ra trong lịch sử chấm công (2026-11-04)
+
+**Vấn đề:** lịch sử chấm công hiển thị giờ vào/ra lệch so với giờ ghi nhận khi
+chấm công (ví dụ check-in 13:47 nhưng lịch sử hiện 06:47).
+
+**Nguyên nhân:** Server Component render trên Vercel theo UTC; các chỗ dùng
+`toLocaleTimeString()` không truyền `timeZone` hiển thị theo UTC, trong khi
+receipt ở client hiển thị theo múi giờ trình duyệt. Dữ liệu trong DB
+(`attendance_daily_summaries.first_in/last_out`) vẫn là cùng một mốc thời gian
+với `attendance_events.occurred_at` — chỉ khác cách hiển thị.
+
+**Thay đổi:**
+- Thêm `src/lib/datetime.ts`: `formatTimeInZone`, `formatDateInZone`,
+  `formatShortDateInZone`, `formatDateTimeInZone` (mặc định `APP_TZ` =
+  `Asia/Ho_Chi_Minh`).
+- Áp dụng cho: lịch sử chấm công, báo cáo (bảng + CSV + ngày ngoại lệ),
+  dashboard (thời gian sự kiện), receipt chấm công, luồng check-in, đồng hồ
+  trong màn hình xác minh khuôn mặt.
+- `tests/datetime.test.ts`: kiểm tra quy đổi UTC → `Asia/Ho_Chi_Minh`, mốc qua
+  nửa đêm, timeZone truyền vào, giá trị không hợp lệ.
+
+**Kết quả:** `npm test` ✅ 135 pass / 17 skip · `npm run build` ✅.
+**Verify production (Playwright headless):** đăng nhập `nv.b3@demo.vn`, mở
+`/history` thấy `2026-11-04 · 13:47 – —`, khớp `first_in`
+`2026-11-04T06:47:28Z` (13:47:28 giờ Việt Nam); không có console error.
+**Deployment cuối:** `dpl_5ndqjF252ttsyFcLNjfAZMBQ3A54` (alias
+https://ai-face-attendance-zeta.vercel.app), READY.

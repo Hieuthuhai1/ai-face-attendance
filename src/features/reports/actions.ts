@@ -3,6 +3,7 @@
 import { requireRole, requireUser } from "@/server/auth";
 import { createClient } from "@/lib/supabase/server";
 import { MAX_EXPORT_ROWS, monthRange, toCsv, validateRange } from "@/lib/reports/csv";
+import { formatDateTimeInZone, formatShortDateInZone } from "@/lib/datetime";
 import type { Role } from "@/types/db";
 
 type Db = Awaited<ReturnType<typeof createClient>>;
@@ -287,7 +288,7 @@ export async function getExceptions(scope: Scope, supabase: Db): Promise<Excepti
       employee_code: emp?.employee_code ?? "?",
       employee_name: emp?.profiles?.display_name ?? "—",
       department: emp?.departments?.name ?? "—",
-      date: new Date(e.occurred_at as string).toLocaleDateString("vi-VN"),
+      date: formatShortDateInZone(e.occurred_at as string),
       detail: `Chấm công ${e.event_type === "check_in" ? "vào" : "ra"} cần rà soát (confidence: ${((e.confidence as number) ?? 0).toFixed(0)}%)`,
       link: `/reports?status=pending_review`,
     });
@@ -402,7 +403,7 @@ export async function getExceptions(scope: Scope, supabase: Db): Promise<Excepti
       employee_code: emp?.employee_code ?? "?",
       employee_name: emp?.profiles?.display_name ?? "—",
       department: emp?.departments?.name ?? "—",
-      date: new Date(e.occurred_at as string).toLocaleDateString("vi-VN"),
+      date: formatShortDateInZone(e.occurred_at as string),
       detail: `NHẬN DIỆN THẤT BẠI: ${e.liveness_status === "fail" ? "Liveness fail" : `Confidence thấp (${((e.confidence as number) ?? 0).toFixed(0)}%)`}`,
       link: `/reports?status=failed`,
     });
@@ -659,8 +660,8 @@ export async function exportCsv(filters: ReportFilters): Promise<
     .range(0, MAX_EXPORT_ROWS - 1);
   const rows = toReportRows(data).map((r) => [
     r.work_date, r.employee_code, r.display_name, r.department, r.shift,
-    r.first_in ? new Date(r.first_in).toLocaleString("vi-VN") : "",
-    r.last_out ? new Date(r.last_out).toLocaleString("vi-VN") : "",
+    r.first_in ? formatDateTimeInZone(r.first_in) : "",
+    r.last_out ? formatDateTimeInZone(r.last_out) : "",
     r.late_min, r.early_leave_min, r.total_work_min, r.overtime_min, r.status,
   ]);
   await supabase.from("audit_logs").insert({

@@ -12,6 +12,7 @@ import { LoadingState, EmptyState, ErrorState } from "@/components/ui/states";
 import { ReportsPagination } from "./pagination-client";
 import { Tabs, TabPanel } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { formatTimeInZone } from "@/lib/datetime";
 
 const STATUS_MAP: Record<string, "ontime" | "late" | "early_leave" | "absent" | "needs_review" | "idle"> = {
   present: "ontime",
@@ -170,9 +171,9 @@ async function ReportsData({ searchParams }: { searchParams: Promise<Record<stri
                       header: "Vào–Ra",
                       render: (r) => (
                         <span className="tnum">
-                          {r.first_in ? new Date(r.first_in).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }) : "—"}
+                          {r.first_in ? formatTimeInZone(r.first_in) : "—"}
                           {" – "}
-                          {r.last_out ? new Date(r.last_out).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }) : "—"}
+                          {r.last_out ? formatTimeInZone(r.last_out) : "—"}
                         </span>
                       ),
                     },
@@ -188,9 +189,9 @@ async function ReportsData({ searchParams }: { searchParams: Promise<Record<stri
                   cardMeta={(r) => (
                     <span className="tnum">
                       {r.work_date} · {r.department} / {r.shift} · Vào{" "}
-                      {r.first_in ? new Date(r.first_in).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }) : "—"}
+                      {r.first_in ? formatTimeInZone(r.first_in) : "—"}
                       {" – Ra "}
-                      {r.last_out ? new Date(r.last_out).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }) : "—"}
+                      {r.last_out ? formatTimeInZone(r.last_out) : "—"}
                       {r.overtime_min > 0 ? ` · OT ${r.overtime_min}′` : ""}
                     </span>
                   )}

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { Icon } from "@/components/ui/icon";
 import { verifyCheck, fallbackCheck, type CheckResult, type AttendanceError, getTodayStatus } from "@/features/attendance/actions";
+import { APP_TZ } from "@/config/app";
 import type { FaceFixture } from "@/server/face/types";
 
 // CameraCapture uses browser APIs (navigator.mediaDevices) that can't run during static prerendering
@@ -144,7 +145,7 @@ export function FaceVerificationFlow(props: FaceVerificationFlowProps) {
         minute: "2-digit",
         second: "2-digit",
         hour12: false,
-        timeZone: "Asia/Ho_Chi_Minh",
+        timeZone: APP_TZ,
       }).format(now)
     : "--:--:--";
   const dateLabel = now
@@ -153,7 +154,7 @@ export function FaceVerificationFlow(props: FaceVerificationFlowProps) {
         day: "2-digit",
         month: "2-digit",
         year: "numeric",
-        timeZone: "Asia/Ho_Chi_Minh",
+        timeZone: APP_TZ,
       }).format(now)
     : "";
 

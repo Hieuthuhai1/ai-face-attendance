@@ -11,6 +11,7 @@ import { fallbackCheck, verifyCheck, type CheckResult, type AttendanceError } fr
 import type { FaceFixture } from "@/server/face/types";
 import { AttendanceReceipt } from "@/components/face-attendance";
 import { DetailedProgressIndicator } from "@/components/face-attendance/CameraProgressIndicator";
+import { formatDateTimeInZone } from "@/lib/datetime";
 
 /** Key cho attempt mới (Web Crypto, chạy sau hydrate nên không lệch SSR). */
 function newClientKey(): string {
@@ -195,7 +196,7 @@ export function CheckInFlow(props: { status: TodayStatus; providerDemo: boolean 
         </CardTitle>
         <CardDescription>
           {s.lastEvent
-            ? `Gần nhất: ${s.lastEvent.event_type} lúc ${new Date(s.lastEvent.occurred_at).toLocaleString("vi-VN")} (${s.lastEvent.status})`
+            ? `Gần nhất: ${s.lastEvent.event_type} lúc ${formatDateTimeInZone(s.lastEvent.occurred_at)} (${s.lastEvent.status})`
             : "Chưa có bản ghi hôm nay."}
         </CardDescription>
         <div className="mt-3 flex gap-2" role="group" aria-label="Chọn hành động">

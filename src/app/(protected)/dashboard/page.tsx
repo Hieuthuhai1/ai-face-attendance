@@ -16,6 +16,7 @@ import { RefreshButton } from "@/components/ui/refresh-button";
 import { SimpleLineChart } from "@/components/ui/charts/line-chart";
 import { SimpleBarChart } from "@/components/ui/charts/bar-chart";
 import { SimplePieChart } from "@/components/ui/charts/pie-chart";
+import { formatDateTimeInZone, formatTimeInZone } from "@/lib/datetime";
 import Link from "next/link";
 
 const STATUS_COLORS = {
@@ -277,7 +278,7 @@ async function DashboardContent({
               emptyTitle="Chưa có hoạt động"
               emptyDescription="Sự kiện chấm công mới nhất sẽ hiện ở đây."
               columns={[
-                { key: "time", header: "Thời gian", render: (e) => <span className="tnum text-xs">{new Date(e.occurred_at).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</span> },
+                { key: "time", header: "Thời gian", render: (e) => <span className="tnum text-xs">{formatTimeInZone(e.occurred_at, undefined, true)}</span> },
                 { key: "employee", header: "Nhân viên", render: (e) => <span className="font-medium">{e.employee_code}</span> },
                 { key: "name", header: "Họ tên", render: (e) => <span className="text-sm">{e.display_name}</span> },
                 { key: "dept", header: "Phòng", render: (e) => <span className="text-xs text-slate-500">{e.department}</span> },
@@ -307,7 +308,7 @@ async function DashboardContent({
               cardStatus={(e) => <StatusIndicator status={STATUS_COLORS[e.status] ?? "idle"} />}
               cardMeta={(e) => (
                 <span className="text-xs text-slate-500">
-                  {new Date(e.occurred_at).toLocaleString("vi-VN")} · {METHOD_LABELS[e.method]}
+                  {formatDateTimeInZone(e.occurred_at)} · {METHOD_LABELS[e.method]}
                   {e.confidence !== null && e.confidence !== undefined ? ` · Khớp ${(e.confidence * 100).toFixed(0)}%` : ""}
                   {e.liveness_status ? ` · Liveness: ${e.liveness_status}` : ""}
                 </span>
