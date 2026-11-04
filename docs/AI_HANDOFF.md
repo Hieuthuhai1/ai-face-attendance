@@ -1578,8 +1578,13 @@ employee-directory) · secret scan sạch.
 
 **Commit:** `27d4366` (fix(face): restore local face matcher and descriptor
 storage).
-**Deployment:** `dpl_2Vk9xVjQC4VC4VMELNP4oYWLvCie` (có route chẩn đoán, đã
-thay thế bằng deployment cuối sau khi xoá route).
+**Deployment:** `dpl_2Vk9xVjQC4VC4VMELNP4oYWLvCie` (có route chẩn đoán) →
+deployment cuối `dpl_2pT9jYS5K2gtfcPoYKeyfW4Smgub` (đã xoá route chẩn đoán và
+`DIAG_SECRET`), alias https://ai-face-attendance-zeta.vercel.app, READY.
+**Verify UI production (Playwright headless, 2026-11-04):** login
+`nv.b3@demo.vn` → `/dashboard` OK → `/enrollment` hiện “Dịch vụ nhận diện sẵn
+sàng”, không có console error.
 **Known issues:** Next.js 16.4.0 vẫn cần chạy `next upgrade --agent=security`;
 browser tool của môi trường dev không hydrate được `/login` (Suspense fallback
-đứng yên), nên verify production bằng HTTP/RPC thay vì UI.
+đứng yên) — chỉ là giới hạn tool, Playwright headless xác nhận UI production
+hoạt động bình thường.
