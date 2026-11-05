@@ -131,7 +131,7 @@ export function Modal({
       >
         {overlay && (
           <div
-            className="fixed inset-0 bg-black/40 backdrop-blur-sm animate-fade-in"
+            className="fixed inset-0 bg-[var(--navy-950)]/50 backdrop-blur-sm animate-fade-in"
             onClick={closeOnOverlayClick ? onClose : undefined}
             aria-hidden="true"
           />
@@ -141,16 +141,16 @@ export function Modal({
           ref={contentRef}
           tabIndex={-1}
           className={cn(
-            "relative w-full bg-white rounded-xl shadow-xl animate-scale-in",
+            "relative w-full overflow-hidden rounded-[var(--radius-card)] border border-white/60 bg-white shadow-[var(--shadow-dialog)] animate-scale-in",
             SIZE_CLASSES[size],
             fullScreenMobile && "max-w-full sm:max-w-md",
             className
           )}
         >
           {(title || showCloseButton) && (
-            <header className={cn("flex items-center justify-between p-4 border-b border-slate-200", headerClassName)}>
+            <header className={cn("flex items-center justify-between border-b border-[var(--border)] px-6 py-4", headerClassName)}>
               {title && (
-                <h2 id="modal-title" className="text-base font-semibold text-slate-900">
+                <h2 id="modal-title" className="text-lg font-bold tracking-[-0.01em] text-[var(--navy-800)]">
                   {title}
                 </h2>
               )}
@@ -168,12 +168,12 @@ export function Modal({
             </header>
           )}
 
-          <div className={cn("overflow-y-auto", noPadding ? "p-0" : "p-4", bodyClassName)}>
+          <div className={cn("overflow-y-auto", noPadding ? "p-0" : "p-6", bodyClassName)}>
             {children}
           </div>
 
           {footer && (
-            <footer className={cn("p-4 border-t border-slate-200 bg-[var(--surface-muted)]", "flex items-center justify-end gap-2")}>
+            <footer className={cn("flex items-center justify-end gap-2 border-t border-[var(--border)] bg-[var(--surface-muted)] px-6 py-4")}>
               {footer}
             </footer>
           )}

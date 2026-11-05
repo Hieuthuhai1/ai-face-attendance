@@ -15,7 +15,7 @@ export interface SelectOption {
 
 export interface SelectProps {
   /** Label cho select */
-  label: string;
+  label?: string;
   /** Placeholder */
   placeholder?: string;
   /** Giá trị hiện tại */
@@ -93,12 +93,12 @@ export function Select({
   const isMulti = multiple;
   const isAsync = !!asyncOptions;
 
-  const currentOptions = isAsync && asyncOptions ? asyncOpts : options;
+  const currentOptions = asyncOptions ? asyncOpts : options;
   const displayValue = Array.isArray(value) ? value : value ? [value] : [];
 
   // Handle async options
   useEffect(() => {
-    if (!isAsync || !searchable) return;
+    if (!asyncOptions || !searchable) return;
     const timer = setTimeout(async () => {
       setAsyncLoading(true);
       try {
@@ -109,7 +109,7 @@ export function Select({
       }
     }, asyncDebounce);
     return () => clearTimeout(timer);
-  }, [search, isAsync, asyncOptions, asyncDebounce]);
+  }, [search, asyncOptions, asyncDebounce, searchable]);
 
   // Close on outside click
   useEffect(() => {
@@ -225,10 +225,9 @@ export function Select({
         onClick={() => handleSelect(opt)}
         onMouseDown={(e) => e.preventDefault()}
         className={cn(
-          "w-full px-3 py-2 text-left text-sm",
-          "hover:bg-slate-50 focus:bg-slate-50",
-          "first:rounded-t-lg last:rounded-b-lg",
-          displayValue.includes(opt.value) ? "bg-[var(--brand-soft)] text-[var(--brand-strong)]" : "text-slate-700",
+          "w-full px-3 py-2 text-left text-sm rounded-lg",
+          "hover:bg-[var(--surface-muted)] focus:bg-[var(--surface-muted)] focus-visible:outline-none",
+          displayValue.includes(opt.value) ? "bg-[var(--brand-soft)] text-[var(--brand-strong)]" : "text-[var(--navy-700)]",
           opt.disabled && "opacity-50 cursor-not-allowed"
         )}
       >
@@ -249,10 +248,12 @@ export function Select({
   };
 
   return (
-    <div ref={containerRef} className={cn("flex flex-col gap-1", className)}>
-      <label htmlFor={selectId} className="text-sm font-medium text-slate-700">
-        {label}
-      </label>
+    <div ref={containerRef} className={cn("flex flex-col gap-1.5", className)}>
+      {label ? (
+        <label htmlFor={selectId} className="text-[13px] font-medium text-[var(--text-2)]">
+          {label}
+        </label>
+      ) : null}
 
       <div className="relative">
         <div
@@ -275,13 +276,14 @@ export function Select({
             disabled={disabled}
             className={cn(
               "w-full flex items-center gap-2",
-              "h-10 rounded-lg border bg-white px-3 text-sm",
-              "focus-visible:outline-none",
-              "disabled:cursor-not-allowed disabled:opacity-50 disabled:bg-slate-50",
-              error ? "border-red-500" : "border-slate-300",
-              "hover:not(:disabled):border-slate-400"
+              "h-10 rounded-[var(--radius-control)] border bg-white px-3.5 text-sm text-[var(--navy-700)]",
+              "shadow-[0_1px_2px_rgb(27_37_75_/_0.04)] transition-colors",
+              "focus-visible:outline-none focus-visible:border-[var(--brand)] focus-visible:ring-4 focus-visible:ring-[var(--brand-ring)]",
+              "disabled:cursor-not-allowed disabled:opacity-55 disabled:bg-[var(--surface-muted)]",
+              error ? "border-[var(--danger)]" : "border-[var(--border-strong)]",
+              "hover:not(:disabled):border-slate-300"
             )}
-            aria-label={label}
+            aria-label={label ?? placeholder}
           >
             {/* Selected values */}
             <div className="flex-1 min-w-0 flex flex-wrap items-center gap-1.5">
@@ -377,7 +379,7 @@ export function Select({
                 role="listbox"
                 aria-multiselectable={isMulti}
                 className={cn(
-                  "absolute z-50 mt-1 min-w-[200px] max-h-60 overflow-auto rounded-lg border border-slate-200 bg-white shadow-lg",
+                  "absolute z-50 mt-1 min-w-[200px] max-h-60 overflow-auto rounded-xl border border-[var(--border)] bg-white p-1 shadow-[var(--shadow-popover)]",
                   "animate-fade-in"
                 )}
                 style={{
@@ -474,10 +476,12 @@ export function SimpleSelect({
           aria-invalid={error ? true : undefined}
           aria-describedby={error ? `${selectId}-error` : hint ? `${selectId}-hint` : undefined}
           className={cn(
-            "h-10 w-full appearance-none rounded-lg border bg-white pl-3 pr-9 text-sm",
-            "focus-visible:outline-2 focus-visible:outline-[var(--brand)]",
-            error ? "border-red-500" : "border-slate-300",
-            disabled && "bg-slate-50 cursor-not-allowed"
+            "h-10 w-full appearance-none rounded-[var(--radius-control)] border bg-white pl-3.5 pr-9 text-sm text-[var(--navy-700)]",
+            "shadow-[0_1px_2px_rgb(27_37_75_/_0.04)] transition-colors",
+            "hover:border-[var(--border-strong)]",
+            "focus-visible:border-[var(--brand)] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[var(--brand-ring)]",
+            error ? "border-[var(--danger)]" : "border-[var(--border-strong)]",
+            disabled && "bg-[var(--surface-muted)] cursor-not-allowed"
           )}
         >
           <option value="" disabled>
@@ -503,3 +507,6 @@ export function SimpleSelect({
     </div>
   );
 }
+
+/** Alias giữ tương thích cho các import cũ (`SelectField`). */
+export const SelectField = SimpleSelect;

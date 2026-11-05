@@ -10,32 +10,37 @@ export interface StatCardProps {
   hint?: string;
 }
 
-const TONES: Record<NonNullable<StatCardProps["tone"]>, string> = {
-  neutral: "text-slate-700",
-  success: "text-[var(--success)]",
-  warning: "text-[var(--warning)]",
-  danger: "text-[var(--danger)]",
-  info: "text-[var(--info)]",
+const TONES: Record<NonNullable<StatCardProps["tone"]>, { value: string; icon: string }> = {
+  neutral: { value: "text-[var(--navy-800)]", icon: "bg-[var(--surface-muted)] text-[var(--text-2)]" },
+  success: { value: "text-[var(--success)]", icon: "bg-[var(--success-bg)] text-[var(--success)]" },
+  warning: { value: "text-[var(--warning)]", icon: "bg-[var(--warning-bg)] text-[var(--warning)]" },
+  danger: { value: "text-[var(--danger)]", icon: "bg-[var(--danger-bg)] text-[var(--danger)]" },
+  info: { value: "text-[var(--brand-strong)]", icon: "bg-[var(--brand-soft)] text-[var(--brand)]" },
 };
 
 /** Thẻ số liệu: số tabular-nums + icon + nhãn; toàn bộ thẻ là link khi có href. */
 export function StatCard({ label, value, icon, tone = "neutral", href, hint }: StatCardProps) {
+  const toneClass = TONES[tone];
   const body = (
     <>
-      <div className="flex items-center justify-between gap-2">
-        <p className={`tnum text-2xl font-bold ${TONES[tone]}`}>{value}</p>
-        <span className="text-slate-400">
-          <Icon name={icon} size={20} />
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="truncate text-[13px] font-medium text-[var(--text-2)]">{label}</p>
+          <p className={`tnum mt-2 text-[28px] font-bold leading-none tracking-[-0.02em] ${toneClass.value}`}>
+            {value}
+          </p>
+        </div>
+        <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ${toneClass.icon}`}>
+          <Icon name={icon} size={21} />
         </span>
       </div>
-      <p className="mt-1 text-sm text-slate-500">{label}</p>
-      {hint ? <p className="mt-0.5 text-xs text-slate-400">{hint}</p> : null}
+      {hint ? <p className="mt-3 truncate text-xs text-[var(--text-3)]">{hint}</p> : null}
     </>
   );
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+    <div className="rounded-[var(--radius-card)] border border-[var(--border)] bg-white p-5 shadow-[var(--shadow-card)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[var(--shadow-card-hover)]">
       {href ? (
-        <Link href={href} className="block focus-visible:outline-2" aria-label={`${label}: ${value}`}>
+        <Link href={href} className="block rounded-lg focus-visible:outline-2 focus-visible:outline-[var(--brand)]" aria-label={`${label}: ${value}`}>
           {body}
         </Link>
       ) : (

@@ -1,16 +1,32 @@
 "use client";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { cn } from "@/lib/cn";
 import { Button } from "./button";
+
+export interface DropdownMenuProps {
+  /** Nội dung trigger mặc định (nếu không truyền `trigger`). */
+  label?: ReactNode;
+  /**
+   * Trigger tuỳ biến. Dùng khi cần nút riêng (avatar, chuông thông báo…)
+   * để tránh lồng `<button>` trong `<button>`.
+   */
+  trigger?: (state: { open: boolean; toggle: () => void }) => ReactNode;
+  children: ReactNode;
+  className?: string;
+  menuClassName?: string;
+  align?: "start" | "end";
+}
 
 /** Menu dropdown actions: Esc đóng, click-outside đóng, role=menu/menuitem. */
 export function DropdownMenu({
   label,
+  trigger,
   children,
-}: {
-  label: string;
-  children: ReactNode;
-}) {
+  className,
+  menuClassName,
+  align = "end",
+}: DropdownMenuProps) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -28,23 +44,33 @@ export function DropdownMenu({
       document.removeEventListener("keydown", onKey);
       document.removeEventListener("mousedown", onClick);
     };
-  }, [open ]);
+  }, [open]);
+
+  const toggle = () => setOpen((v) => !v);
 
   return (
-    <div ref={ref} className="relative inline-block">
-      <Button
-        variant="secondary"
-        size="sm"
-        aria-haspopup="menu"
-        aria-expanded={open}
-        onClick={() => setOpen((v) => !v)}
-      >
-        {label}
-      </Button>
+    <div ref={ref} className={cn("relative inline-block", className)}>
+      {trigger ? (
+        trigger({ open, toggle })
+      ) : (
+        <Button
+          variant="secondary"
+          size="sm"
+          aria-haspopup="menu"
+          aria-expanded={open}
+          onClick={toggle}
+        >
+          {label}
+        </Button>
+      )}
       {open ? (
         <div
           role="menu"
-          className="absolute right-0 z-50 mt-1 min-w-44 rounded-lg border border-slate-200 bg-white py-1 shadow-md"
+          className={cn(
+            "absolute z-50 mt-2 min-w-48 overflow-hidden rounded-xl border border-[var(--border)] bg-white p-1.5 shadow-[var(--shadow-popover)] animate-fade-in",
+            align === "end" ? "right-0" : "left-0",
+            menuClassName,
+          )}
           onClick={() => setOpen(false)}
         >
           {children}
@@ -68,9 +94,13 @@ export function DropdownItem({
       role="menuitem"
       type="button"
       onClick={onSelect}
-      className={`flex w-full items-center px-3 py-2 text-left text-sm hover:bg-slate-50 focus-visible:bg-slate-50 ${
-        danger ? "text-red-700" : "text-slate-700"
-      }`}
+      className={cn(
+        "flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm font-medium transition-colors",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)]",
+        danger
+          ? "text-[var(--danger)] hover:bg-[var(--danger-bg)]"
+          : "text-[var(--navy-700)] hover:bg-[var(--surface-muted)]",
+      )}
     >
       {children}
     </button>

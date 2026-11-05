@@ -29,9 +29,9 @@ export function TableSkeleton({ rows = 5, cols = 4 }: { rows?: number; cols?: nu
 /** Skeleton thẻ stat/dashboard. */
 export function CardSkeleton() {
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4">
+    <div className="rounded-[var(--radius-card)] border border-[var(--border)] bg-white p-5 shadow-[var(--shadow-card)]">
       <Skeleton className="h-7 w-16" label="" />
-      <Skeleton className="mt-2 h-4 w-24" label="Đang tải thẻ thông tin" />
+      <Skeleton className="mt-2.5 h-4 w-24" label="Đang tải thẻ thông tin" />
     </div>
   );
 }

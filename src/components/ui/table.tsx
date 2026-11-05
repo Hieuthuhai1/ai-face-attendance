@@ -219,13 +219,13 @@ export function Table<T extends Record<string, unknown>>({
 
   if (loading) {
     return (
-      <div className={cn("rounded-xl border border-slate-200", className)}>
-        <div className="p-8" role="status" aria-label="Đang tải bảng dữ liệu">
+      <div className={cn("rounded-[var(--radius-card)] border border-[var(--border)] bg-white shadow-[var(--shadow-card)]", className)}>
+        <div className="p-10" role="status" aria-label="Đang tải bảng dữ liệu">
           <div className="flex flex-col items-center gap-3">
-            <div className="animate-spin text-[var(--info)]">
+            <div className="animate-spin text-[var(--brand)]">
               <Icon name="refresh" size={32} />
             </div>
-            <p className="text-sm text-slate-600">Đang tải dữ liệu...</p>
+            <p className="text-sm text-[var(--text-2)]">Đang tải dữ liệu...</p>
           </div>
         </div>
       </div>
@@ -234,11 +234,13 @@ export function Table<T extends Record<string, unknown>>({
 
   if (data.length === 0) {
     return (
-      <div className={cn("rounded-xl border border-slate-200", className)}>
-        <div className="p-8 text-center" role="status" aria-label={emptyTitle}>
-          <Icon name="inbox" size={32} className="text-slate-300 mx-auto" />
-          <p className="mt-2 font-medium text-slate-800">{emptyTitle}</p>
-          {emptyDescription && <p className="mt-1 text-sm text-slate-500">{emptyDescription}</p>}
+      <div className={cn("rounded-[var(--radius-card)] border border-[var(--border)] bg-white shadow-[var(--shadow-card)]", className)}>
+        <div className="p-10 text-center" role="status" aria-label={emptyTitle}>
+          <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--surface-muted)] text-[var(--text-3)]">
+            <Icon name="inbox" size={24} />
+          </span>
+          <p className="mt-3 font-semibold text-[var(--navy-800)]">{emptyTitle}</p>
+          {emptyDescription && <p className="mt-1 text-sm text-[var(--text-2)]">{emptyDescription}</p>}
         </div>
       </div>
     );
@@ -261,7 +263,7 @@ export function Table<T extends Record<string, unknown>>({
       <td
         className={cn(
           sizeClasses.cell,
-          "border-t border-slate-100",
+          "border-t border-[var(--border)] text-[var(--navy-700)]",
           column.align === "center" && "text-center",
           column.align === "right" && "text-right",
           column.className
@@ -272,7 +274,7 @@ export function Table<T extends Record<string, unknown>>({
           maxWidth: column.maxWidth,
         } as CSSProperties}
       >
-        {content}
+        {content as ReactNode}
       </td>
     );
   };
@@ -286,12 +288,12 @@ export function Table<T extends Record<string, unknown>>({
         scope="col"
         className={cn(
           sizeClasses.header,
-          "font-medium text-slate-600",
+          "text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--text-2)]",
           "bg-[var(--surface-muted)]",
-          "border-b border-slate-200",
+          "border-b border-[var(--border)]",
           "whitespace-nowrap",
           "relative",
-          column.sortable && "cursor-pointer select-none hover:bg-slate-100",
+          column.sortable && "cursor-pointer select-none hover:bg-[var(--surface-subtle)]",
           column.resizable && "pr-8",
           column.align === "center" && "text-center",
           column.align === "right" && "text-right",
@@ -321,7 +323,7 @@ export function Table<T extends Record<string, unknown>>({
   };
 
   return (
-    <div className={cn("rounded-xl border border-slate-200 overflow-hidden", className)}>
+    <div className={cn("rounded-[var(--radius-card)] border border-[var(--border)] bg-white overflow-hidden shadow-[var(--shadow-card)]", className)}>
       {frozenColumns.length > 0 && (
         <div className="absolute left-0 top-0 bottom-0 z-10 bg-white border-r border-slate-200 shadow-md" style={{ width: frozenColumns.reduce((sum, c) => sum + (columnWidths[c.key] ?? c.width ?? 120), 0) }}>
           <table className="w-full" role="grid">
@@ -356,7 +358,7 @@ export function Table<T extends Record<string, unknown>>({
                       className={cn(
                         "transition-colors",
                         isSelected && "bg-[var(--brand-soft)]",
-                        hoverable && !isSelected && "hover:bg-slate-50",
+                        hoverable && !isSelected && "hover:bg-[var(--surface-muted)]",
                         striped && index % 2 === 1 && "bg-slate-50/50",
                         rowClassName?.(row, index)
                       )}
@@ -412,7 +414,7 @@ export function Table<T extends Record<string, unknown>>({
                     className={cn(
                       "transition-colors",
                       isSelected && "bg-[var(--brand-soft)]",
-                      hoverable && !isSelected && "hover:bg-slate-50",
+                      hoverable && !isSelected && "hover:bg-[var(--surface-muted)]",
                       striped && index % 2 === 1 && "bg-slate-50/50",
                       rowClassName?.(row, index)
                     )}
@@ -436,10 +438,40 @@ export function Table<T extends Record<string, unknown>>({
       </div>
 
       {footer && (
-        <div className="border-t border-slate-200 bg-[var(--surface-muted)] px-4 py-3">
+        <div className="border-t border-[var(--border)] bg-[var(--surface-muted)] px-4 py-3">
           {footer}
         </div>
       )}
     </div>
+  );
+}
+
+/** Ô tiêu đề bảng dùng khi tự dựng `<table>` (giữ đồng bộ style). */
+export function Th({
+  className,
+  ...rest
+}: React.ThHTMLAttributes<HTMLTableCellElement>) {
+  return (
+    <th
+      scope="col"
+      className={cn(
+        "bg-[var(--surface-muted)] px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--text-2)]",
+        className,
+      )}
+      {...rest}
+    />
+  );
+}
+
+/** Ô dữ liệu bảng dùng khi tự dựng `<table>` (giữ đồng bộ style). */
+export function Td({
+  className,
+  ...rest
+}: React.TdHTMLAttributes<HTMLTableCellElement>) {
+  return (
+    <td
+      className={cn("border-t border-[var(--border)] px-4 py-3 text-sm text-[var(--navy-700)]", className)}
+      {...rest}
+    />
   );
 }

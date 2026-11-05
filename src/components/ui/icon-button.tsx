@@ -42,10 +42,11 @@ export function IconButton({
   };
 
   const VARIANT_CLASSES = {
-    primary: "bg-[var(--brand)] text-white hover:brightness-110",
-    secondary: "border border-slate-300 bg-white hover:bg-slate-50",
-    ghost: "hover:bg-slate-100",
-    danger: "bg-red-600 text-white hover:bg-red-700",
+    primary: "bg-[var(--brand)] text-white shadow-sm hover:bg-[var(--brand-strong)]",
+    secondary:
+      "border border-[var(--border-strong)] bg-white text-[var(--navy-700)] shadow-sm hover:bg-[var(--surface-muted)]",
+    ghost: "text-[var(--text-2)] hover:bg-[var(--surface-muted)] hover:text-[var(--navy-800)]",
+    danger: "bg-[var(--danger)] text-white hover:bg-red-800",
   };
 
   const BADGE_COLORS = {
@@ -58,8 +59,8 @@ export function IconButton({
   return (
     <button
       className={cn(
-        "relative inline-flex items-center justify-center rounded-lg",
-        "transition-colors focus-visible:outline-2 focus-visible:outline-offset-2",
+        "relative inline-flex items-center justify-center rounded-[var(--radius-control)]",
+        "transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand)]",
         "disabled:cursor-not-allowed disabled:opacity-50",
         SIZE_CLASSES[size],
         VARIANT_CLASSES[variant],

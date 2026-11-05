@@ -17,14 +17,30 @@ const ALL: Role[] = ["employee", "manager", "hr_admin", "system_admin"];
 const REVIEW: Role[] = ["manager", "hr_admin", "system_admin"];
 const HR: Role[] = ["hr_admin", "system_admin"];
 
+/**
+ * Cấu trúc sidebar dùng chung cho desktop + mobile drawer.
+ * Thứ tự nhóm phản ánh luồng làm việc: Tổng quan → Quản trị nhân sự →
+ * Đơn từ → Hệ thống. Mỗi mục vẫn giữ RBAC theo role.
+ */
 export const NAV_GROUPS: NavGroup[] = [
   {
-    title: "Chấm công",
+    title: "Tổng quan",
     items: [
-      { href: "/dashboard", label: "Hôm nay", icon: "home", roles: ALL },
+      { href: "/dashboard", label: "Dashboard", icon: "dashboard", roles: ALL },
       { href: "/check-in", label: "Chấm công", icon: "camera", roles: ALL },
-      { href: "/history", label: "Lịch sử", icon: "clock", roles: ALL },
-      { href: "/enrollment", label: "Khuôn mặt", icon: "user", roles: ALL },
+      { href: "/enrollment", label: "Nhận diện khuôn mặt AI", icon: "scan-face", roles: ALL },
+      { href: "/history", label: "Lịch sử chấm công", icon: "clock", roles: ALL },
+    ],
+  },
+  {
+    title: "Quản trị nhân sự",
+    items: [
+      { href: "/admin/employees", label: "Nhân viên", icon: "users", roles: HR },
+      { href: "/admin/shifts", label: "Ca làm việc", icon: "calendar", roles: HR },
+      { href: "/reports", label: "Báo cáo thống kê", icon: "chart", roles: REVIEW },
+      { href: "/approval", label: "Trung tâm duyệt", icon: "clipboard-check", roles: REVIEW },
+      { href: "/admin/enrollments", label: "Xác minh khuôn mặt", icon: "shield", roles: REVIEW },
+      { href: "/audit", label: "Nhật ký Audit", icon: "file-text", roles: HR },
     ],
   },
   {
@@ -36,15 +52,10 @@ export const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
-    title: "Quản lý",
+    title: "Hệ thống",
     items: [
-      { href: "/approval", label: "Trung tâm duyệt", icon: "clipboard-check", roles: REVIEW },
-      { href: "/reports", label: "Báo cáo", icon: "flag", roles: REVIEW },
-      { href: "/settings", label: "Cài đặt", icon: "shield", roles: HR },
-      { href: "/admin/employees", label: "Nhân viên", icon: "users", roles: HR },
-      { href: "/admin/shifts", label: "Ca làm", icon: "calendar", roles: HR },
-      { href: "/admin/enrollments", label: "Xác minh khuôn mặt", icon: "shield", roles: HR },
-      { href: "/audit", label: "Audit", icon: "file", roles: HR },
+      { href: "/settings/profile", label: "Tài khoản", icon: "id-card", roles: ALL },
+      { href: "/settings", label: "Cài đặt", icon: "settings", roles: HR },
     ],
   },
 ];
@@ -75,8 +86,13 @@ export function findTrail(pathname: string): { group: string; label: string } | 
   return null;
 }
 
-/** Chuẩn hóa so khớp active: đúng trang hoặc con của nó. */
+/**
+ * Chuẩn hóa so khớp active: đúng trang hoặc con của nó.
+ * `/settings` là mục gốc nên chỉ active khi đúng path — tránh việc
+ * `/settings/profile` làm sáng cả "Cài đặt" và "Tài khoản".
+ */
 export function isActiveItem(pathname: string, href: string): boolean {
+  if (href === "/settings") return pathname === "/settings";
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 

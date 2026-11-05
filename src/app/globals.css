@@ -1,46 +1,61 @@
 @import "tailwindcss";
 
 /*
- * Design tokens — UX/UI Redesign R1 (light-only có chủ đích).
- * Toàn app ép light (`color-scheme: light`, không media query dark) để tránh
- * vỡ giao diện với components dùng màu cứng. Muốn dark đầy đủ phải làm task riêng.
+ * Design tokens — Horizon-inspired SaaS dashboard (light-only có chủ đích).
+ * Palette: xanh dương (brand) + navy (sidebar/heading) + trắng.
+ * Toàn app ép light (`color-scheme: light`) để tránh vỡ giao diện với
+ * components dùng màu cứng. Muốn dark đầy đủ phải làm task riêng.
  */
 :root {
   color-scheme: light;
 
-  /* Brand (họ xanh dương hiện tại, chờ duyệt navy ở task sau) */
-  --brand: #1d4ed8;
-  --brand-strong: #1e3a8a;
+  /* Brand — xanh dương tin cậy cho phần mềm nhân sự */
+  --brand: #2563eb;
+  --brand-strong: #1d4ed8;
+  --brand-deep: #1e3a8a;
   --brand-contrast: #ffffff;
   --brand-soft: #eff6ff;
+  --brand-ring: rgb(37 99 235 / 0.16);
   --teal-accent: #0d9488;
 
+  /* Navy — sidebar, heading, text đậm */
+  --navy-950: #070d24;
+  --navy-900: #0b1437;
+  --navy-800: #111c44;
+  --navy-700: #1b254b;
+  --navy-600: #24388a;
+
   /* Surface & text */
-  --background: #f6f7f9;
-  --foreground: #0f172a;
+  --background: #f4f7fe;
+  --foreground: #1b254b;
   --surface: #ffffff;
-  --surface-muted: #f1f5f9;
-  --text-1: #0f172a;
-  --text-2: #475569;
-  --text-3: #94a3b8;
-  --border: #e2e8f0;
+  --surface-muted: #f7f9fc;
+  --surface-subtle: #eef3fb;
+  --text-1: #1b254b;
+  --text-2: #5b6b8c;
+  --text-3: #a3aed0;
+  --border: #e6ebf5;
+  --border-strong: #d6deec;
 
   /* Semantic */
   --success: #15803d;
-  --success-bg: #f0fdf4;
+  --success-bg: #ecfdf3;
   --warning: #b45309;
-  --warning-bg: #fffbeb;
-  --danger: #b91c1c;
-  --danger-bg: #fef2f2;
+  --warning-bg: #fffaeb;
+  --danger: #b42318;
+  --danger-bg: #fef3f2;
   --info: #1d4ed8;
   --info-bg: #eff6ff;
 
   /* Shape & depth */
-  --radius-card: 12px;
-  --radius-control: 8px;
-  --shadow-card: 0 1px 2px rgb(15 23 42 / 0.06);
-  --shadow-dialog: 0 8px 24px rgb(15 23 42 / 0.12);
-  --focus-ring: 0 0 0 3px rgb(37 99 235 / 0.25);
+  --radius-card: 18px;
+  --radius-control: 10px;
+  --shadow-card: 0 18px 40px -28px rgb(27 37 75 / 0.35);
+  --shadow-card-hover: 0 24px 54px -28px rgb(27 37 75 / 0.45);
+  --shadow-popover: 0 20px 48px -16px rgb(27 37 75 / 0.28);
+  --shadow-dialog: 0 32px 80px -24px rgb(11 20 55 / 0.42);
+  --focus-ring: 0 0 0 4px var(--brand-ring);
+  --sidebar-gradient: linear-gradient(180deg, #0b1437 0%, #111c44 58%, #0d1838 100%);
 }
 
 @theme inline {
@@ -48,18 +63,36 @@
   --color-foreground: var(--foreground);
   --color-surface: var(--surface);
   --color-surface-muted: var(--surface-muted);
+  --color-surface-subtle: var(--surface-subtle);
   --color-brand: var(--brand);
   --color-brand-strong: var(--brand-strong);
+  --color-brand-deep: var(--brand-deep);
   --color-brand-soft: var(--brand-soft);
+  --color-navy-950: var(--navy-950);
+  --color-navy-900: var(--navy-900);
+  --color-navy-800: var(--navy-800);
+  --color-navy-700: var(--navy-700);
+  --color-navy-600: var(--navy-600);
   --color-border: var(--border);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
+html {
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system,
+    "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+::selection {
+  background: #bfdbfe;
+  color: var(--navy-900);
 }
 
 /* Số liệu/giờ dùng tabular-nums để không nhảy layout */
@@ -73,11 +106,28 @@ body {
   box-shadow: var(--focus-ring);
 }
 
+/* Thanh cuộn mảnh cho sidebar / danh sách dài */
+.scrollbar-slim {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(148 163 184 / 0.45) transparent;
+}
+.scrollbar-slim::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.scrollbar-slim::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgb(148 163 184 / 0.45);
+}
+.scrollbar-slim::-webkit-scrollbar-track {
+  background: transparent;
+}
+
 /* Skeleton shimmer (tắt dưới reduced-motion bởi rule chung) */
 .skeleton {
   position: relative;
   overflow: hidden;
-  background: var(--surface-muted);
+  background: var(--surface-subtle);
   border-radius: var(--radius-control);
 }
 .skeleton::after {

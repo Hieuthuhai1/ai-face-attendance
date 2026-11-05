@@ -11,19 +11,21 @@ export function EmptyState({
   title,
   description,
   action,
+  icon = "inbox",
 }: {
   title: string;
   description?: string;
   action?: ReactNode;
+  icon?: "inbox" | "search" | "calendar" | "users" | "file";
 }) {
   return (
-    <div className="flex flex-col items-center gap-2 py-10 text-center">
-      <span className="text-slate-300">
-        <Icon name="inbox" size={32} />
+    <div className="flex flex-col items-center gap-2 px-6 py-12 text-center">
+      <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--surface-muted)] text-[var(--text-3)] ring-1 ring-[var(--border)]">
+        <Icon name={icon} size={26} />
       </span>
-      <p className="font-medium text-slate-800">{title}</p>
-      {description ? <p className="text-sm text-slate-500">{description}</p> : null}
-      {action}
+      <p className="mt-1 text-sm font-semibold text-[var(--navy-800)]">{title}</p>
+      {description ? <p className="max-w-sm text-[13px] leading-relaxed text-[var(--text-2)]">{description}</p> : null}
+      {action ? <div className="mt-2">{action}</div> : null}
     </div>
   );
 }
@@ -38,15 +40,15 @@ export function ErrorState({
   onRetry?: () => void;
 }) {
   return (
-    <div role="alert" className="flex flex-col items-center gap-2 py-10 text-center">
-      <span className="text-[var(--danger)]">
-        <Icon name="x" size={28} />
+    <div role="alert" className="flex flex-col items-center gap-2 px-6 py-12 text-center">
+      <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--danger-bg)] text-[var(--danger)] ring-1 ring-red-100">
+        <Icon name="alert" size={24} />
       </span>
-      <p className="font-medium text-slate-800">{title}</p>
-      {description ? <p className="text-sm text-slate-500">{description}</p> : null}
+      <p className="mt-1 text-sm font-semibold text-[var(--navy-800)]">{title}</p>
+      {description ? <p className="max-w-sm text-[13px] leading-relaxed text-[var(--text-2)]">{description}</p> : null}
       {onRetry ? (
-        <Button variant="secondary" size="sm" onClick={onRetry}>
-          Thử lại
+        <Button variant="secondary" size="sm" className="mt-2" onClick={onRetry}>
+          <Icon name="refresh" size={14} /> Thử lại
         </Button>
       ) : null}
     </div>

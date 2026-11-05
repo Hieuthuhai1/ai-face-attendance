@@ -1,20 +1,27 @@
 import type { ButtonHTMLAttributes } from "react";
 import { cn } from "@/lib/cn";
+import { Icon } from "./icon";
 
-type Variant = "primary" | "secondary" | "danger" | "ghost";
+type Variant = "primary" | "secondary" | "danger" | "ghost" | "soft";
 type Size = "sm" | "md" | "lg";
 
 const VARIANTS: Record<Variant, string> = {
-  primary: "bg-[var(--brand)] text-white hover:brightness-110",
-  secondary: "border border-slate-300 bg-white hover:bg-slate-50",
-  danger: "bg-red-600 text-white hover:bg-red-700",
-  ghost: "hover:bg-slate-100",
+  primary:
+    "bg-[var(--brand)] text-white shadow-sm shadow-blue-900/15 hover:bg-[var(--brand-strong)] active:bg-[var(--brand-deep)]",
+  secondary:
+    "border border-[var(--border-strong)] bg-white text-[var(--navy-700)] shadow-sm hover:border-slate-300 hover:bg-[var(--surface-muted)]",
+  danger:
+    "bg-[var(--danger)] text-white shadow-sm shadow-red-900/10 hover:bg-red-800 active:bg-red-900",
+  ghost:
+    "text-[var(--text-2)] hover:bg-[var(--surface-subtle)] hover:text-[var(--navy-700)]",
+  soft:
+    "bg-[var(--brand-soft)] text-[var(--brand-strong)] hover:bg-blue-100 active:bg-blue-200/70",
 };
 
 const SIZES: Record<Size, string> = {
-  sm: "h-8 px-3 text-sm",
+  sm: "h-9 px-3.5 text-[13px]",
   md: "h-10 px-4 text-sm",
-  lg: "h-12 px-6 text-base",
+  lg: "h-11 px-5 text-[15px]",
 };
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -35,9 +42,10 @@ export function Button({
   return (
     <button
       className={cn(
-        "inline-flex items-center justify-center gap-2 rounded-lg font-medium",
-        "transition focus-visible:outline-2 focus-visible:outline-offset-2",
-        "disabled:cursor-not-allowed disabled:opacity-50",
+        "inline-flex select-none items-center justify-center gap-2 rounded-[var(--radius-control)] font-semibold tracking-[-0.01em]",
+        "transition-all duration-150 active:translate-y-px",
+        "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand)]",
+        "disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-55",
         VARIANTS[variant],
         SIZES[size],
         className,
@@ -46,7 +54,14 @@ export function Button({
       aria-busy={loading || undefined}
       {...rest}
     >
-      {loading ? "Đang xử lý…" : children}
+      {loading ? (
+        <>
+          <Icon name="refresh" size={size === "sm" ? 14 : 16} className="animate-spin" />
+          <span>Đang xử lý…</span>
+        </>
+      ) : (
+        children
+      )}
     </button>
   );
 }

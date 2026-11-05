@@ -1,12 +1,20 @@
 "use client";
 
-import { useState, useRef, useEffect, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import { cn } from "@/lib/cn";
-import { Portal } from "./portal";
 import { Icon } from "./icon";
-import { Button } from "./button";
 import { Avatar } from "./avatar";
 import { DropdownMenu, DropdownItem } from "./dropdown-menu";
+
+const ROLE_LABELS: Record<string, string> = {
+  employee: "Nhân viên",
+  manager: "Quản lý",
+  hr_admin: "HR Admin",
+  system_admin: "System Admin",
+};
+
+const triggerClass =
+  "flex items-center gap-2.5 rounded-[var(--radius-control)] p-1 pl-1.5 text-left transition-colors hover:bg-[var(--surface-muted)] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[var(--brand-ring)]";
 
 export interface UserMenuProps {
   /** Thông tin user */
@@ -45,45 +53,51 @@ export function UserMenu({
 }: UserMenuProps) {
   return (
     <DropdownMenu
-      label={
-        <div className={cn("flex items-center gap-2", triggerClassName)}>
-          {showAvatar && (
-            <Avatar
-              src={user.avatar}
-              name={user.displayName}
-              size="sm"
-              status="online"
-            />
-          )}
+      className="shrink-0"
+      menuClassName={cn("w-64", dropdownClassName)}
+      trigger={({ open, toggle }) => (
+        <button
+          type="button"
+          onClick={toggle}
+          aria-haspopup="menu"
+          aria-expanded={open}
+          aria-label="Tài khoản"
+          className={cn(triggerClass, triggerClassName)}
+        >
+          {showAvatar && <Avatar src={user.avatar} name={user.displayName} size="sm" />}
           {showName && (
-            <span className="hidden sm:block truncate font-medium text-slate-800">
-              {user.displayName}
+            <span className="hidden min-w-0 text-left sm:block">
+              <span className="block truncate text-[13px] font-semibold leading-tight text-[var(--navy-800)]">
+                {user.displayName}
+              </span>
+              <span className="mt-0.5 block truncate text-[11px] leading-tight text-[var(--text-3)]">
+                {ROLE_LABELS[user.role] ?? user.role}
+              </span>
             </span>
           )}
-          <Icon name="chevron-down" size={16} className="text-slate-500" />
-        </div>
-      }
-      className={dropdownClassName}
+          <Icon
+            name="chevron-down"
+            size={15}
+            className={cn("shrink-0 text-[var(--text-3)] transition-transform", open && "rotate-180")}
+          />
+        </button>
+      )}
     >
-      <div className="px-3 py-2 border-b border-slate-100">
-        <p className="text-sm font-medium text-slate-900 truncate">{user.displayName}</p>
-        <p className="text-xs text-slate-500 truncate">{user.email}</p>
-        <span className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-[var(--brand-soft)] text-[var(--brand-strong)]">
-          {user.role}
+      <div className="border-b border-[var(--border)] px-3 pb-2.5 pt-2">
+        <p className="truncate text-sm font-semibold text-[var(--navy-800)]">{user.displayName}</p>
+        <p className="truncate text-xs text-[var(--text-2)]">{user.email}</p>
+        <span className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-[var(--brand-soft)] px-2 py-0.5 text-[10px] font-semibold text-[var(--brand-strong)]">
+          {ROLE_LABELS[user.role] ?? user.role}
         </span>
       </div>
-      {items.map((item, index) => (
-        <DropdownItem
-          key={index}
-          onSelect={item.onClick}
-          danger={item.danger}
-        >
-          <div className="flex items-center gap-2">
-            {item.icon && <span className="w-5 h-5 flex-shrink-0">{item.icon}</span>}
+      <div className="pt-1">
+        {items.map((item, index) => (
+          <DropdownItem key={index} onSelect={item.onClick} danger={item.danger}>
+            {item.icon && <span className="flex h-5 w-5 shrink-0 items-center justify-center">{item.icon}</span>}
             <span className="flex-1 truncate">{item.label}</span>
-          </div>
-        </DropdownItem>
-      ))}
+          </DropdownItem>
+        ))}
+      </div>
     </DropdownMenu>
   );
 }
@@ -115,34 +129,44 @@ export function UserMenuWithSubmenu({
 }) {
   return (
     <DropdownMenu
-      label={
-        <div className={cn("flex items-center gap-2", triggerClassName)}>
-          {showAvatar && (
-            <Avatar
-              src={user.avatar}
-              name={user.displayName}
-              size="sm"
-              status="online"
-            />
-          )}
+      className="shrink-0"
+      menuClassName={cn("w-64", dropdownClassName)}
+      trigger={({ open, toggle }) => (
+        <button
+          type="button"
+          onClick={toggle}
+          aria-haspopup="menu"
+          aria-expanded={open}
+          aria-label="Tài khoản"
+          className={cn(triggerClass, triggerClassName)}
+        >
+          {showAvatar && <Avatar src={user.avatar} name={user.displayName} size="sm" />}
           {showName && (
-            <span className="hidden sm:block truncate font-medium text-slate-800">
-              {user.displayName}
+            <span className="hidden min-w-0 text-left sm:block">
+              <span className="block truncate text-[13px] font-semibold leading-tight text-[var(--navy-800)]">
+                {user.displayName}
+              </span>
+              <span className="mt-0.5 block truncate text-[11px] leading-tight text-[var(--text-3)]">
+                {ROLE_LABELS[user.role] ?? user.role}
+              </span>
             </span>
           )}
-          <Icon name="chevron-down" size={16} className="text-slate-500" />
-        </div>
-      }
-      className={dropdownClassName}
+          <Icon
+            name="chevron-down"
+            size={15}
+            className={cn("shrink-0 text-[var(--text-3)] transition-transform", open && "rotate-180")}
+          />
+        </button>
+      )}
     >
-      <div className="px-3 py-2 border-b border-slate-100">
-        <p className="text-sm font-medium text-slate-900 truncate">{user.displayName}</p>
-        <p className="text-xs text-slate-500 truncate">{user.email}</p>
-        <span className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-[var(--brand-soft)] text-[var(--brand-strong)]">
-          {user.role}
+      <div className="border-b border-[var(--border)] px-3 pb-2.5 pt-2">
+        <p className="truncate text-sm font-semibold text-[var(--navy-800)]">{user.displayName}</p>
+        <p className="truncate text-xs text-[var(--text-2)]">{user.email}</p>
+        <span className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-[var(--brand-soft)] px-2 py-0.5 text-[10px] font-semibold text-[var(--brand-strong)]">
+          {ROLE_LABELS[user.role] ?? user.role}
         </span>
       </div>
-      {renderMenuItems(items)}
+      <div className="pt-1">{renderMenuItems(items)}</div>
     </DropdownMenu>
   );
 }
@@ -154,15 +178,13 @@ function renderMenuItems(items: UserMenuItem[]): ReactNode {
         <div key={index} className="relative">
           <button
             type="button"
-            className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-slate-50 focus:bg-slate-50 focus-visible:outline-2 focus-visible:outline-[var(--brand)]"
+            className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm font-medium text-[var(--navy-700)] hover:bg-[var(--surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)]"
           >
-            <div className="flex items-center gap-2 flex-1">
-              {item.icon && <span className="w-5 h-5 flex-shrink-0">{item.icon}</span>}
-              <span className="truncate">{item.label}</span>
-            </div>
-            <Icon name="chevron-right" size={14} className="text-slate-400" />
+            {item.icon && <span className="flex h-5 w-5 shrink-0 items-center justify-center">{item.icon}</span>}
+            <span className="flex-1 truncate">{item.label}</span>
+            <Icon name="chevron-right" size={14} className="text-[var(--text-3)]" />
           </button>
-          <div className="absolute left-full top-0 min-w-[200px] rounded-lg border border-slate-200 bg-white py-1 shadow-lg z-50 animate-fade-in">
+          <div className="absolute left-full top-0 z-50 min-w-52 rounded-xl border border-[var(--border)] bg-white p-1.5 shadow-[var(--shadow-popover)] animate-fade-in">
             {renderMenuItems(item.submenu)}
           </div>
         </div>
@@ -176,13 +198,15 @@ function renderMenuItems(items: UserMenuItem[]): ReactNode {
         onClick={item.onClick}
         disabled={item.disabled}
         className={cn(
-          "flex w-full items-center gap-2 px-3 py-2 text-left text-sm",
-          "hover:bg-slate-50 focus:bg-slate-50 focus-visible:outline-2 focus-visible:outline-[var(--brand)]",
-          item.disabled && "opacity-50 cursor-not-allowed",
-          item.danger && "text-red-700 hover:bg-red-50"
+          "flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm font-medium transition-colors",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)]",
+          item.disabled && "cursor-not-allowed opacity-50",
+          item.danger
+            ? "text-[var(--danger)] hover:bg-[var(--danger-bg)]"
+            : "text-[var(--navy-700)] hover:bg-[var(--surface-muted)]",
         )}
       >
-        {item.icon && <span className="w-5 h-5 flex-shrink-0">{item.icon}</span>}
+        {item.icon && <span className="flex h-5 w-5 shrink-0 items-center justify-center">{item.icon}</span>}
         <span className="truncate">{item.label}</span>
       </button>
     );
@@ -235,85 +259,98 @@ export function NotificationBell({
 
   return (
     <DropdownMenu
-      label={
+      className="shrink-0"
+      menuClassName="w-[22rem] max-w-[calc(100vw-2rem)]"
+      trigger={({ open, toggle }) => (
         <button
           type="button"
-          className="relative p-2 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-2 focus-visible:outline-[var(--brand)]"
+          onClick={toggle}
+          aria-haspopup="menu"
+          aria-expanded={open}
+          className={cn(
+            "relative flex h-10 w-10 items-center justify-center rounded-[var(--radius-control)] text-[var(--text-2)] transition-colors",
+            "hover:bg-[var(--surface-muted)] hover:text-[var(--navy-800)]",
+            "focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[var(--brand-ring)]",
+            open && "bg-[var(--surface-muted)] text-[var(--navy-800)]",
+          )}
           aria-label={`Thông báo${unreadCount > 0 ? `, ${unreadCount} chưa đọc` : ""}`}
         >
-          <Icon name="inbox" size={20} />
+          <Icon name="bell" size={19} />
           {unreadCount > 0 && (
-            <span className="absolute -top-1 -right-1 min-w-5 h-5 rounded-full bg-red-500 text-white text-[10px] font-medium flex items-center justify-center px-1">
+            <span className="absolute right-1.5 top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--danger)] px-1 text-[9px] font-bold text-white ring-2 ring-white">
               {unreadCount > 99 ? "99+" : unreadCount}
             </span>
           )}
         </button>
-      }
+      )}
     >
-      <div className="px-3 py-2 border-b border-slate-100 flex items-center justify-between">
-        <h3 className="font-medium text-slate-900">Thông báo</h3>
-        {onViewAll && (
-          <button type="button" onClick={onViewAll} className="text-xs text-[var(--brand)] hover:underline">
-            Xem tất cả
-          </button>
-        )}
+      <div className="flex items-center justify-between border-b border-[var(--border)] px-3 pb-2.5 pt-2">
+        <h3 className="text-sm font-semibold text-[var(--navy-800)]">Thông báo</h3>
+        {unreadCount > 0 ? (
+          <span className="rounded-full bg-[var(--brand-soft)] px-2 py-0.5 text-[10px] font-semibold text-[var(--brand-strong)]">
+            {unreadCount} mới
+          </span>
+        ) : null}
       </div>
 
       {loading ? (
-        <div className="px-3 py-4 text-center text-sm text-slate-500">
-          <Icon name="refresh" size={18} className="animate-spin mx-auto mb-2 text-[var(--info)]" />
+        <div className="px-3 py-6 text-center text-sm text-[var(--text-2)]">
+          <Icon name="refresh" size={18} className="mx-auto mb-2 animate-spin text-[var(--brand)]" />
           Đang tải...
         </div>
       ) : visibleNotifications.length === 0 ? (
-        <div className="px-3 py-8 text-center text-sm text-slate-500">
-          <Icon name="inbox" size={24} className="mx-auto text-slate-300 mb-2" />
+        <div className="px-3 py-8 text-center text-sm text-[var(--text-2)]">
+          <span className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-[var(--surface-muted)] text-[var(--text-3)]">
+            <Icon name="bell" size={20} />
+          </span>
           <p>{emptyMessage}</p>
         </div>
       ) : (
-        <div className="max-h-80 overflow-y-auto">
+        <div className="max-h-80 overflow-y-auto scrollbar-slim">
           {visibleNotifications.map((notification) => (
             <button
               key={notification.id}
               type="button"
               onClick={() => onNotificationClick?.(notification)}
               className={cn(
-                "w-full px-3 py-3 text-left hover:bg-slate-50",
-                !notification.read && "bg-[var(--info-bg)]/50"
+                "flex w-full gap-2.5 rounded-lg px-3 py-2.5 text-left transition-colors hover:bg-[var(--surface-muted)]",
+                !notification.read && "bg-[var(--brand-soft)]/50",
               )}
             >
-              <div className="flex items-start gap-2">
-                <div className={cn("flex-shrink-0 mt-0.5", NOTIFICATION_ICONS[notification.type ?? "info"].color)}>
-                  <Icon name={NOTIFICATION_ICONS[notification.type ?? "info"].icon} size={18} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className={cn("font-medium text-sm truncate", !notification.read && "font-semibold")}>
-                    {notification.title}
-                  </p>
-                  <p className="text-xs text-slate-600 mt-0.5 line-clamp-2">{notification.message}</p>
-                  <p className="text-[10px] text-slate-400 mt-1">
-                    {notification.time.toLocaleString("vi-VN")}
-                  </p>
-                </div>
-                {!notification.read && (
-                  <span className="w-2 h-2 rounded-full bg-[var(--brand)] flex-shrink-0 mt-2" />
+              <span
+                className={cn(
+                  "mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--surface-muted)]",
+                  NOTIFICATION_ICONS[notification.type ?? "info"].color,
                 )}
-              </div>
+              >
+                <Icon name={NOTIFICATION_ICONS[notification.type ?? "info"].icon} size={16} />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className={cn("block truncate text-[13px] text-[var(--navy-800)]", !notification.read && "font-semibold")}>
+                  {notification.title}
+                </span>
+                <span className="mt-0.5 line-clamp-2 block text-xs text-[var(--text-2)]">{notification.message}</span>
+                <span className="mt-1 block text-[10px] text-[var(--text-3)]">
+                  {notification.time.toLocaleString("vi-VN")}
+                </span>
+              </span>
+              {!notification.read && <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--brand)]" />}
             </button>
           ))}
         </div>
       )}
 
-      {notifications.length > maxVisible && (
-        <div className="px-3 py-2 border-t border-slate-100 text-center">
-          <button
-            type="button"
-            onClick={onViewAll}
-            className="text-sm text-[var(--brand)] hover:underline w-full"
-          >
-            Xem thêm {notifications.length - maxVisible} thông báo...
-          </button>
-        </div>
-      )}
+      <div className="mt-1 border-t border-[var(--border)] px-3 pb-1 pt-2">
+        <button
+          type="button"
+          onClick={onViewAll}
+          className="w-full rounded-lg py-1.5 text-center text-xs font-semibold text-[var(--brand)] transition-colors hover:bg-[var(--brand-soft)]"
+        >
+          {notifications.length > maxVisible
+            ? `Xem thêm ${notifications.length - maxVisible} thông báo`
+            : "Xem tất cả thông báo"}
+        </button>
+      </div>
     </DropdownMenu>
   );
 }

@@ -2,7 +2,7 @@
 export { Button, type ButtonProps } from "./button";
 export { Input, type InputProps } from "./input";
 export { Select, SelectField, SimpleSelect, type SelectProps, type SelectOption } from "./select";
-export { Card, CardTitle, CardDescription } from "./card";
+export { Card, CardHeader, CardTitle, CardDescription } from "./card";
 export { Badge, type BadgeProps } from "./badge";
 export { Dialog, type DialogProps } from "./dialog";
 export { ConfirmDialog, type ConfirmDialogProps } from "./confirm-dialog";

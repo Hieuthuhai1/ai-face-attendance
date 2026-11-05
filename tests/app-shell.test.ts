@@ -43,8 +43,15 @@ describe("active + breadcrumb + public routes", () => {
   });
 
   it("findTrail trả nhóm + nhãn", () => {
-    expect(findTrail("/admin/shifts")).toEqual({ group: "Quản lý", label: "Ca làm" });
+    expect(findTrail("/admin/shifts")).toEqual({ group: "Quản trị nhân sự", label: "Ca làm việc" });
+    expect(findTrail("/settings/profile")).toEqual({ group: "Hệ thống", label: "Tài khoản" });
     expect(findTrail("/nope")).toBeNull();
+  });
+
+  it("isActiveItem không bật nhầm Cài đặt khi ở Tài khoản", () => {
+    expect(isActiveItem("/settings/profile", "/settings")).toBe(false);
+    expect(isActiveItem("/settings/profile", "/settings/profile")).toBe(true);
+    expect(isActiveItem("/settings", "/settings")).toBe(true);
   });
 
   it("route công khai không shell", () => {
