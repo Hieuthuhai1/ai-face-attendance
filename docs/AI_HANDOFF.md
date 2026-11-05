@@ -1643,3 +1643,52 @@ với `attendance_events.occurred_at` — chỉ khác cách hiển thị.
 `2026-11-04T06:47:28Z` (13:47:28 giờ Việt Nam); không có console error.
 **Deployment cuối:** `dpl_5ndqjF252ttsyFcLNjfAZMBQ3A54` (alias
 https://ai-face-attendance-zeta.vercel.app), READY.
+
+## Phase 30 — Tích hợp design system & main layout (2026-11-05)
+
+**Mục tiêu:** áp phong cách SaaS dashboard (xanh dương/navy/trắng) lấy cảm hứng
+từ Horizon Tailwind vào app hiện tại — chỉ port phần visual, giữ nguyên
+Next.js App Router, Tailwind v4, Recharts và RBAC.
+
+**Thay đổi (chỉ UI, không đổi logic/API/DB):**
+- `src/app/globals.css`: token mới (`--brand`, dải `--navy-*`, `--background`
+  `#f4f7fe`, radius card 18px / control 10px, shadow mềm), Geist áp thật vào
+  `body`, `scrollbar-slim`, giữ nguyên animation + scan loader + reduced-motion.
+- Primitive: `button` (thêm variant `soft` + spinner), `input` (label optional),
+  `select` (label optional, trigger/dropdown mới, alias `SelectField`), `card`
+  (+`CardHeader`, variant), `table` (+`Th`/`Td`), `data-table`, `dialog`,
+  `modal`, `dropdown-menu` (render-prop `trigger`, hết lồng `<button>`),
+  `states`, `stat-card`, `badge` (+tone `brand`), `icon-button`, `skeleton`.
+- `icon.tsx`: thêm `dashboard`, `chart`, `settings`, `bell`, `clipboard-check`,
+  `file-text`, `arrow-right`, `more-horizontal`, `user-check`, `key`,
+  `building`, `id-card`.
+- `app-shell.tsx`: sidebar navy gradient + active pill/indicator + thu gọn,
+  topbar (breadcrumb, command search, shortcuts, notification bell, user menu),
+  drawer mobile (overlay, khoá scroll, Escape, tự đóng khi đổi route),
+  bottom-bar mobile, command palette + shortcuts help giữ nguyên.
+- `nav.ts`: 4 nhóm (Tổng quan / Quản trị nhân sự / Đơn từ / Hệ thống) với đủ
+  9 mục yêu cầu; sửa active của `/settings` để không sáng cùng
+  `/settings/profile`.
+- `src/lib/i18n/overrides.ts`: bổ sung nhãn VI→EN cho menu/shell mới.
+
+**Kiểm tra:**
+- `npm test` ✅ 136 pass / 17 skip (17 file pass, 4 skip).
+- `npx tsc --noEmit`: 121 lỗi — toàn bộ là lỗi cũ (`settings-client`,
+  `employee-directory`, `calendar`, `charts/*`, export stale trong
+  `components/ui/index.ts`); không phát sinh lỗi mới trong file đã sửa.
+- `npm run build` ✅ (lần đầu dừng ở cảnh báo bảo mật Next 16.4.0, chạy lại
+  thành công — 27 route).
+- UI verify bằng route tạm `/preview-shell` trên `next dev` (Supabase local
+  không chạy nên không đăng nhập được); đã xoá route tạm trước khi commit.
+
+**Commit:** `feat(ui): integrate Horizon-inspired design system and app shell`
+— SHA `e84a313` (pushed `main`).
+**Deployment:** `dpl_BXFP5Q3o7nZ1CTZ6KunLQX8ieGzV` (alias
+https://ai-face-attendance-zeta.vercel.app), READY.
+
+**Known issues / Next:**
+- Next.js 16.4.0 đang dính khuyến nghị bảo mật → cần chạy
+  `next upgrade --agent=security` ở worktree riêng.
+- `next.config.ts` vẫn `typescript.ignoreBuildErrors: true`; 121 lỗi type cũ
+  cần dọn ở phase riêng.
+- Chưa test UI với dữ liệu thật: Supabase local (Docker) không chạy.
