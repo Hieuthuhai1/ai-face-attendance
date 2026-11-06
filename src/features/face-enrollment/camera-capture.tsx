@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, type ReactNode } from "react";
 import { cn } from "@/lib/cn";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
@@ -91,6 +91,10 @@ interface CameraCaptureInnerProps {
    * Giữ prop để không phá vỡ call site cũ.
    */
   allowManualCapture?: boolean;
+  /** Nội dung React render đè lên video (ví dụ khung quét khuôn mặt) */
+  overlayContent?: ReactNode;
+  /** Ẩn nút điều khiển chụp/bật camera của bản thân (dùng khi componen cha tự điều khiển) */
+  hideCaptureControls?: boolean;
 }
 
 /** Inner component that uses FaceDetectionProvider context */
@@ -102,6 +106,8 @@ function CameraCaptureInner({
   captureLabel = "Chụp ảnh",
   buttonVariant = "primary",
   showPrivacyNotice = false,
+  overlayContent,
+  hideCaptureControls = false,
 }: CameraCaptureInnerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -299,6 +305,7 @@ function CameraCaptureInner({
           aria-label={isCheckIn ? "Xem trước camera chấm công" : "Xem trước camera đăng ký khuôn mặt"}
           className="aspect-[4/3] w-full object-cover"
         />
+        {overlayContent}
         {showGuide && state === "ready" ? <FaceGuideOverlay showInstructions={false} overlay /> : null}
         {state === "capturing" ? (
           <div className="absolute right-3 top-3 flex items-center gap-1 rounded-full bg-red-500/90 px-2 py-1 text-xs font-medium text-white">
@@ -359,13 +366,13 @@ function CameraCaptureInner({
         </div>
       ) : null}
 
-      {state === "idle" || state === "requesting" ? (
+      {!hideCaptureControls && (state === "idle" || state === "requesting") ? (
         <Button onClick={start} loading={state === "requesting"} disabled={disabled} className="w-full">
           {state === "requesting" ? "Đang bật camera…" : "Bật camera"}
         </Button>
       ) : null}
 
-      {state === "ready" ? (
+      {!hideCaptureControls && state === "ready" ? (
         <div className="flex flex-col gap-2">
           <Button
             onClick={startCapture}

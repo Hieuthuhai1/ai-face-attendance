@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { getTodayStatus } from "@/features/attendance/actions";
-import { FaceVerificationFlow } from "@/features/face-verification";
+import { FaceVerificationRedesigned } from "@/features/face-verification/face-verification-redesigned";
 import { Button } from "@/components/ui/button";
 
 type TodayStatus = Awaited<ReturnType<typeof getTodayStatus>>;
@@ -47,7 +47,7 @@ export function CheckInClient({
           Chấm công ra
         </Button>
       </div>
-      <FaceVerificationFlow
+      <FaceVerificationRedesigned
         key={direction}
         direction={direction}
         shift={status.shift}

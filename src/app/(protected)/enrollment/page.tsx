@@ -19,10 +19,10 @@ async function EnrollmentData() {
   const reason = enrollment.state === "none" ? null : enrollment.reason;
 
   // Dynamic import client component to avoid SSR issues
-  const { EnrollmentWorkflow } = await import("@/features/face-enrollment/enrollment-workflow");
+  const { EnrollmentRedesigned } = await import("@/features/face-enrollment/enrollment-redesigned");
 
   return (
-    <EnrollmentWorkflow
+    <EnrollmentRedesigned
       initialState={enrollment.state}
       statusReason={reason}
       providerDemo={health.demo && health.configured}
