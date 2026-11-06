@@ -1881,3 +1881,61 @@ trạng thái ghi nhận, thành công/thất bại, xem lại thông tin.
 - Chưa test UI trên Chrome thực tế (chỉ test qua build + Playwright headless).
 - AWS Rekognition credentials chưa cấu hình trên Vercel.
 - Next task: xác nhận Vercel READY, báo các chức năng AI chưa thể xác minh.
+
+## Phase 34 — Redesign Quản lý Ca làm, Báo cáo và Cài đặt (2026-11-06)
+
+**Mục tiêu:** Nâng cấp giao diện các module quản lý còn lại theo Horizon Tailwind:
+(1) Quản lý ca làm việc: danh sách ca, thêm/sửa/xóa, phân công ca. (2) Lịch sử chấm công:
+tìm kiếm nhân viên, lọc tháng/phòng ban/trạng thái, xem chi tiết. (3) Báo cáo thống kê:
+Recharts charts (LineChart, PieChart, BarChart) cho chuyên cần, đi muộn, vắng mặt,
+theo nhân viên, theo phòng ban. (4) Cài đặt: tổ chức, chính sách, nhận diện, ngày lễ,
+người dùng/vai trò, nhật ký audit.
+
+**Thay đổi:**
+- `src/features/hr/shift-manager.tsx` (sửa) — Redesign với Modal, Select, ConfirmDialog,
+  Badge, DataTable. Cột: Tên ca, Giờ làm, Loại ca, Grace vào/ra, Làm tròn. Thêm/Sửa ca
+  trong Modal. Xóa phân ca với ConfirmDialog. Xóa ca làm thông báo chưa hỗ trợ API.
+- `src/app/(protected)/history/page.tsx` (sửa) — Thêm tìm kiếm nhân viên, lọc tháng,
+  lọc phòng ban, lọc trạng thái. Bảng: Ngày, Nhân viên, Phòng ban, Ca, Vào-Ra,
+  Trễ/Sớm, Trạng thái. Phân trang client-side.
+- `src/features/reports/actions.ts` (sửa) — Thêm `getPersonalHistoryWithFilters` action
+  với filters: month, employee_id, department_id, status. RBAC: manager chỉ thấy team,
+  HR/admin thấy toàn org. Cập nhật `HistoryRow` interface với employee_code,
+  display_name, department_name. Cập nhật `getPersonalHistory` để join employees.
+- `src/app/(protected)/reports/page.tsx` (sửa) — Thay thế CSS charts bằng Recharts:
+  LineChart (xu hướng theo giờ), PieChart (phân bổ ca), BarChart (theo phòng ban).
+  Chart components là client components (dynamic import, ssr: false) để tránh SSR lỗi
+  của Recharts.
+- `src/app/(protected)/reports/analytics-charts.tsx` (mới) — Client component wrapper
+  cho 3 chart Recharts với `"use client"`.
+- `src/components/ui/charts/reports-charts.tsx` (mới) — 3 Recharts chart components:
+  ReportsTimeTrendChart, ReportsShiftDistributionChart, ReportsDepartmentAttendanceChart.
+- `src/app/(protected)/settings/settings-client.tsx` (sửa) — Redesign với Modal,
+  Select, ConfirmDialog, Badge, DataTable. Sửa duplicate functions. Giao diện đồng bộ
+  với dashboard. Tabs: Tổ chức, Chính sách chấm công, Nhận diện khuôn mặt, Ngày lễ,
+  Người dùng & Vai trò, Nhật ký Audit.
+
+**Quyết định:**
+- Không thay đổi API, database, phân quyền hiện tại.
+- Không phá vỡ routing. Sử dụng lại component chung (Modal, Select, ConfirmDialog,
+  Badge, DataTable, Input, Button, Card, Tabs).
+- Chart Recharts dùng `ssr: false` qua dynamic import trong client component wrapper
+  để tránh lỗi `createContext is not a function` khi prerender.
+- "Xóa ca làm" thông báo chưa hỗ trợ qua API (chỉ có deleteAssignment, không có
+  deleteShift).
+
+**Kết quả kiểm tra:**
+- `npm test` ✅ 147 pass / 17 skip (18 file).
+- `npx tsc --noEmit`: file mới/sửa sạch; 121 lỗi cũ baseline (không liên quan Phase 5).
+- `npm run build` ✅ (27 route; cần chạy 2 lần do nudge bảo mật Next 16.4.0).
+- Không có secret trong diff (quét grep sạch).
+
+**Commit:** `feat(shifts,reports,settings): redesign management modules with Horizon UI`
+— SHA `1b6f295` (pushed `main`).
+**Deployment:** (chưa deploy do thiếu VERCEL_TOKEN trong môi trường này).
+**Known issues / Next:**
+- Vercel CLI cần `vercel login` để deploy.
+- Các component cũ (ShiftManager gốc, CSS charts trong reports) đã được thay thế
+  hoàn toàn.
+- AWS Rekognition credentials chưa cấu hình trên Vercel.
+- Next task: xác nhận Vercel READY, báo build/test results.
