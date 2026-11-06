@@ -1772,3 +1772,52 @@ chưa có dữ liệu.
 - AWS Rekognition credentials chưa cấu hình trên Vercel (cần bạn set ở phase
   sau).
 - Next task: xác nhận Vercel READY, báo metric định nghĩa & kết quả build/test.
+
+## Phase 32 — Redesign Quản lý Nhân viên & Quản lý Chấm công (2026-11-06)
+
+**Mục tiêu:** Nâng cấp giao diện hai module quản lý theo Horizon Tailwind:
+(1) Quản lý nhân viên: danh sách, avatar, mã NV, họ tên, email, phòng ban,
+chức vụ, ngày vào làm, trạng thái; tìm kiếm, lọc phòng ban/trạng thái, phân
+trang, xem chi tiết, thêm/sửa/xóa (xác nhận). (2) Quản lý chấm công: bảng
+chấm công (tên NV, mã NV, ngày, giờ vào, giờ ra, tổng thời gian, phương thức,
+trạng thái); bộ lọc ngày/tháng/nhân viên/phòng ban/trạng thái.
+
+**Thay đổi:**
+- `src/features/hr/validation.ts` — thêm `hired_at` vào `employeeFormSchema`.
+- `src/features/hr/actions.ts` — `createEmployee`/`updateEmployee` ghi `hired_at`;
+  thêm `deleteEmployee` (alias `deactivateEmployee`, xóa mềm giữ lịch sử).
+- `src/features/hr/employee-manager.tsx` — viết lại: dùng `Modal`/`FormModal`
+  thay `Dialog`, `Select` thay `<select>` native, `ConfirmModal` xác nhận xóa,
+  `Avatar` hiển thị avatar, `Badge` trạng thái, form có validation inline,
+  cột mới (Avatar, Email, Ngày vào làm), tìm kiếm/lọc/phân trang,
+  xem chi tiết trong Modal.
+- `src/app/(protected)/admin/employees/page.tsx` — truyền `hired_at` vào rows.
+- `src/features/attendance/actions.ts` — thêm `getAttendanceRecords` server action
+  (RBAC manager/hr_admin/system_admin, scope manager chỉ thấy team, filters:
+  date/month/employee/department/status, phân trang).
+- `src/app/(protected)/admin/attendance/page.tsx` (mới) — trang quản lý chấm công:
+  form lọc (ngày, tháng, trạng thái), bảng dữ liệu với 8 cột, phân trang client-side.
+- `src/components/app/nav.ts` — thêm mục "Chấm công toàn thể" (REVIEW roles)
+  trong nhóm "Quản trị nhân sự".
+
+**Quyết định:**
+- Không thêm cột `số điện thoại` vì bảng `profiles` không có cột này (tuân thủ
+  "Không tự ý đổi cấu trúc database").
+- "Xóa nhân viên" thực hiện là xóa mềm (vô hiệu hóa + is_active=false) để giữ
+  lịch sử chấm công (tuân thủ "Không làm mất dữ liệu").
+- Quản lý chấm công dùng scope RBAC: manager chỉ thấy team, HR/admin thấy toàn org.
+
+**Kết quả kiểm tra:**
+- `npm test` ✅ 147 pass / 17 skip (18 file).
+- `npx tsc --noEmit`: file mới/sửa sạch; 121 lỗi cũ baseline (exit code 1
+  là dự kiến).
+- `npm run build` ✅ (27 route; cần chạy 2 lần do nudge bảo mật Next 16.4.0).
+
+**Commit:** `feat(hr,attendance): redesign employee and attendance management`
+— SHA `22f69ab` (pushed `main`).
+**Deployment:** (đang deploy sau ghi này).
+**Known issues / Next:**
+- Vercel CLI cần `vercel login` (token chưa cấu hình trong môi trường này),
+  cần bạn chạy `vercel deploy --prod --yes`手动.
+- Next.js 16.4.0 security nudge vẫn còn.
+- AWS Rekognition credentials chưa cấu hình trên Vercel.
