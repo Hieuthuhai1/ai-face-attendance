@@ -343,7 +343,7 @@ export function EnrollmentRedesigned({
                 Quay lại
               </Button>
             ) : null}
-            <Button onClick={() => setView("capture")} disabled={!consent || providerBlocked}>
+            <Button onClick={() => setView("capture")} disabled={providerBlocked}>
               Tiếp tục
             </Button>
           </div>
