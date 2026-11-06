@@ -1821,3 +1821,63 @@ trạng thái); bộ lọc ngày/tháng/nhân viên/phòng ban/trạng thái.
   cần bạn chạy `vercel deploy --prod --yes`手动.
 - Next.js 16.4.0 security nudge vẫn còn.
 - AWS Rekognition credentials chưa cấu hình trên Vercel.
+
+## Phase 33 — Redesign AI Face Recognition & Attendance UI (2026-11-06)
+
+**Mục tiêu:** Nâng cấp giao diện nhận diện khuôn mặt AI và chấm công theo Horizon Tailwind:
+(1) Trang chấm công AI: camera lớn ở giữa, khung quét khuôn mặt, hướng dẫn căn chỉnh,
+trạng thái camera/AI/khuôn mặt, kết quả nhận diện, thông tin nhân viên, nút vào/ra.
+(2) Trang đăng ký khuôn mặt: chọn nhân viên, khởi động camera, khu vực quét, hướng dẫn,
+trạng thái ghi nhận, thành công/thất bại, xem lại thông tin.
+
+**Thay đổi:**
+- `src/components/ui/face-scan-frame.tsx` (mới) — Khung quét khuôn mặt có hiệu ứng đường quét
+  chạy lên xuống, góc khung, mũi tên điều hướng, chấm trạng thái căn chỉnh.
+- `src/components/ui/camera-status-panel.tsx` (mới) — Bảng trạng thái camera/AI/khuôn mặt
+  dạng chip màu với hướng dẫn realtime.
+- `src/features/face-verification/face-verification-redesigned.tsx` (mới) — Component chấm công
+  redesign: FaceScanCamera (bọc FaceDetectionProvider), FaceScanFrame overlay, CameraStatusPanel,
+  AttendanceReceipt, PrivacyNotice, xử lý 11 trạng thái UI, fallback PIN.
+- `src/features/face-enrollment/enrollment-redesigned.tsx` (mới) — Component đăng ký redesign:
+  consent step, FaceScanCamera capture, success/error states, revoke với ConfirmDialog.
+- `src/features/face-enrollment/camera-capture.tsx` (sửa) — Thêm prop `overlayContent` (render
+  đè lên video) và `hideCaptureControls` (ẩn nút điều khiển của bản thân), backward compatible.
+- `src/app/(protected)/check-in/check-in-client.tsx` (sửa) — Dùng FaceVerificationRedesigned.
+- `src/app/(protected)/enrollment/page.tsx` (sửa) — Dùng EnrollmentRedesigned.
+
+**Quyết định kỹ thuật (QUAN TRỌNG):**
+- Không thay đổi model AI, thuật toán nhận diện, cấu trúc dữ liệu khuôn mặt.
+- Không xóa API đăng ký/nhận diện khuôn mặt.
+- Không dùng dữ liệu mock để đánh lừa người dùng (mock chỉ bật khi FACE_PROVIDER=mock/dev).
+- Giữ nguyên quyền truy cập camera và cơ chế xử lý video hiện tại.
+- Logic AI (verifyCheck, fallbackCheck, submitEnrollment) giữ nguyên hợp đồng API.
+
+**11 trạng thái giao diện đã triển khai:**
+1. Chưa cấp quyền Camera → denied state, hướng dẫn cho phép camera
+2. Đang khởi tạo Camera → requesting state, spinner
+3. Camera đang hoạt động → ready state, FaceScanFrame hiển thị
+4. Đang tìm kiếm khuôn mặt → not-detected, hướng dẫn đưa mặt vào khung
+5. Đã phát hiện khuôn mặt → detected, hướng dẫn căn chỉnh
+6. Đang xác thực danh tính → verifying (detecting→liveness→matching→saving), progress bar
+7. Nhận diện thành công → result, AttendanceReceipt với thông tin nhân viên
+8. Không nhận diện được → failed (NO_MATCH/LOW_CONFIDENCE), hướng dẫn thử lại
+9. Khuôn mặt không hợp lệ → failed (POOR_IMAGE_QUALITY), hướng dẫn chụp lại
+10. Lỗi kết nối AI → failed (PROVIDER_UNAVAILABLE/TIMEOUT/NETWORK_ERROR)
+11. Chấm công thành công → result status="success", onComplete callback
+
+**Kết quả kiểm tra:**
+- `npm test` ✅ 147 pass / 17 skip (18 file).
+- `npx tsc --noEmit`: file mới/sửa sạch; 121 lỗi cũ baseline (không liên quan Phase 4).
+- `npm run build` ✅ (27 route; cần chạy 2 lần do nudge bảo mật Next 16.4.0).
+- Không có secret trong diff (quét grep sạch).
+
+**Commit:** `feat(face-ai): redesign AI face recognition and attendance UI`
+— SHA `27090f0` (pushed `main`).
+**Deployment:** (chưa deploy do thiếu VERCEL_TOKEN trong môi trường này).
+**Known issues / Next:**
+- Các component AI cũ (`FaceVerificationFlow`, `EnrollmentWorkflow`, `CameraCapture` gốc) vẫn
+  được giữ lại để không phá vỡ call site cũ (enrollment-workflow.tsx vẫn dùng CameraCapture gốc).
+- Vercel CLI cần `vercel login` để deploy.
+- Chưa test UI trên Chrome thực tế (chỉ test qua build + Playwright headless).
+- AWS Rekognition credentials chưa cấu hình trên Vercel.
+- Next task: xác nhận Vercel READY, báo các chức năng AI chưa thể xác minh.
