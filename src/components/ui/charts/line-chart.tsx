@@ -77,6 +77,10 @@ export interface LineChartProps {
   activeDotRadius?: number;
   /** Tooltip content custom */
   tooltipContent?: ReactNode;
+  /** Bọc khung card (mặc định false khi đặt trong Card). */
+  frame?: boolean;
+  /** Giãn nhãn trục X: số nhãn bỏ qua giữa hai lần hiển thị. */
+  xTickInterval?: number;
 }
 
 const DEFAULT_COLORS = [
@@ -113,17 +117,26 @@ export function LineChart({
   dotRadius = 4,
   activeDotRadius = 6,
   tooltipContent,
+  frame = false,
+  xTickInterval,
 }: LineChartProps) {
   if (!data || data.length === 0) {
     return (
-      <div className={cn("rounded-xl border border-slate-200 bg-white p-8", className)}>
-        <div className="flex flex-col items-center gap-2 text-slate-500">
-          <svg className="text-slate-300" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <div
+        className={cn(
+          "flex h-full flex-col items-center justify-center gap-2 text-center",
+          frame && "rounded-[var(--radius-card)] border border-[var(--border)] bg-white p-8 shadow-[var(--shadow-card)]",
+          className,
+        )}
+      >
+        <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--surface-muted)] text-[var(--text-3)]">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
             <path d="M3 3v18h18" />
             <path d="M7 16l4-4 4 4 6-6" />
           </svg>
-          <p>Không có dữ liệu để hiển thị</p>
-        </div>
+        </span>
+        <p className="text-sm font-medium text-[var(--navy-800)]">Chưa có dữ liệu</p>
+        <p className="text-xs text-[var(--text-2)]">Số liệu sẽ hiển thị khi có nhân viên chấm công.</p>
       </div>
     );
   }
@@ -132,7 +145,12 @@ export function LineChart({
   const hasXAxisLabel = xAxisLabel || xAxisLabel === "";
 
   return (
-    <div className={cn("rounded-xl border border-slate-200 bg-white p-4", className)}>
+    <div
+      className={cn(
+        frame && "rounded-[var(--radius-card)] border border-[var(--border)] bg-white p-4 shadow-[var(--shadow-card)]",
+        className,
+      )}
+    >
       <ResponsiveContainer width={width ?? "100%"} height={height}>
         <RechartsLineChart
           data={data}
@@ -164,7 +182,8 @@ export function LineChart({
             tickLine={false}
             axisLine={{ stroke: "var(--border)" }}
             tick={{ fontSize: 12, fill: "var(--text-2)" }}
-            interval="preserveStartEnd"
+            interval={xTickInterval ?? "preserveStartEnd"}
+            minTickGap={xTickInterval === undefined ? 5 : 0}
             scale="point"
           >
             {hasXAxisLabel && (
@@ -179,6 +198,7 @@ export function LineChart({
             tick={{ fontSize: 12, fill: "var(--text-2)" }}
             domain={[yDomainMin ?? (referenceAreas.length > 0 ? "auto" : 0), yDomainMax]}
             minTickGap={30}
+            allowDecimals={false}
           >
             {hasYAxisLabel && (
               <YAxis.Label value={yAxisLabel} angle={-90} position="insideLeft" offset={-40} fill="var(--text-2)" fontSize={12} />
@@ -206,15 +226,18 @@ export function LineChart({
               contentStyle={{
                 backgroundColor: "white",
                 border: "1px solid var(--border)",
-                borderRadius: "8px",
-                boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+                borderRadius: "12px",
+                boxShadow: "var(--shadow-popover)",
+                padding: "10px 12px",
+                fontSize: 12,
               }}
+              itemStyle={{ color: "var(--navy-800)", fontSize: 12 }}
               formatter={tooltipFormatter}
-              labelStyle={{ color: "var(--text-1)", fontWeight: 500 }}
+              labelStyle={{ color: "var(--text-2)", fontWeight: 600, fontSize: 12 }}
             />
           )}
 
-          {showLegend && <Legend wrapperStyle={{ paddingTop: 20 }} />}
+          {showLegend && <Legend wrapperStyle={{ paddingTop: 12, fontSize: 12 }} />}
 
           {series.map((s, index) => {
             const color = s.color ?? colors[index % colors.length];

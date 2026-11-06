@@ -296,7 +296,6 @@ export function AppShell({
   );
 
   useEffect(() => {
-    document.body.dataset.hydrated = "1";
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [handleKeyDown]);

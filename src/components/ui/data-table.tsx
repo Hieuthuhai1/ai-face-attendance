@@ -85,7 +85,7 @@ export function DataTable<T>(props: DataTableProps<T>) {
             className="rounded-[var(--radius-card)] border border-[var(--border)] bg-white p-4 shadow-[var(--shadow-card)]"
           >
             <div className="flex items-start justify-between gap-2">
-              <p className="min-w-0 flex-1 font-semibold text-[var(--navy-800)]">{cardTitle(row)}</p>
+              <div className="min-w-0 flex-1 font-semibold text-[var(--navy-800)]">{cardTitle(row)}</div>
               {cardStatus ? <div className="shrink-0">{cardStatus(row)}</div> : null}
             </div>
             {cardMeta ? <div className="mt-1.5 text-sm text-[var(--text-2)]">{cardMeta(row)}</div> : null}

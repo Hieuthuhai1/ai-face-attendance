@@ -66,6 +66,8 @@ export interface PieChartProps {
   renderCenter?: (total: number, data: PieChartData[]) => ReactNode;
   /** Click vào slice */
   onSliceClick?: (data: PieChartData, index: number) => void;
+  /** Bọc khung card (mặc định false khi đặt trong Card). */
+  frame?: boolean;
 }
 
 /** Pie/Donut Chart component wrapper cho Recharts */
@@ -104,6 +106,7 @@ export function PieChart({
   total,
   renderCenter,
   onSliceClick,
+  frame = false,
 }: PieChartProps) {
   const computedTotal = total ?? data.reduce((sum, d) => sum + (d[valueKey] as number), 0);
 
@@ -111,14 +114,21 @@ export function PieChart({
 
   if (!hasData) {
     return (
-      <div className={cn("rounded-xl border border-slate-200 bg-white p-8", className)}>
-        <div className="flex flex-col items-center gap-2 text-slate-500">
-          <svg className="text-slate-300" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-            <circle cx="12" cy="12" r="10" />
+      <div
+        className={cn(
+          "flex h-full flex-col items-center justify-center gap-2 text-center",
+          frame && "rounded-[var(--radius-card)] border border-[var(--border)] bg-white p-8 shadow-[var(--shadow-card)]",
+          className,
+        )}
+      >
+        <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--surface-muted)] text-[var(--text-3)]">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+            <circle cx="12" cy="12" r="9" />
             <path d="M12 6v6l4 4" />
           </svg>
-          <p>Không có dữ liệu để hiển thị</p>
-        </div>
+        </span>
+        <p className="text-sm font-medium text-[var(--navy-800)]">Chưa có dữ liệu</p>
+        <p className="text-xs text-[var(--text-2)]">Số liệu sẽ hiển thị khi có nhân viên chấm công.</p>
       </div>
     );
   }
@@ -133,16 +143,17 @@ export function PieChart({
             style={{
               backgroundColor: "white",
               border: "1px solid var(--border)",
-              borderRadius: "8px",
-              boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
-              padding: "8px 12px",
+              borderRadius: "12px",
+              boxShadow: "var(--shadow-popover)",
+              padding: "10px 12px",
+              fontSize: 12,
             }}
           >
             <div className="flex items-center gap-2">
-              <span className="w-3 h-3 rounded" style={{ backgroundColor: color }} />
-              <span className="font-medium text-slate-900">{name}</span>
+              <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: color }} />
+              <span className="font-semibold text-[var(--navy-800)]">{name}</span>
             </div>
-            <div className="mt-1 text-sm text-slate-600">
+            <div className="mt-1 text-xs text-[var(--text-2)]">
               {tooltipFormatter
                 ? tooltipFormatter(value, name)[0]
                 : `${value.toLocaleString("vi-VN")} (${percent}%)`}
@@ -176,7 +187,13 @@ export function PieChart({
     : null;
 
   return (
-    <div className={cn("rounded-xl border border-slate-200 bg-white p-4", className)}>
+    <div
+      className={cn(
+        "relative",
+        frame && "rounded-[var(--radius-card)] border border-[var(--border)] bg-white p-4 shadow-[var(--shadow-card)]",
+        className,
+      )}
+    >
       <ResponsiveContainer width={width ?? "100%"} height={height}>
         <RechartsPieChart>
           <Pie
@@ -208,12 +225,15 @@ export function PieChart({
             <Legend
               layout={legendPosition === "left" || legendPosition === "right" ? "vertical" : "horizontal"}
               align={legendPosition === "left" ? "left" : legendPosition === "right" ? "right" : "center"}
-              verticalAlign="middle"
+              verticalAlign={
+                legendPosition === "top" ? "top" : legendPosition === "bottom" ? "bottom" : "middle"
+              }
               iconType="circle"
               wrapperStyle={{
-                paddingTop: 20,
+                paddingTop: 12,
                 maxHeight: 300,
                 overflowY: "auto",
+                fontSize: 12,
               }}
             />
           )}
@@ -222,20 +242,13 @@ export function PieChart({
 
       {/* Center content for donut chart */}
       {innerRadius > 0 && (
-        <div
-          className="absolute inset-0 flex items-center justify-center pointer-events-none"
-          style={{
-            transform: "translate(-50%, -50%)",
-            left: "50%",
-            top: "50%",
-          }}
-        >
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
           {renderCenter
             ? renderCenter(computedTotal, data)
             : (
                 <div className="text-center">
-                  <p className="text-2xl font-bold text-slate-900 tnum">{computedTotal.toLocaleString("vi-VN")}</p>
-                  <p className="text-xs text-slate-500">Tổng</p>
+                  <p className="tnum text-2xl font-bold text-[var(--navy-800)]">{computedTotal.toLocaleString("vi-VN")}</p>
+                  <p className="text-xs text-[var(--text-2)]">Tổng</p>
                 </div>
               )}
         </div>

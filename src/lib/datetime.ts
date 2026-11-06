@@ -60,3 +60,17 @@ export function formatDateTimeInZone(value: DateInput, timeZone: string = APP_TZ
   if (!date) return "—";
   return `${formatShortDateInZone(date, timeZone)} ${formatTimeInZone(date, timeZone)}`;
 }
+
+/**
+ * Ngày hôm nay (YYYY-MM-DD) theo múi giờ ứng dụng.
+ * Server chạy UTC nên `new Date().toISOString().slice(0, 10)` sẽ lệch ngày
+ * trong khoảng 00:00–07:00 giờ Việt Nam — dùng helper này cho `work_date`.
+ */
+export function todayInZone(timeZone: string = APP_TZ): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+}
