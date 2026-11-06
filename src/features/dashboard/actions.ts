@@ -197,10 +197,6 @@ function getPreviousDateRange(date: string) {
   return getDateRange(addDays(date, -1));
 }
 
-function getPreviousDateRange(date: string) {
-  return getDateRange(addDays(date, -1));
-}
-
 const EMPTY_IDS = ["00000000-0000-0000-0000-000000000000"];
 /** Số ngày dữ liệu nền để dựng biểu đồ tuần (8 tuần) / tháng (6 tháng). */
 const TREND_WINDOW_DAYS = 180;

@@ -83,6 +83,7 @@ export async function createEmployee(
     manager_id: parsed.data.manager_id,
     title: parsed.data.title,
     employment_status: parsed.data.employment_status,
+    hired_at: parsed.data.hired_at,
   });
   if (error) {
     logger.warn("createEmployee failed", { code: error.code });
@@ -115,6 +116,7 @@ export async function updateEmployee(id: string, input: EmployeeForm): Promise<A
       manager_id: parsed.data.manager_id,
       title: parsed.data.title,
       employment_status: parsed.data.employment_status,
+      hired_at: parsed.data.hired_at,
     })
     .eq("id", id)
     .select("id, profile_id")
@@ -240,4 +242,9 @@ export async function deleteAssignment(id: string): Promise<ActionResult> {
   }
   revalidatePath("/admin/shifts");
   return { ok: true };
+}
+
+/** Xóa (vô hiệu hóa mềm) nhân viên — giữ lịch sử chấm công, không làm mất dữ liệu. */
+export async function deleteEmployee(id: string): Promise<ActionResult> {
+  return deactivateEmployee(id);
 }

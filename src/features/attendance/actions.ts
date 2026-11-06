@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireUser } from "@/server/auth";
+import { requireRole, requireUser } from "@/server/auth";
 import { createClient } from "@/lib/supabase/server";
 import { getFaceProvider } from "@/server/face";
 import { PROVIDER_TIMEOUT_MS, withProviderTimeout } from "@/server/face/service";
@@ -530,5 +530,184 @@ export async function fallbackCheck(input: {
     verification_ref: null,
     confidence: null,
     liveness: null,
+  };
+}
+
+/** ============================ Quản lý chấm công (HR/Manager view) ============================ */
+
+export interface AttendanceRecord {
+  id: string;
+  event_type: "check_in" | "check_out";
+  occurred_at: string;
+  status: "success" | "pending_review" | "failed" | "fallback";
+  method: "face" | "pin_fallback" | "manual";
+  employee_id: string;
+  employee_code: string;
+  display_name: string;
+  email: string;
+  department_id: string | null;
+  department_name: string;
+  title: string;
+  late_min: number;
+  early_leave_min: number;
+}
+
+interface AttendanceFilters {
+  date?: string;       // YYYY-MM-DD
+  month?: string;      // YYYY-MM
+  employee_id?: string;
+  department_id?: string;
+  status?: string;
+}
+
+export async function getAttendanceRecords(
+  filters: AttendanceFilters,
+  page: number,
+  pageSize: number,
+): Promise<{
+  ok: boolean;
+  records?: AttendanceRecord[];
+  total?: number;
+  page?: number;
+  pageSize?: number;
+  message?: string;
+}> {
+  const { profile } = await requireRole(["manager", "hr_admin", "system_admin"]);
+  const orgId = profile.organization_id;
+  if (!orgId) return { ok: false, message: "Tài khoản chưa thuộc tổ chức nào." };
+
+  const supabase = await createClient();
+  const p = Math.max(1, page || 1);
+  const ps = Math.max(1, pageSize || 20);
+
+  // Xác định scope nhân viên (manager chỉ thấy team)
+  let employeeIds: string[] | null = null;
+  if (profile.role === "manager") {
+    const me = await supabase
+      .from("employees")
+      .select("id")
+      .eq("profile_id", (await supabase.auth.getUser()).data.user?.id ?? "")
+      .single();
+    const meId = (me.data as { id: string } | null)?.id;
+    if (!meId) return { ok: false, records: [], total: 0, page: p, pageSize: ps };
+
+    const { data: team } = await supabase
+      .from("employees")
+      .select("id")
+      .eq("manager_id", meId);
+    const ids = ((team ?? []) as Array<{ id: string }>).map((t) => t.id);
+    if (meId) ids.push(meId);
+    employeeIds = ids;
+  }
+
+  let query = supabase
+    .from("attendance_events")
+    .select(
+      `
+      id, event_type, occurred_at, status, method,
+      late_min, early_leave_min,
+      employee_id,
+      employees!inner(
+        id, employee_code, department_id, title,
+        profiles!inner(display_name, email),
+        departments(name)
+      )
+    `,
+      { count: "exact" },
+    )
+    .eq("employees.organization_id", orgId)
+    .order("occurred_at", { ascending: false })
+    .range((p - 1) * ps, p * ps - 1);
+
+  // Áp dụng bộ lọc ngày/tháng
+  if (filters.date) {
+    const dayStart = new Date(`${filters.date}T00:00:00`).toISOString();
+    const dayEnd = new Date(`${filters.date}T23:59:59`).toISOString();
+    query = query.gte("occurred_at", dayStart).lte("occurred_at", dayEnd);
+  } else if (filters.month) {
+    const [y, m] = filters.month.split("-").map(Number);
+    const from = new Date(y, m - 1, 1).toISOString();
+    const to = new Date(y, m, 0, 23, 59, 59).toISOString();
+    query = query.gte("occurred_at", from).lte("occurred_at", to);
+  }
+
+  if (filters.employee_id) {
+    query = query.eq("employee_id", filters.employee_id);
+  }
+  if (filters.department_id) {
+    query = query.eq("employees.department_id", filters.department_id);
+  }
+  if (filters.status) {
+    query = query.eq("status", filters.status);
+  }
+
+  // Manager scope: chỉ team
+  if (employeeIds) {
+    query = query.in("employee_id", employeeIds);
+  }
+
+  const [{ data, count }, { data: depts }] = await Promise.all([
+    query,
+    supabase.from("departments").select("id, name").eq("organization_id", orgId).order("name"),
+  ]);
+
+  const rows = ((data ?? []) as unknown) as Array<{
+    id: string;
+    event_type: string;
+    occurred_at: string;
+    status: string;
+    method: string;
+    late_min: number;
+    early_leave_min: number;
+    employee_id: string;
+    employees: {
+      id: string;
+      employee_code: string;
+      department_id: string | null;
+      title: string;
+      profiles: { display_name: string; email: string };
+      departments: { name: string } | null;
+    };
+  }>;
+
+  const records: AttendanceRecord[] = ((rows as unknown) as Array<{
+    id: string;
+    event_type: string;
+    occurred_at: string;
+    status: string;
+    method: string;
+    late_min: number;
+    early_leave_min: number;
+    employee_id: string;
+    employees: {
+      employee_code: string;
+      department_id: string | null;
+      title: string;
+      profiles: { display_name: string; email: string };
+      departments: { name: string } | null;
+    };
+  }>).map((r) => ({
+    id: r.id,
+    event_type: r.event_type as "check_in" | "check_out",
+    occurred_at: r.occurred_at,
+    status: r.status as "success" | "pending_review" | "failed" | "fallback",
+    method: r.method as "face" | "pin_fallback" | "manual",
+    employee_id: r.employee_id,
+    employee_code: r.employees.employee_code,
+    display_name: r.employees.profiles.display_name,
+    email: r.employees.profiles.email,
+    department_id: r.employees.department_id,
+    department_name: r.employees.departments?.name || "—",
+    title: r.employees.title,
+    late_min: r.late_min,
+    early_leave_min: r.early_leave_min,
+  }));
+
+  return {
+    ok: true,
+    records,
+    total: count ?? 0,
+    page: p,
+    pageSize: ps,
   };
 }

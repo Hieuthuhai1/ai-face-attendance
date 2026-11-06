@@ -16,6 +16,11 @@ export const employeeFormSchema = z.object({
   manager_id: z.string().trim().min(1).nullable(),
   title: z.string().trim().max(128).default(""),
   employment_status: z.enum(["active", "inactive", "terminated"]).default("active"),
+  hired_at: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Ngày phải dạng YYYY-MM-DD")
+    .nullable()
+    .default(null),
 });
 
 export const shiftFormSchema = z

@@ -68,6 +68,7 @@ async function EmployeeData({
     display_name: ((e.profiles as { display_name?: string } | null)?.display_name) ?? "",
     email: ((e.profiles as { email?: string } | null)?.email) ?? "",
     profile_active: ((e.profiles as { is_active?: boolean } | null)?.is_active) ?? true,
+    hired_at: (e.hired_at as string | null) ?? null,
   }));
 
   return (
