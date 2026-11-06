@@ -57,6 +57,9 @@ export interface HistoryRow {
   overtime_min: number;
   status: string;
   adjustment_status: string | null;
+  employee_code: string;
+  display_name: string;
+  department_name: string;
 }
 
 export async function getPersonalHistory(month: string, page: number): Promise<{
@@ -76,7 +79,19 @@ export async function getPersonalHistory(month: string, page: number): Promise<{
 
   const { data, count } = await supabase
     .from("attendance_daily_summaries")
-    .select("work_date, first_in, last_out, late_min, early_leave_min, total_work_min, overtime_min, status, work_shifts(name)", { count: "exact" })
+    .select(
+      `
+      work_date, first_in, last_out, late_min, early_leave_min, total_work_min, overtime_min, status,
+      employee_id,
+      employees!inner(
+        employee_code,
+        profiles!inner(display_name),
+        departments(name)
+      ),
+      work_shifts(name)
+    `,
+      { count: "exact" },
+    )
     .eq("employee_id", me.id)
     .gte("work_date", r.from)
     .lte("work_date", r.to)
@@ -104,8 +119,148 @@ export async function getPersonalHistory(month: string, page: number): Promise<{
     overtime_min: (s.overtime_min as number) ?? 0,
     status: s.status as string,
     adjustment_status: adjByDate.get(s.work_date as string) ?? null,
+    employee_code: ((s.employees as { employee_code?: string } | null)?.employee_code) ?? "",
+    display_name: (((s.employees as { profiles?: { display_name?: string } | null } | null)?.profiles?.display_name) ?? ""),
+    department_name: (((s.employees as { departments?: { name?: string } | null } | null)?.departments?.name) ?? "—"),
   }));
   return { rows, total: count ?? 0, page: p, pageSize: PAGE_SIZE, month };
+}
+
+// ============================ personal history with filters (manager/HR view) ============================
+
+export interface HistoryFilters {
+  month?: string;
+  employee_id?: string;
+  department_id?: string;
+  status?: string;
+}
+
+export async function getPersonalHistoryWithFilters(
+  filters: HistoryFilters,
+  page: number,
+  pageSize: number,
+): Promise<{
+  ok: boolean;
+  rows?: HistoryRow[];
+  total?: number;
+  page?: number;
+  pageSize?: number;
+  month?: string;
+  message?: string;
+}> {
+  const { profile } = await requireRole(["employee", "manager", "hr_admin", "system_admin"]);
+  const supabase = await createClient();
+  const orgId = profile.organization_id ?? "";
+  const p = Math.max(1, page || 1);
+  const ps = Math.max(1, pageSize || 20);
+  const month = filters.month ?? new Date().toISOString().slice(0, 7);
+  const range = monthRange(month) ?? monthRange(new Date().toISOString().slice(0, 7));
+  const r = range as { from: string; to: string };
+
+  // Xác định scope nhân viên
+  let employeeIds: string[] | null = null;
+  if (profile.role === "manager") {
+    const me = await supabase.from("employees").select("id").eq("profile_id", (await supabase.auth.getUser()).data.user?.id ?? "").single();
+    const meId = (me.data as { id: string } | null)?.id;
+    if (!meId) return { ok: false, message: "Không tìm thấy nhân viên của bạn." };
+    const { data: team } = await supabase.from("employees").select("id").eq("manager_id", meId);
+    const ids = ((team ?? []) as Array<{ id: string }>).map((t) => t.id);
+    if (meId) ids.push(meId);
+    employeeIds = ids;
+  } else if (profile.role === "employee") {
+    const me = await supabase.from("employees").select("id").eq("profile_id", (await supabase.auth.getUser()).data.user?.id ?? "").single();
+    const meId = (me.data as { id: string } | null)?.id;
+    if (!meId) return { ok: false, message: "Không tìm thấy nhân viên của bạn." };
+    employeeIds = [meId];
+  }
+
+  let query = supabase
+    .from("attendance_daily_summaries")
+    .select(
+      `
+      work_date, first_in, last_out, late_min, early_leave_min, total_work_min, overtime_min, status,
+      employee_id,
+      employees!inner(
+        id, employee_code, department_id,
+        profiles!inner(display_name),
+        departments(name)
+      ),
+      work_shifts(name)
+    `,
+      { count: "exact" },
+    )
+    .eq("employees.organization_id", orgId)
+    .gte("work_date", r.from)
+    .lte("work_date", r.to)
+    .order("work_date", { ascending: false })
+    .range((p - 1) * ps, p * ps - 1);
+
+  if (filters.employee_id) query = query.eq("employee_id", filters.employee_id);
+  if (filters.department_id) query = query.eq("employees.department_id", filters.department_id);
+  if (filters.status) query = query.eq("status", filters.status);
+  if (employeeIds) query = query.in("employee_id", employeeIds);
+
+  const [{ data, count }, { data: departments }] = await Promise.all([
+    query,
+    supabase.from("departments").select("id, name").eq("organization_id", orgId).order("name"),
+  ]);
+
+  const rows = ((data ?? []) as unknown) as Array<{
+    work_date: string;
+    first_in: string | null;
+    last_out: string | null;
+    late_min: number;
+    early_leave_min: number;
+    total_work_min: number;
+    overtime_min: number;
+    status: string;
+    employee_id: string;
+    employees: {
+      id: string;
+      employee_code: string;
+      department_id: string | null;
+      profiles: { display_name: string };
+      departments: { name: string } | null;
+    };
+    work_shifts: { name: string } | null;
+  }>;
+
+  const { data: adjustments } = await supabase
+    .from("attendance_adjustment_requests")
+    .select("work_date, status, employee_id")
+    .gte("work_date", r.from)
+    .lte("work_date", r.to);
+  const adjByDate = new Map(
+    ((adjustments ?? []) as Array<{ work_date: string; status: string; employee_id: string }>).map((a) => [
+      `${a.work_date}-${a.employee_id}`,
+      a.status,
+    ]),
+  );
+
+  const resultRows: HistoryRow[] = rows.map((s) => ({
+    work_date: s.work_date,
+    shift_name: (s.work_shifts as { name?: string } | null)?.name ?? "—",
+    first_in: s.first_in,
+    last_out: s.last_out,
+    late_min: s.late_min,
+    early_leave_min: s.early_leave_min,
+    total_work_min: s.total_work_min,
+    overtime_min: s.overtime_min,
+    status: s.status,
+    adjustment_status: adjByDate.get(`${s.work_date}-${s.employee_id}`) ?? null,
+    employee_code: s.employees.employee_code,
+    display_name: s.employees.profiles.display_name,
+    department_name: s.employees.departments?.name ?? "—",
+  }));
+
+  return {
+    ok: true,
+    rows: resultRows,
+    total: count ?? 0,
+    page: p,
+    pageSize: ps,
+    month,
+  };
 }
 
 // ============================ dashboard ============================

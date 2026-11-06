@@ -13,6 +13,7 @@ import { ReportsPagination } from "./pagination-client";
 import { Tabs, TabPanel } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { formatTimeInZone } from "@/lib/datetime";
+import { ReportsTimeTrendChart, ReportsShiftDistributionChart, ReportsDepartmentAttendanceChart } from "./analytics-charts";
 
 const STATUS_MAP: Record<string, "ontime" | "late" | "early_leave" | "absent" | "needs_review" | "idle"> = {
   present: "ontime",
@@ -20,6 +21,14 @@ const STATUS_MAP: Record<string, "ontime" | "late" | "early_leave" | "absent" | 
   early_leave: "early_leave",
   absent: "absent",
   incomplete: "needs_review",
+};
+
+const STATUS_LABELS: Record<string, string> = {
+  present: "Đúng giờ",
+  late: "Đi muộn",
+  early_leave: "Về sớm",
+  absent: "Vắng mặt",
+  incomplete: "Chưa hoàn tất",
 };
 
 const EXCEPTION_TYPE_LABELS: Record<string, string> = {
@@ -35,6 +44,8 @@ const EXCEPTION_SEVERITY_COLORS: Record<string, "success" | "warning" | "danger"
   medium: "warning",
   low: "neutral",
 };
+
+const COLOR_PALETTE = ["var(--brand)", "var(--success)", "var(--warning)", "var(--danger)", "var(--info)", "var(--teal-accent)"];
 
 export default function ReportsPage({
   searchParams,
@@ -82,20 +93,7 @@ async function ReportsData({ searchParams }: { searchParams: Promise<Record<stri
       {/* KPI Cards */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8">
         {analytics.kpis.map((kpi) => (
-          <Card key={kpi.label} className="relative overflow-hidden">
-            <div className="absolute top-0 right-0 h-full w-1 bg-[var(--brand)]" />
-            <div className="p-4">
-              <p className="text-sm text-slate-500">{kpi.label}</p>
-              <p className="mt-1 text-3xl font-bold text-slate-900">{kpi.value.toLocaleString("vi-VN")}</p>
-              {kpi.change !== undefined && kpi.change !== 0 && (
-                <p className="mt-1 flex items-center gap-1 text-xs font-medium" style={{ color: kpi.trend === "up" && kpi.label.includes("Đi muộn") ? "var(--danger)" : kpi.trend === "down" && kpi.label.includes("Đi muộn") ? "var(--success)" : kpi.trend === "up" ? "var(--success)" : "var(--danger)" }}>
-                  <Icon name={kpi.trend === "up" ? "chevron-up" : kpi.trend === "down" ? "chevron-down" : "minus"} size={12} />
-                  <span>{kpi.change > 0 ? "+" : ""}{kpi.change}%</span>
-                  <span className="text-slate-400">vs hôm qua</span>
-                </p>
-              )}
-            </div>
-          </Card>
+          <KPICard key={kpi.label} kpi={kpi} />
         ))}
       </div>
 
@@ -220,27 +218,27 @@ async function ReportsData({ searchParams }: { searchParams: Promise<Record<stri
       {/* Analytics Tab */}
       <TabPanel key="analytics" value="analytics">
         <div className="grid gap-4 lg:grid-cols-2">
-          {/* Time Trend */}
+          {/* Time Trend - Line Chart */}
           <Card>
             <CardTitle>Xu hướng chấm công theo giờ</CardTitle>
-            <div className="mt-4 h-64">
-              <TimeTrendChart data={analytics.timeTrend} />
+            <div className="mt-4 h-72">
+              <ReportsTimeTrendChart data={analytics.timeTrend} />
             </div>
           </Card>
 
-          {/* Shift Distribution */}
+          {/* Shift Distribution - Pie Chart */}
           <Card>
             <CardTitle>Phân bổ ca làm hôm nay</CardTitle>
-            <div className="mt-4 h-64">
-              <ShiftDistributionChart data={analytics.shiftDistribution} />
+            <div className="mt-4 h-72">
+              <ReportsShiftDistributionChart data={analytics.shiftDistribution} />
             </div>
           </Card>
 
-          {/* Department Attendance */}
+          {/* Department Attendance - Bar Chart */}
           <Card className="lg:col-span-2">
             <CardTitle>Chấm công theo phòng ban (hôm nay)</CardTitle>
-            <div className="mt-4">
-              <DepartmentAttendanceChart data={analytics.departmentAttendance} />
+            <div className="mt-4 h-72">
+              <ReportsDepartmentAttendanceChart data={analytics.departmentAttendance} />
             </div>
           </Card>
         </div>
@@ -310,99 +308,32 @@ async function ReportsData({ searchParams }: { searchParams: Promise<Record<stri
           <MissingCheckTable filters={filters} />
         </Suspense>
       </TabPanel>
-
     </div>
   );
 }
 
-// ============================ Chart Components ============================
+// ============================ KPI Card ============================
 
-function TimeTrendChart({ data }: { data: Array<{ hour: number; checkins: number; checkouts: number }> }) {
-  // Simple bar chart using CSS
-  const maxVal = Math.max(...data.map(d => Math.max(d.checkins, d.checkouts)), 1);
-  return (
-    <div className="flex items-end justify-between h-full gap-1 px-2">
-      {data.map((d) => {
-        const heightPct = (Math.max(d.checkins, d.checkouts) / maxVal) * 100;
-        return (
-          <div key={d.hour} className="flex-1 flex flex-col items-center justify-end gap-1">
-            <div className="w-full flex gap-1 justify-center" style={{ height: `${heightPct}%` }}>
-              {d.checkins > 0 && (
-                <div className="flex-1 bg-[var(--brand)] rounded-t" title={`Check-in: ${d.checkins}`} />
-              )}
-              {d.checkouts > 0 && (
-                <div className="flex-1 bg-[var(--success)] rounded-t" title={`Check-out: ${d.checkouts}`} />
-              )}
-            </div>
-            <span className="text-[10px] text-slate-400">{d.hour}:00</span>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-function ShiftDistributionChart({ data }: { data: Array<{ shift: string; count: number }> }) {
-  const total = data.reduce((sum, d) => sum + d.count, 0) || 1;
-  return (
-    <div className="flex flex-col gap-2 items-center justify-center h-full px-4">
-      {data.length === 0 ? (
-        <EmptyState title="Chưa có phân ca" description="Hôm nay không có nhân viên được phân ca." />
-      ) : (
-        data.map((d) => (
-          <div key={d.shift} className="w-full flex items-center gap-3">
-            <span className="w-28 text-sm text-slate-600 truncate">{d.shift}</span>
-            <div className="flex-1 h-6 bg-slate-100 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-[var(--brand)] rounded-full transition-all"
-                style={{ width: `${(d.count / total) * 100}%` }}
-              />
-            </div>
-            <span className="w-16 text-right text-sm font-medium tnum">{d.count}</span>
-          </div>
-        ))
-      )}
-    </div>
-  );
-}
-
-function DepartmentAttendanceChart({ data }: { data: Array<{ department: string; present: number; late: number; early_leave: number; absent: number; incomplete: number }> }) {
-  if (data.length === 0) {
-    return <EmptyState title="Chưa có dữ liệu" description="Hôm nay không có dữ liệu chấm công theo phòng ban." />;
-  }
+function KPICard({ kpi }: { kpi: KPIData }) {
+  const trendColor = kpi.label.includes("Đi muộn") || kpi.label.includes("Vắng") || kpi.label.includes("Về sớm")
+    ? (kpi.trend === "up" ? "text-[var(--danger)]" : "text-[var(--success)]")
+    : (kpi.trend === "up" ? "text-[var(--success)]" : "text-[var(--danger)]");
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm" role="table">
-        <thead>
-          <tr className="border-b border-slate-200 bg-slate-50">
-            <th className="px-3 py-2 text-left font-medium text-slate-600">Phòng ban</th>
-            <th className="px-3 py-2 text-right font-medium text-slate-600">Đúng giờ</th>
-            <th className="px-3 py-2 text-right font-medium text-slate-600 text-[var(--warning)]">Trễ</th>
-            <th className="px-3 py-2 text-right font-medium text-slate-600 text-[var(--danger)]">Về sớm</th>
-            <th className="px-3 py-2 text-right font-medium text-slate-600 text-[var(--danger)]">Vắng</th>
-            <th className="px-3 py-2 text-right font-medium text-slate-600">Chưa hoàn tất</th>
-            <th className="px-3 py-2 text-right font-medium text-slate-600">Tổng</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-slate-100">
-          {data.map((d) => {
-            const total = d.present + d.late + d.early_leave + d.absent + d.incomplete;
-            return (
-              <tr key={d.department}>
-                <td className="px-3 py-2 font-medium">{d.department}</td>
-                <td className="px-3 py-2 text-right text-[var(--success)]">{d.present}</td>
-                <td className="px-3 py-2 text-right text-[var(--warning)]">{d.late}</td>
-                <td className="px-3 py-2 text-right text-[var(--danger)]">{d.early_leave}</td>
-                <td className="px-3 py-2 text-right text-[var(--danger)]">{d.absent}</td>
-                <td className="px-3 py-2 text-right text-slate-500">{d.incomplete}</td>
-                <td className="px-3 py-2 text-right font-medium">{total}</td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
+    <Card className="relative overflow-hidden">
+      <div className="absolute top-0 right-0 h-full w-1 bg-[var(--brand)]" />
+      <div className="p-4">
+        <p className="text-sm text-slate-500">{kpi.label}</p>
+        <p className="mt-1 text-3xl font-bold text-slate-900">{kpi.value.toLocaleString("vi-VN")}</p>
+        {kpi.change !== undefined && kpi.change !== 0 && (
+          <p className={["mt-1 flex items-center gap-1 text-xs font-bold", trendColor].join(" ")}>
+            <Icon name={kpi.trend === "up" ? "chevron-up" : kpi.trend === "down" ? "chevron-down" : "minus"} size={12} />
+            <span>{kpi.change > 0 ? "+" : ""}{kpi.change}%</span>
+            <span className="text-slate-400">vs hôm qua</span>
+          </p>
+        )}
+      </div>
+    </Card>
   );
 }
 
