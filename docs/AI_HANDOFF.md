@@ -1692,3 +1692,83 @@ https://ai-face-attendance-zeta.vercel.app), READY.
 - `next.config.ts` vẫn `typescript.ignoreBuildErrors: true`; 121 lỗi type cũ
   cần dọn ở phase riêng.
 - Chưa test UI với dữ liệu thật: Supabase local (Docker) không chạy.
+
+## Phase 31 — Redesign Dashboard với KPI thực + biểu đồ tooltips (2026-11-06)
+
+**Mục tiêu:** Xây dashboard tổng quan chấm công theo `docs/IMPLEMENTATION_PLAN.md`:
+8 thẻ KPI (tổng NV, đã chấm công hôm nay, đi muộn, vắng mặt, đang nghỉ phép,
+tỷ lệ chuyên cần, đang làm việc, chờ xử lý) + 4+ biểu đồ (chấm công theo ngày,
+tỷ lệ đi làm đúng giờ, đi muộn & vắng mặt, tuần/tháng, giờ chấm công, phân bổ
+ca, phòng ban) đều có tooltip + bảng hoạt động gần đây + lọc thời gian.
+Dữ liệu 100% từ API/DB qua server actions, không giả tạo; biểu đồ trống khi
+chưa có dữ liệu.
+
+**Thay đổi:**
+- `src/app/(protected)/dashboard/page.tsx` — viết lại: range chips (hôm nay/
+  7 ngày/30 ngày/tháng này), form ngày xem, 8 thẻ KPI (grid 4 cột), biểu đồ
+  thống kê (daily/on-time/late-absent/bucket), chi tiết vận hành (hour trend,
+  shift distribution pie, department stacked bars), bảng hoạt động + ngoại lệ,
+  ghi chú nguồn dữ liệu, skeleton fallback. Chỉ truyền prop serializable sang
+  client component.
+- `src/features/dashboard/charts.tsx` (mới) — 7 client chart wrapper
+  (DailyAttendanceChart, LateAbsentChart, BucketChart, HourTrendChart,
+  ShiftDistributionPie, DepartmentAttendanceChart, OnTimeDonut) giữ formatter/
+  tooltip trong client để tránh React #441 (function qua ranh giới server→client).
+- `src/features/dashboard/actions.ts` — mở rộng: DashboardRange,
+  TrendBucketGranularity, DashboardTrends, FilterOption, DashboardFilterOptions,
+  KPI nullable value/format, fetchAllRows, activeEmployeeIds, 6 KPI +
+  workingNow/pending, getAttendanceTrends, getDashboardFilterOptions,
+  getFullDashboardData (trends + filterOptions), timezone-correct day bounds,
+  so sánh ngày trước dùng assignments/leave của ngày trước.
+  `resolveDateRange` thành private (không export vì `"use server"` chỉ cho phép
+  async function).
+- `src/lib/dashboard/trends.ts` (mới) — pure day/bucket aggregation, đọc
+  `attendance_daily_summaries` cửa sổ 180 ngày, phân trang (PostgREST 1000 dòng);
+  metric: attendance rate = checked_in/assigned (null → "—"); absent =
+  max(0, assigned - checked_in - approved_leave_with_shift); on-time =
+  present/checked_in.
+- `tests/dashboard-trends.test.ts` (mới) — 11 unit test pass.
+- `src/lib/datetime.ts` — thêm `todayInZone()`.
+- `src/components/ui/charts/{line-chart,bar-chart,pie-chart}.tsx` — restyle:
+  `frame`, `xTickInterval`, BarChart layout mặc định "horizontal",
+  `allowDecimals={false}` trên YAxis; pie-chart center donut nằm trong phần tử
+  pointer-events-none, legend verticalAlign fix.
+- `src/components/ui/stat-card.tsx` — viết lại với chip thay đổi;
+  thêm icon `arrow-up`/`arrow-down` vào `icon.tsx`.
+- `src/components/ui/data-table.tsx` — mobile card dùng `<div>` thay `<p>`
+  tránh nesting HTML sai.
+- `src/components/app/app-shell.tsx` — bỏ thuộc tính `data-hydrated` (gây
+  hydration mismatch).
+
+**Quyết định:**
+- KPI luôn theo `date` đã chọn; biểu đồ theo `range` đã chọn.
+- Bộ lọc phòng ban/trạng thái chỉ áp bảng hoạt động (backend chỉ hỗ trợ ở đó);
+  bỏ lọc ca làm vì `getLiveActivity` bỏ qua `shiftId`.
+- Biểu đồ chỉ render khi có dữ liệu (>0) để tránh nhảy layout hydration;
+  trạng thái rỗng render từ server.
+
+**Kết quả kiểm tra:**
+- `npm test` ✅ 147 pass / 17 skip (18 file).
+- `npx tsc --noEmit`: dashboard/stat-card/datetime/charts sạch; 121 lỗi cũ
+  trong các file không liên quan (exit code 1 là dự kiến).
+- `npm run build` ✅ (27 route; lần đầu dừng ở cảnh báo bảo mật Next 16.4.0,
+  chạy lại thành công).
+- Playwright headless (local `next start -p 3500`, Supabase local UP,
+  đăng nhập `hr@demo.vn`): không có console/page error hydration;
+  5-7 biểu đồ render; tooltip hiển thị đúng (ví dụ "28/09 Có ca : 2 nhân viên
+  Đã chấm công : 0 nhân viên"); KPI hiển thị đúng giá trị real (5 NV, 0-1
+  đã chấm công, vắng 2, tỷ lệ 0-50%); mobile responsive ổn định.
+- Secret scan (grep): không thấy AKIA/sk-/service_role/BEGIN PRIVATE KEY
+  trong diff; không commit `.env*`.
+
+**Commit:** `feat(dashboard): redesign dashboard with real-data KPIs and trends`
+— SHA `f0adc59` (pushed `main`).
+**Deployment:** (đang deploy sau ghi này, kết quả cập nhật ở dòng sau).
+**Known issues / Next:**
+- Next.js 16.4.0 security nudge vẫn còn; build cần chạy 2 lần (lần 2 xanh).
+- `/history` còn ném `Date.now()` prerender error (lỗi cũ, chưa liên quan
+  dashboard) — để phase riêng.
+- 121 lỗi type cũ ở các file không liên quan cần dọn ở phase riêng.
+- AWS Rekognition credentials chưa cấu hình trên Vercel (cần bạn set ở phase
+  sau).
+- Next task: xác nhận Vercel READY, báo metric định nghĩa & kết quả build/test.
