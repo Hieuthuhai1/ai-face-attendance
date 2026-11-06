@@ -31,7 +31,7 @@ interface AppShellProps {
   onViewAllNotifications?: () => void;
 }
 
-const SIDEBAR_BG = "linear-gradient(180deg, #0b1437 0%, #111c44 58%, #0d1838 100%)";
+const SIDEBAR_BG = "linear-gradient(180deg, #1e293b 0%, #0f172a 58%, #1e293b 100%)";
 
 function BrandMark({ collapsed = false }: { collapsed?: boolean }) {
   return (
@@ -40,7 +40,7 @@ function BrandMark({ collapsed = false }: { collapsed?: boolean }) {
       className="flex min-w-0 items-center gap-2.5 rounded-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-400"
       aria-label="AI Face Attendance — Dashboard"
     >
-      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-blue-700 text-white shadow-lg shadow-blue-950/40 ring-1 ring-white/10">
+      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[var(--primary)] to-[var(--navy-800)] text-white shadow-lg shadow-[var(--primary)]/40 ring-1 ring-white/10">
         <Icon name="scan-face" size={21} />
       </span>
       {!collapsed ? (
@@ -85,7 +85,7 @@ function NavLink({
         onClick={onNavigate}
         className={cn(
           "flex min-h-14 flex-col items-center justify-center gap-1 px-1 py-1.5 text-[10.5px] font-medium transition-colors",
-          active ? "text-[var(--brand-strong)]" : "text-[var(--text-3)] hover:text-[var(--navy-700)]",
+          active ? "text-[var(--primary)]" : "text-[var(--text-3)] hover:text-[var(--navy-700)]",
         )}
       >
         <span
@@ -110,8 +110,8 @@ function NavLink({
       className={cn(
         "group relative flex min-h-10 items-center gap-3 rounded-[10px] px-3 text-[13px] font-medium transition-colors duration-150",
         active
-          ? "bg-white/[0.09] text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)]"
-          : "text-slate-400 hover:bg-white/[0.05] hover:text-white",
+          ? "bg-white/[0.09] text-[var(--primary)] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)]"
+          : "text-slate-400 hover:bg-white/[0.05] hover:text-[var(--primary)]",
         collapsed && "justify-center px-0",
       )}
     >
@@ -379,7 +379,7 @@ export function AppShell({
 
       <div className="flex min-w-0 flex-1 flex-col">
         {/* Topbar */}
-        <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-2 border-b border-[var(--border)] bg-white/85 px-4 backdrop-blur-xl sm:gap-3 sm:px-6">
+        <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-2 border-b border-[var(--border)] bg-white px-4 backdrop-blur-xl sm:gap-3 sm:px-6">
           <button
             type="button"
             onClick={() => setMobileOpen(true)}

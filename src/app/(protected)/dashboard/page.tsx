@@ -193,23 +193,9 @@ export default function DashboardPage({
 }) {
   return (
     <Suspense fallback={<DashboardSkeleton />}>
-      <DashboardRouter searchParams={searchParams} />
+      <DashboardContent searchParams={searchParams} />
     </Suspense>
   );
-}
-
-/** Nhân viên thấy trang "Hôm nay" cá nhân; quản lý/HR thấy dashboard phân tích. */
-async function DashboardRouter({
-  searchParams,
-}: {
-  searchParams: Promise<DashboardSearchParams>;
-}) {
-  await connection();
-  const { profile } = await requireUser();
-  if (profile.role === "employee") {
-    return <EmployeeToday profile={profile} />;
-  }
-  return <DashboardContent profile={profile} searchParams={searchParams} />;
 }
 
 async function DashboardContent({
@@ -238,7 +224,7 @@ async function DashboardContent({
 
   if (!result.ok) {
     return (
-      <main className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-4 py-6">
+      <main className="flex-1 flex flex-col gap-6 px-4 sm:px-6 lg:px-8 py-6 max-w-[1600px] mx-auto">
         <PageHeader
           title="Tổng quan chấm công"
           description={`${formatDateInZone(`${filters.date}T12:00:00`)} · ${ROLE_LABELS[profile.role]}`}
