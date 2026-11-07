@@ -9,7 +9,7 @@ export default function RevokeEnrollmentPage({
   params: Promise<{ id: string }>;
 }) {
   return (
-    <main className="mx-auto flex w-full max-w-md flex-col gap-4 px-4 py-6">
+    <main className="page-shell-narrow flex flex-col gap-4">
       <h1 className="text-2xl font-bold">Thu hồi đăng ký khuôn mặt</h1>
       <Suspense fallback={<LoadingState message="Đang tải…" />}>
         <RevokeData params={params} />

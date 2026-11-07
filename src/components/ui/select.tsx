@@ -227,7 +227,7 @@ export function Select({
         className={cn(
           "w-full px-3 py-2 text-left text-sm rounded-lg",
           "hover:bg-[var(--surface-muted)] focus:bg-[var(--surface-muted)] focus-visible:outline-none",
-          displayValue.includes(opt.value) ? "bg-[var(--brand-soft)] text-[var(--brand-strong)]" : "text-[var(--navy-700)]",
+          displayValue.includes(opt.value) ? "bg-[var(--brand-soft)] font-medium text-[var(--brand-strong)]" : "text-[var(--text-1)]",
           opt.disabled && "opacity-50 cursor-not-allowed"
         )}
       >
@@ -276,12 +276,12 @@ export function Select({
             disabled={disabled}
             className={cn(
               "w-full flex items-center gap-2",
-              "h-10 rounded-[var(--radius-control)] border bg-white px-3.5 text-sm text-[var(--navy-700)]",
-              "shadow-[0_1px_2px_rgb(27_37_75_/_0.04)] transition-colors",
+              "h-10 rounded-[var(--radius-control)] border bg-white px-3.5 text-sm text-[var(--text-1)]",
+              "shadow-[var(--shadow-xs)] transition-colors",
               "focus-visible:outline-none focus-visible:border-[var(--brand)] focus-visible:ring-4 focus-visible:ring-[var(--brand-ring)]",
               "disabled:cursor-not-allowed disabled:opacity-55 disabled:bg-[var(--surface-muted)]",
-              error ? "border-[var(--danger)]" : "border-[var(--border-strong)]",
-              "hover:not(:disabled):border-slate-300"
+              error ? "border-[var(--danger)]" : "border-[var(--border)]",
+              "hover:not(:disabled):border-[var(--border-strong)]"
             )}
             aria-label={label ?? placeholder}
           >
@@ -379,8 +379,8 @@ export function Select({
                 role="listbox"
                 aria-multiselectable={isMulti}
                 className={cn(
-                  "absolute z-50 mt-1 min-w-[200px] max-h-60 overflow-auto rounded-xl border border-[var(--border)] bg-white p-1 shadow-[var(--shadow-popover)]",
-                  "animate-fade-in"
+                  "absolute z-50 mt-1.5 min-w-[200px] max-h-60 overflow-auto rounded-[14px] border border-[var(--border)] bg-white p-1.5 shadow-[var(--shadow-popover)]",
+                  "animate-scale-in"
                 )}
                 style={{
                   width: containerRef.current?.offsetWidth,

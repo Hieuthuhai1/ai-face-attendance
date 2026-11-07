@@ -10,7 +10,7 @@ interface RequestDetailPageProps {
 
 export default function RequestDetailPage({ params }: RequestDetailPageProps) {
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-col gap-4 px-4 py-6">
+    <main className="page-shell-form flex flex-col gap-4">
       <h1 className="text-2xl font-bold">Chi tiết yêu cầu</h1>
       <Suspense fallback={<LoadingState message="Đang tải…" />}>
         <RequestDetailContent params={params} />

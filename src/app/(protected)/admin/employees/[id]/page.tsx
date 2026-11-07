@@ -9,7 +9,7 @@ interface EmployeeDetailProps {
 
 export default function EmployeeDetailPage({ params }: EmployeeDetailProps) {
   return (
-    <main className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-4 py-6">
+    <main className="page-shell flex flex-col gap-5">
       <Suspense fallback={<LoadingState message="Đang tải chi tiết nhân viên…" />}>
         <EmployeeDetailContentServer params={params} />
       </Suspense>

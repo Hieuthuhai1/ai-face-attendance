@@ -148,9 +148,9 @@ export function Modal({
           )}
         >
           {(title || showCloseButton) && (
-            <header className={cn("flex items-center justify-between border-b border-[var(--border)] px-6 py-4", headerClassName)}>
+            <header className={cn("flex items-center justify-between gap-3 border-b border-[var(--border)] px-6 py-4", headerClassName)}>
               {title && (
-                <h2 id="modal-title" className="text-lg font-bold tracking-[-0.01em] text-[var(--navy-800)]">
+                <h2 id="modal-title" className="text-[17px] font-bold tracking-[-0.015em] text-[var(--navy-900)]">
                   {title}
                 </h2>
               )}
@@ -226,7 +226,7 @@ export function ConfirmModal({
         </>
       }
     >
-      <p className="text-sm text-slate-600">{message}</p>
+      <p className="text-sm leading-relaxed text-[var(--text-2)]">{message}</p>
     </Modal>
   );
 }
@@ -339,7 +339,7 @@ export function AlertModal({
           <Icon name={ALERT_ICONS[type]} size={24} />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm text-slate-600">{message}</p>
+          <p className="text-sm leading-relaxed text-[var(--text-2)]">{message}</p>
         </div>
       </div>
     </Modal>

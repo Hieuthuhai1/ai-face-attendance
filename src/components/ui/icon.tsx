@@ -30,8 +30,29 @@ const PATHS: Record<string, React.ReactNode> = {
     </>
   ),
   "chevron-down": <path d="M6 9l6 6 6-6" />,
+  "chevron-up": <path d="M6 15l6-6 6 6" />,
   "chevron-left": <path d="M15 6l-6 6 6 6" />,
   "chevron-right": <path d="M9 6l6 6-6 6" />,
+  "panel-left": (
+    <>
+      <rect x="3.5" y="4" width="17" height="16" rx="2.5" />
+      <path d="M9.5 4v16" />
+    </>
+  ),
+  sparkles: (
+    <>
+      <path d="M12 3.5l1.7 4.3 4.3 1.7-4.3 1.7L12 15.5l-1.7-4.3L6 9.5l4.3-1.7L12 3.5z" />
+      <path d="M18.5 15.5l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8.8-2z" />
+    </>
+  ),
+  "help-circle": (
+    <>
+      <circle cx="12" cy="12" r="8.5" />
+      <path d="M9.6 9.4a2.5 2.5 0 114 2c-.8.7-1.6 1.1-1.6 2.3" />
+      <path d="M12 17v.01" />
+    </>
+  ),
+  activity: <path d="M3 12h4l2.5-7 4 14 2.5-7h5" />,
   search: (
     <>
       <circle cx="11" cy="11" r="6.5" />

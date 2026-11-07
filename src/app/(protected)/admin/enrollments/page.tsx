@@ -12,7 +12,7 @@ export default function EnrollmentsAdminPage({
   searchParams: Promise<{ status?: string }>;
 }) {
   return (
-    <main className="mx-auto flex w-full max-w-5xl flex-col gap-4 px-4 py-6">
+    <main className="page-shell flex flex-col gap-4">
       <h1 className="text-2xl font-bold">Xác minh đăng ký khuôn mặt</h1>
       <Suspense fallback={<LoadingState message="Đang tải hàng đợi…" />}>
         <QueueData searchParams={searchParams} />

@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 /*
- * Design tokens — Horizon-inspired SaaS dashboard (light-only có chủ đích).
- * Palette: xanh dương (brand) + navy (sidebar/heading) + trắng.
+ * Design tokens — Premium Enterprise SaaS (light-only có chủ đích).
+ * Palette: Primary Blue #2563EB + Deep Navy #101B3C + Accent Cyan #0EA5E9.
  * Toàn app ép light (`color-scheme: light`) để tránh vỡ giao diện với
  * components dùng màu cứng. Muốn dark đầy đủ phải làm task riêng.
  */
@@ -12,50 +12,84 @@
   /* Brand — xanh dương tin cậy cho phần mềm nhân sự */
   --brand: #2563eb;
   --brand-strong: #1d4ed8;
-  --brand-deep: #1e3a8a;
+  --brand-deep: #1e40af;
+  --brand-secondary: #3b82f6;
   --brand-contrast: #ffffff;
   --brand-soft: #eff6ff;
-  --brand-ring: rgb(37 99 235 / 0.16);
+  --brand-ring: rgb(37 99 235 / 0.18);
+
+  /* Accent — cyan chỉ dùng làm điểm nhấn (AI / verification) */
+  --accent: #0ea5e9;
+  --accent-strong: #0284c7;
+  --accent-soft: #e0f2fe;
   --teal-accent: #0d9488;
 
-  /* Navy — sidebar, heading, text đậm */
-  --navy-950: #070d24;
-  --navy-900: #0b1437;
-  --navy-800: #111c44;
-  --navy-700: #1b254b;
+  /* Navy — sidebar, heading, hero card */
+  --navy-950: #0a1229;
+  --navy-900: #101b3c;
+  --navy-800: #16244f;
+  --navy-700: #1e2f63;
   --navy-600: #24388a;
 
   /* Surface & text */
-  --background: #f4f7fe;
-  --foreground: #1b254b;
+  --background: #f4f6fa;
+  --foreground: #172033;
   --surface: #ffffff;
-  --surface-muted: #f7f9fc;
-  --surface-subtle: #eef3fb;
-  --text-1: #1b254b;
-  --text-2: #5b6b8c;
-  --text-3: #a3aed0;
-  --border: #e6ebf5;
-  --border-strong: #d6deec;
+  --surface-muted: #f8fafc;
+  --surface-subtle: #f1f5f9;
+  --text-1: #172033;
+  --text-2: #475569;
+  --text-3: #64748b;
+  --text-disabled: #94a3b8;
+  --border: #e2e8f0;
+  --border-strong: #cbd5e1;
 
-  /* Semantic */
-  --success: #15803d;
-  --success-bg: #ecfdf3;
-  --warning: #b45309;
-  --warning-bg: #fffaeb;
-  --danger: #b42318;
-  --danger-bg: #fef3f2;
-  --info: #1d4ed8;
-  --info-bg: #eff6ff;
+  /* Semantic — base dùng cho icon/fill, *-strong dùng cho text đạt AA */
+  --success: #16a34a;
+  --success-strong: #15803d;
+  --success-bg: #f0fdf4;
+  --success-border: #bbf7d0;
+  --warning: #f59e0b;
+  --warning-strong: #b45309;
+  --warning-bg: #fffbeb;
+  --warning-border: #fde68a;
+  --danger: #ef4444;
+  --danger-strong: #dc2626;
+  --danger-bg: #fef2f2;
+  --danger-border: #fecaca;
+  --info: #0ea5e9;
+  --info-strong: #0284c7;
+  --info-bg: #f0f9ff;
+  --info-border: #bae6fd;
 
   /* Shape & depth */
-  --radius-card: 18px;
+  --radius-card: 16px;
   --radius-control: 10px;
-  --shadow-card: 0 18px 40px -28px rgb(27 37 75 / 0.35);
-  --shadow-card-hover: 0 24px 54px -28px rgb(27 37 75 / 0.45);
-  --shadow-popover: 0 20px 48px -16px rgb(27 37 75 / 0.28);
-  --shadow-dialog: 0 32px 80px -24px rgb(11 20 55 / 0.42);
+  --radius-icon: 12px;
+  --shadow-xs: 0 1px 2px rgb(16 27 60 / 0.05);
+  --shadow-card:
+    0 1px 2px rgb(16 27 60 / 0.04),
+    0 10px 30px -18px rgb(16 27 60 / 0.18);
+  --shadow-card-hover:
+    0 2px 4px rgb(16 27 60 / 0.05),
+    0 18px 44px -20px rgb(16 27 60 / 0.24);
+  --shadow-popover: 0 16px 40px -12px rgb(16 27 60 / 0.22);
+  --shadow-dialog: 0 32px 80px -24px rgb(16 27 60 / 0.4);
+  --shadow-sidebar: 12px 0 40px -24px rgb(10 18 41 / 0.55);
+
+  /* Gradients */
+  --sidebar-gradient: linear-gradient(180deg, #101b3c 0%, #0c1530 58%, #101b3c 100%);
+  --hero-gradient: linear-gradient(135deg, #101b3c 0%, #16244f 55%, #1e3a8a 100%);
+  --brand-gradient: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+
+  /* Layout */
+  --content-max: 1600px;
+  --topbar-h: 68px;
+  --sidebar-w: 256px;
+  --sidebar-w-collapsed: 84px;
+
+  /* Focus */
   --focus-ring: 0 0 0 4px var(--brand-ring);
-  --sidebar-gradient: linear-gradient(180deg, #0b1437 0%, #111c44 58%, #0d1838 100%);
 }
 
 @theme inline {
@@ -67,15 +101,24 @@
   --color-brand: var(--brand);
   --color-brand-strong: var(--brand-strong);
   --color-brand-deep: var(--brand-deep);
+  --color-brand-secondary: var(--brand-secondary);
   --color-brand-soft: var(--brand-soft);
+  --color-accent: var(--accent);
+  --color-accent-strong: var(--accent-strong);
+  --color-accent-soft: var(--accent-soft);
   --color-navy-950: var(--navy-950);
   --color-navy-900: var(--navy-900);
   --color-navy-800: var(--navy-800);
   --color-navy-700: var(--navy-700);
   --color-navy-600: var(--navy-600);
   --color-border: var(--border);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-border-strong: var(--border-strong);
+  --color-text-1: var(--text-1);
+  --color-text-2: var(--text-2);
+  --color-text-3: var(--text-3);
+  --font-sans: var(--font-be-vietnam), ui-sans-serif, system-ui, -apple-system,
+    "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
 html {
@@ -86,8 +129,9 @@ html {
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system,
+  font-family: var(--font-be-vietnam), ui-sans-serif, system-ui, -apple-system,
     "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-feature-settings: "kern", "liga";
 }
 
 ::selection {
@@ -98,6 +142,82 @@ body {
 /* Số liệu/giờ dùng tabular-nums để không nhảy layout */
 .tnum {
   font-variant-numeric: tabular-nums;
+}
+
+/* ===== Layout utilities ===== */
+/*
+ * Container chuẩn cho mọi trang trong khu vực đã đăng nhập.
+ * Tận dụng tối đa chiều rộng còn lại sau sidebar, chỉ chặn ở 1600px.
+ */
+.page-shell {
+  width: 100%;
+  max-width: var(--content-max);
+  margin-inline: auto;
+  padding: 24px 16px 40px;
+}
+
+@media (min-width: 640px) {
+  .page-shell {
+    padding-inline: 28px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .page-shell {
+    padding: 28px 32px 48px;
+  }
+}
+
+@media (min-width: 1536px) {
+  .page-shell {
+    padding-inline: 40px;
+  }
+}
+
+/* Dùng cho form ngắn / trạng thái (login, revoke, not-found) */
+.page-shell-narrow {
+  width: 100%;
+  max-width: 520px;
+  margin-inline: auto;
+  padding: 40px 16px;
+}
+
+/* Dùng cho form/wizard một cột (không phải dashboard) */
+.page-shell-form {
+  width: 100%;
+  max-width: 880px;
+  margin-inline: auto;
+  padding: 24px 16px 40px;
+}
+
+@media (min-width: 640px) {
+  .page-shell-form {
+    padding-inline: 28px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .page-shell-form {
+    padding: 32px 32px 48px;
+  }
+}
+
+/* Card surface dùng chung khi không dùng component Card */
+.card-surface {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
+}
+
+/* Eyebrow / section label */
+.eyebrow {
+  font-size: 11px;
+  line-height: 14px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-3);
 }
 
 /* Focus rõ ràng, nhất quán toàn app */
@@ -121,6 +241,19 @@ body {
 }
 .scrollbar-slim::-webkit-scrollbar-track {
   background: transparent;
+}
+
+/* Sidebar scrollbar tối */
+.scrollbar-dark {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(255 255 255 / 0.14) transparent;
+}
+.scrollbar-dark::-webkit-scrollbar {
+  width: 5px;
+}
+.scrollbar-dark::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.14);
 }
 
 /* Skeleton shimmer (tắt dưới reduced-motion bởi rule chung) */
@@ -195,8 +328,8 @@ body {
   top: 12%;
   height: 2px;
   border-radius: 999px;
-  background: linear-gradient(90deg, transparent, var(--teal-accent), transparent);
-  box-shadow: 0 0 10px 1px rgb(13 148 136 / 0.45);
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  box-shadow: 0 0 10px 1px rgb(14 165 233 / 0.45);
   animation: scan-sweep 2.4s cubic-bezier(0.45, 0, 0.55, 1) infinite;
   pointer-events: none;
 }

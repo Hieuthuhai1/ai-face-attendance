@@ -11,8 +11,10 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
-  Dot,
   Area,
+  ReferenceArea,
+  ReferenceLine,
+  Label,
 } from "recharts";
 
 export interface LineChartData {
@@ -157,16 +159,10 @@ export function LineChart({
           margin={{ top: 10, right: showLegend ? 30 : 10, left: hasYAxisLabel ? 60 : 50, bottom: hasXAxisLabel ? 50 : 30 }}
         >
           {referenceAreas.map((area, i) => (
-            <Area
+            <ReferenceArea
               key={`ref-area-${i}`}
-              type="area"
-              yAxisId={area.yAxisId ?? "left"}
-              points={[
-                { x: 0, y: area.y1 },
-                { x: 0, y: area.y2 },
-                { x: 1, y: area.y2 },
-                { x: 1, y: area.y1 },
-              ]}
+              y1={area.y1}
+              y2={area.y2}
               fill={area.color ?? "var(--brand-soft)"}
               fillOpacity={area.opacity ?? 0.3}
               stroke="none"
@@ -187,7 +183,7 @@ export function LineChart({
             scale="point"
           >
             {hasXAxisLabel && (
-              <XAxis.Label value={xAxisLabel} position="insideBottom" offset={30} fill="var(--text-2)" fontSize={12} />
+              <Label value={xAxisLabel} position="insideBottom" offset={30} fill="var(--text-2)" fontSize={12} />
             )}
           </XAxis>
 
@@ -201,28 +197,24 @@ export function LineChart({
             allowDecimals={false}
           >
             {hasYAxisLabel && (
-              <YAxis.Label value={yAxisLabel} angle={-90} position="insideLeft" offset={-40} fill="var(--text-2)" fontSize={12} />
+              <Label value={yAxisLabel} angle={-90} position="insideLeft" offset={-40} fill="var(--text-2)" fontSize={12} />
             )}
           </YAxis>
 
           {referenceLines.map((line, i) => (
-            <Line
+            <ReferenceLine
               key={`ref-line-${i}`}
-              type="line"
-              yAxisId="left"
-              points={[
-                { x: 0, y: line.y },
-                { x: 1, y: line.y },
-              ]}
+              y={line.y}
               stroke={line.color ?? "var(--danger)"}
               strokeDasharray={line.strokeDasharray ?? "5 5"}
               strokeWidth={1}
+              label={{ value: line.label, position: "insideTopRight", fill: line.color ?? "var(--danger)", fontSize: 11 }}
             />
           ))}
 
           {showTooltip && (
             <Tooltip
-              content={tooltipContent ?? undefined}
+              content={tooltipContent as never}
               contentStyle={{
                 backgroundColor: "white",
                 border: "1px solid var(--border)",
@@ -232,7 +224,7 @@ export function LineChart({
                 fontSize: 12,
               }}
               itemStyle={{ color: "var(--navy-800)", fontSize: 12 }}
-              formatter={tooltipFormatter}
+              formatter={tooltipFormatter as never}
               labelStyle={{ color: "var(--text-2)", fontWeight: 600, fontSize: 12 }}
             />
           )}

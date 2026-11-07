@@ -19,11 +19,11 @@ export function EmptyState({
   icon?: "inbox" | "search" | "calendar" | "users" | "file";
 }) {
   return (
-    <div className="flex flex-col items-center gap-2 px-6 py-12 text-center">
-      <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--surface-muted)] text-[var(--text-3)] ring-1 ring-[var(--border)]">
+    <div className="flex flex-col items-center gap-2 px-6 py-14 text-center">
+      <span className="flex h-14 w-14 items-center justify-center rounded-[var(--radius-icon)] bg-[var(--brand-soft)] text-[var(--brand)] ring-1 ring-blue-100">
         <Icon name={icon} size={26} />
       </span>
-      <p className="mt-1 text-sm font-semibold text-[var(--navy-800)]">{title}</p>
+      <p className="mt-2 text-[15px] font-semibold text-[var(--navy-900)]">{title}</p>
       {description ? <p className="max-w-sm text-[13px] leading-relaxed text-[var(--text-2)]">{description}</p> : null}
       {action ? <div className="mt-2">{action}</div> : null}
     </div>
@@ -40,11 +40,11 @@ export function ErrorState({
   onRetry?: () => void;
 }) {
   return (
-    <div role="alert" className="flex flex-col items-center gap-2 px-6 py-12 text-center">
-      <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--danger-bg)] text-[var(--danger)] ring-1 ring-red-100">
+    <div role="alert" className="flex flex-col items-center gap-2 px-6 py-14 text-center">
+      <span className="flex h-14 w-14 items-center justify-center rounded-[var(--radius-icon)] bg-[var(--danger-bg)] text-[var(--danger)] ring-1 ring-[var(--danger-border)]">
         <Icon name="alert" size={24} />
       </span>
-      <p className="mt-1 text-sm font-semibold text-[var(--navy-800)]">{title}</p>
+      <p className="mt-2 text-[15px] font-semibold text-[var(--navy-900)]">{title}</p>
       {description ? <p className="max-w-sm text-[13px] leading-relaxed text-[var(--text-2)]">{description}</p> : null}
       {onRetry ? (
         <Button variant="secondary" size="sm" className="mt-2" onClick={onRetry}>

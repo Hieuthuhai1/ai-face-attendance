@@ -12,6 +12,7 @@ import {
   Legend,
   ResponsiveContainer,
   Cell,
+  Label,
 } from "recharts";
 
 export interface BarChartData {
@@ -138,7 +139,7 @@ export function BarChart({
       contentStyle={tooltipStyle}
       itemStyle={{ color: "var(--navy-800)", fontSize: 12 }}
       labelStyle={{ color: "var(--text-2)", fontWeight: 600, fontSize: 12 }}
-      formatter={(value: number, name: string) => tooltipFormatter(value, name)}
+      formatter={(value, name) => tooltipFormatter(Number(value ?? 0), String(name ?? ""))}
     />
   ) : showTooltip ? (
     <Tooltip
@@ -160,7 +161,7 @@ export function BarChart({
           layout={layout}
           data={data}
           margin={{ top: 10, right: showLegend ? 20 : 10, left: 50, bottom: xAxisLabel ? 50 : 30 }}
-          stackedOffset={stacked ? "expand" : undefined}
+          stackOffset={stacked ? "expand" : "none"}
         >
           {showGrid && <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />}
           <XAxis
@@ -170,9 +171,8 @@ export function BarChart({
             tick={{ fontSize: 12, fill: "var(--text-2)" }}
             interval={xTickInterval ?? "preserveStartEnd"}
             scale="band"
-            padding={{ inner: 0.2, outer: 0.1 }}
           >
-            {xAxisLabel && <XAxis.Label value={xAxisLabel} position="insideBottom" offset={30} fill="var(--text-2)" fontSize={12} />}
+            {xAxisLabel && <Label value={xAxisLabel} position="insideBottom" offset={30} fill="var(--text-2)" fontSize={12} />}
           </XAxis>
           <YAxis
             tickLine={false}
@@ -182,7 +182,7 @@ export function BarChart({
             minTickGap={30}
             allowDecimals={false}
           >
-            {yAxisLabel && <YAxis.Label value={yAxisLabel} angle={-90} position="insideLeft" offset={-35} fill="var(--text-2)" fontSize={12} />}
+            {yAxisLabel && <Label value={yAxisLabel} angle={-90} position="insideLeft" offset={-35} fill="var(--text-2)" fontSize={12} />}
           </YAxis>
           {showTooltip && tooltipContent}
           {showLegend && <Legend wrapperStyle={{ paddingTop: 12, fontSize: 12 }} />}

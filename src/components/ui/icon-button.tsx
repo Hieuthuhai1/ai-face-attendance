@@ -42,25 +42,25 @@ export function IconButton({
   };
 
   const VARIANT_CLASSES = {
-    primary: "bg-[var(--brand)] text-white shadow-sm hover:bg-[var(--brand-strong)]",
+    primary: "bg-[var(--brand)] text-white shadow-[0_8px_18px_-10px_rgba(37,99,235,0.9)] hover:bg-[var(--brand-strong)]",
     secondary:
-      "border border-[var(--border-strong)] bg-white text-[var(--navy-700)] shadow-sm hover:bg-[var(--surface-muted)]",
-    ghost: "text-[var(--text-2)] hover:bg-[var(--surface-muted)] hover:text-[var(--navy-800)]",
-    danger: "bg-[var(--danger)] text-white hover:bg-red-800",
+      "border border-[var(--border)] bg-white text-[var(--text-1)] shadow-[var(--shadow-xs)] hover:border-[var(--border-strong)] hover:bg-[var(--surface-muted)]",
+    ghost: "text-[var(--text-2)] hover:bg-[var(--surface-muted)] hover:text-[var(--text-1)]",
+    danger: "bg-[var(--danger)] text-white hover:bg-[var(--danger-strong)]",
   };
 
   const BADGE_COLORS = {
-    default: "bg-slate-500",
-    danger: "bg-red-500",
-    warning: "bg-amber-500",
-    success: "bg-green-500",
+    default: "bg-[var(--text-3)]",
+    danger: "bg-[var(--danger)]",
+    warning: "bg-[var(--warning)]",
+    success: "bg-[var(--success)]",
   };
 
   return (
     <button
       className={cn(
         "relative inline-flex items-center justify-center rounded-[var(--radius-control)]",
-        "transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand)]",
+        "transition-colors focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[var(--brand-ring)]",
         "disabled:cursor-not-allowed disabled:opacity-50",
         SIZE_CLASSES[size],
         VARIANT_CLASSES[variant],
@@ -82,8 +82,8 @@ export function IconButton({
       {badge && badge > 0 && (
         <span
           className={cn(
-            "absolute -top-1 -right-1 flex items-center justify-center min-w-[16px] h-4 rounded-full",
-            "text-[10px] font-medium text-white px-1",
+            "absolute -right-1 -top-1 flex h-4 min-w-[16px] items-center justify-center rounded-full px-1",
+            "text-[10px] font-semibold text-white",
             BADGE_COLORS[badgeColor]
           )}
           aria-label={`${badge} thông báo`}

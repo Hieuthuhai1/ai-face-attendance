@@ -297,7 +297,7 @@ export function EnrollmentWizard({ employeeId: initialEmployeeId, initialState, 
 
 export default function EnrollmentPage() {
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-col gap-4 px-4 py-6">
+    <main className="page-shell-form flex flex-col gap-4">
       <h1 className="text-2xl font-bold">Đăng ký khuôn mặt</h1>
       <div className="flex h-32 items-center justify-center">Đang tải trạng thái…</div>
     </main>

@@ -67,7 +67,7 @@ export function DropdownMenu({
         <div
           role="menu"
           className={cn(
-            "absolute z-50 mt-2 min-w-48 overflow-hidden rounded-xl border border-[var(--border)] bg-white p-1.5 shadow-[var(--shadow-popover)] animate-fade-in",
+            "absolute z-50 mt-2 min-w-48 origin-top overflow-hidden rounded-[14px] border border-[var(--border)] bg-white p-1.5 shadow-[var(--shadow-popover)] animate-scale-in",
             align === "end" ? "right-0" : "left-0",
             menuClassName,
           )}
@@ -95,11 +95,11 @@ export function DropdownItem({
       type="button"
       onClick={onSelect}
       className={cn(
-        "flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm font-medium transition-colors",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand)]",
+        "flex w-full items-center gap-2.5 rounded-[10px] px-3 py-2 text-left text-sm font-medium transition-colors",
+        "focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[var(--brand-ring)]",
         danger
-          ? "text-[var(--danger)] hover:bg-[var(--danger-bg)]"
-          : "text-[var(--navy-700)] hover:bg-[var(--surface-muted)]",
+          ? "text-[var(--danger-strong)] hover:bg-[var(--danger-bg)]"
+          : "text-[var(--text-1)] hover:bg-[var(--surface-muted)]",
       )}
     >
       {children}

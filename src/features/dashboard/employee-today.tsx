@@ -125,7 +125,7 @@ export async function EmployeeToday({ profile }: { profile: Profile }) {
 
   if (!status.eligible) {
     return (
-      <main className="mx-auto flex w-full max-w-5xl flex-col gap-5 px-4 py-6">
+      <main className="page-shell flex flex-col gap-5">
         <PageHeader title="Hôm nay" description="Tổng quan chấm công của bạn" />
         <Card>
           <EmptyState
@@ -225,7 +225,7 @@ export async function EmployeeToday({ profile }: { profile: Profile }) {
       : "--:--";
 
   return (
-    <main className="mx-auto flex w-full max-w-5xl flex-col gap-5 px-4 py-6">
+    <main className="page-shell flex flex-col gap-5">
       <PageHeader
         title="Hôm nay"
         description={`${greetingForNow()}, ${profile.display_name} · ${DATE_FMT.format(new Date())}`}

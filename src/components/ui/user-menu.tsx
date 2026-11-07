@@ -64,13 +64,15 @@ export function UserMenu({
           aria-label="Tài khoản"
           className={cn(triggerClass, triggerClassName)}
         >
-          {showAvatar && <Avatar src={user.avatar} name={user.displayName} size="sm" />}
+          {showAvatar && (
+            <Avatar src={user.avatar} name={user.displayName} size="sm" className="ring-2 ring-white" />
+          )}
           {showName && (
             <span className="hidden min-w-0 text-left sm:block">
-              <span className="block truncate text-[13px] font-semibold leading-tight text-[var(--navy-800)]">
+              <span className="block truncate text-[13px] font-semibold leading-tight text-[var(--text-1)]">
                 {user.displayName}
               </span>
-              <span className="mt-0.5 block truncate text-[11px] leading-tight text-[var(--text-3)]">
+              <span className="mt-0.5 block truncate text-[11px] font-medium leading-tight text-[var(--text-3)]">
                 {ROLE_LABELS[user.role] ?? user.role}
               </span>
             </span>
@@ -83,10 +85,15 @@ export function UserMenu({
         </button>
       )}
     >
-      <div className="border-b border-[var(--border)] px-3 pb-2.5 pt-2">
-        <p className="truncate text-sm font-semibold text-[var(--navy-800)]">{user.displayName}</p>
-        <p className="truncate text-xs text-[var(--text-2)]">{user.email}</p>
-        <span className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-[var(--brand-soft)] px-2 py-0.5 text-[10px] font-semibold text-[var(--brand-strong)]">
+      <div className="border-b border-[var(--border)] px-3 pb-3 pt-2.5">
+        <div className="flex items-center gap-2.5">
+          <Avatar src={user.avatar} name={user.displayName} size="md" />
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-semibold text-[var(--navy-900)]">{user.displayName}</p>
+            <p className="truncate text-xs text-[var(--text-2)]">{user.email}</p>
+          </div>
+        </div>
+        <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-[var(--brand-soft)] px-2 py-0.5 text-[10px] font-semibold text-[var(--brand-strong)] ring-1 ring-inset ring-blue-200">
           {ROLE_LABELS[user.role] ?? user.role}
         </span>
       </div>

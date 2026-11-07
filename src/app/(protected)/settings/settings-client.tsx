@@ -295,15 +295,15 @@ export function SettingsClient() {
   if (loading) return <div className="flex h-32 items-center justify-center">Đang tải…</div>;
 
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-6">
+    <div className="page-shell flex flex-col gap-6">
       <h1 className="text-2xl font-bold">Cài đặt tổ chức</h1>
       <Tabs items={[
-        { key: "organization", label: "Tổ chức", icon: "building" },
-        { key: "policies", label: "Chính sách chấm công", icon: "file-text" },
-        { key: "face", label: "Nhận diện khuôn mặt", icon: "user" },
-        { key: "holidays", label: "Ngày lễ", icon: "calendar" },
-        { key: "roles", label: "Người dùng & Vai trò", icon: "users" },
-        { key: "audit", label: "Nhật ký Audit", icon: "file" },
+        { key: "organization", label: "Tổ chức", icon: <Icon name="building" size={15} /> },
+        { key: "policies", label: "Chính sách chấm công", icon: <Icon name="file-text" size={15} /> },
+        { key: "face", label: "Nhận diện khuôn mặt", icon: <Icon name="scan-face" size={15} /> },
+        { key: "holidays", label: "Ngày lễ", icon: <Icon name="calendar" size={15} /> },
+        { key: "roles", label: "Người dùng & Vai trò", icon: <Icon name="users" size={15} /> },
+        { key: "audit", label: "Nhật ký Audit", icon: <Icon name="file" size={15} /> },
       ]} value={activeTab} onChange={setActiveTab} />
 
       <TabPanel key="organization" value={activeTab}>

@@ -10,6 +10,7 @@ import { findTrail, isActiveItem, NAV_GROUPS, primaryMobileNav, type NavGroup } 
 import { UserMenu, NotificationBell, type NotificationItem } from "@/components/ui/user-menu";
 import { CommandPalette, ShortcutsHelp, useCommandPalette, type KeyboardShortcut } from "@/components/ui/command-palette";
 import { IconButton } from "@/components/ui/icon-button";
+import { Avatar } from "@/components/ui/avatar";
 import { useLanguage } from "./language-provider";
 
 export interface ShellUser {
@@ -31,24 +32,38 @@ interface AppShellProps {
   onViewAllNotifications?: () => void;
 }
 
-const SIDEBAR_BG = "linear-gradient(180deg, #1e293b 0%, #0f172a 58%, #1e293b 100%)";
+const ROLE_LABELS: Record<Role, string> = {
+  employee: "Nhân viên",
+  manager: "Quản lý",
+  hr_admin: "HR Admin",
+  system_admin: "System Admin",
+};
+
+const SIDEBAR_BG = "var(--sidebar-gradient)";
 
 function BrandMark({ collapsed = false }: { collapsed?: boolean }) {
   return (
     <Link
       href="/dashboard"
-      className="flex min-w-0 items-center gap-2.5 rounded-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-400"
+      className={cn(
+        "flex min-w-0 items-center gap-3 rounded-xl focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--accent)]",
+        collapsed && "justify-center",
+      )}
       aria-label="AI Face Attendance — Dashboard"
     >
-      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[var(--primary)] to-[var(--navy-800)] text-white shadow-lg shadow-[var(--primary)]/40 ring-1 ring-white/10">
+      <span className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl [background-image:var(--brand-gradient)] text-white shadow-[0_10px_24px_-10px_rgba(37,99,235,0.95)] ring-1 ring-white/20">
         <Icon name="scan-face" size={21} />
+        <span
+          aria-hidden="true"
+          className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border-2 border-[var(--navy-900)] bg-[var(--accent)]"
+        />
       </span>
       {!collapsed ? (
         <span className="min-w-0">
           <span className="block truncate text-[15px] font-bold leading-tight tracking-[-0.01em] text-white">
             Timekeeping
           </span>
-          <span className="mt-0.5 block truncate text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+          <span className="mt-0.5 block truncate text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">
             AI Attendance
           </span>
         </span>
@@ -85,7 +100,7 @@ function NavLink({
         onClick={onNavigate}
         className={cn(
           "flex min-h-14 flex-col items-center justify-center gap-1 px-1 py-1.5 text-[10.5px] font-medium transition-colors",
-          active ? "text-[var(--primary)]" : "text-[var(--text-3)] hover:text-[var(--navy-700)]",
+          active ? "text-[var(--brand)]" : "text-[var(--text-3)] hover:text-[var(--navy-700)]",
         )}
       >
         <span
@@ -108,22 +123,25 @@ function NavLink({
       title={collapsed ? translatedLabel : undefined}
       onClick={onNavigate}
       className={cn(
-        "group relative flex min-h-10 items-center gap-3 rounded-[10px] px-3 text-[13px] font-medium transition-colors duration-150",
+        "group relative flex min-h-10 items-center gap-3 rounded-[10px] px-3 text-[13px] font-medium transition-all duration-150",
         active
-          ? "bg-white/[0.09] text-[var(--primary)] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)]"
-          : "text-slate-400 hover:bg-white/[0.05] hover:text-[var(--primary)]",
+          ? "bg-[var(--brand)] text-white shadow-[0_10px_24px_-12px_rgba(37,99,235,0.95)]"
+          : "text-slate-400 hover:bg-white/[0.06] hover:text-white",
         collapsed && "justify-center px-0",
       )}
     >
       {active ? (
-        <span aria-hidden="true" className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-blue-400" />
+        <span
+          aria-hidden="true"
+          className="absolute -left-3 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-[var(--accent)]"
+        />
       ) : null}
       <Icon
         name={icon}
         size={18}
         className={cn(
           "shrink-0 transition-colors",
-          active ? "text-blue-300" : "text-slate-500 group-hover:text-slate-300",
+          active ? "text-white" : "text-slate-400 group-hover:text-slate-200",
         )}
       />
       {!collapsed ? <span className="truncate">{translatedLabel}</span> : null}
@@ -142,11 +160,11 @@ function SidebarNav({
 }) {
   const { t } = useLanguage();
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-6">
       {groups.map((group) => (
         <div key={group.title} className="flex flex-col gap-1">
           {!collapsed ? (
-            <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+            <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400/80">
               {t(group.title)}
             </p>
           ) : (
@@ -216,11 +234,13 @@ export function PageHeader({
   return (
     <div className="flex flex-wrap items-start justify-between gap-3">
       <div className="min-w-0">
-        <h1 className="truncate text-[26px] font-bold leading-tight tracking-[-0.02em] text-[var(--navy-900)]">
+        <h1 className="text-[24px] font-bold leading-tight tracking-[-0.025em] text-[var(--navy-900)] sm:text-[27px]">
           {t(title)}
         </h1>
         {description ? (
-          <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-[var(--text-2)]">{t(description)}</p>
+          <p className="mt-1.5 max-w-3xl text-sm leading-relaxed text-[var(--text-2)]">
+            {t(description)}
+          </p>
         ) : null}
       </div>
       {actions ? <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div> : null}
@@ -265,6 +285,7 @@ export function AppShell({
   const closeMobile = useCallback(() => setMobileOpen(false), []);
 
   // Đóng drawer khi đổi route
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => {
     setMobileOpen(false);
   }, [pathname]);
@@ -309,6 +330,7 @@ export function AppShell({
     items: g.items.filter((i) => i.roles.includes(user.role)),
   })).filter((g) => g.items.length > 0);
   const mobile = primaryMobileNav(user.role);
+  const roleLabel = ROLE_LABELS[user.role];
 
   // Keyboard shortcuts for help dialog
   const shortcuts: KeyboardShortcut[] = [
@@ -333,45 +355,65 @@ export function AppShell({
       <nav
         aria-label={t("Điều hướng chính")}
         className={cn(
-          "sticky top-0 hidden h-dvh shrink-0 flex-col overflow-hidden border-r border-white/5 transition-[width] duration-200 lg:flex",
-          collapsed ? "w-[84px]" : "w-[272px]",
+          "sticky top-0 hidden h-dvh shrink-0 flex-col overflow-hidden border-r border-white/5 shadow-[var(--shadow-sidebar)] transition-[width] duration-200 lg:flex",
+          collapsed ? "w-[var(--sidebar-w-collapsed)]" : "w-[var(--sidebar-w)]",
         )}
         style={{ backgroundImage: SIDEBAR_BG }}
       >
-        <div aria-hidden="true" className="pointer-events-none absolute -left-20 top-20 h-64 w-64 rounded-full bg-blue-500/20 blur-3xl" />
-        <div aria-hidden="true" className="pointer-events-none absolute -right-16 bottom-10 h-48 w-48 rounded-full bg-blue-400/10 blur-3xl" />
+        <div aria-hidden="true" className="pointer-events-none absolute -left-24 top-16 h-64 w-64 rounded-full bg-blue-500/20 blur-3xl" />
+        <div aria-hidden="true" className="pointer-events-none absolute -right-20 bottom-16 h-56 w-56 rounded-full bg-cyan-400/10 blur-3xl" />
 
-        <div className={cn("relative flex h-16 shrink-0 items-center px-4", collapsed && "justify-center px-2")}>
+        <div className={cn("relative flex h-[var(--topbar-h)] shrink-0 items-center px-5", collapsed && "justify-center px-2")}>
           <BrandMark collapsed={collapsed} />
         </div>
 
-        <div className="scrollbar-slim relative flex-1 overflow-y-auto px-3 py-4">
+        <div className="scrollbar-dark relative flex-1 overflow-y-auto px-3 py-3">
           <SidebarNav groups={groups} collapsed={collapsed} />
         </div>
 
-        <div className="relative shrink-0 border-t border-white/5 p-3">
+        <div className="relative shrink-0 border-t border-white/[0.07] p-3">
           {!collapsed ? (
-            <div className="mb-3 rounded-xl border border-white/5 bg-white/[0.04] p-3">
-              <div className="flex items-center gap-2 text-[11px] font-semibold text-slate-200">
-                <Icon name="shield" size={14} className="text-blue-300" />
-                Bảo mật dữ liệu
+            <div className="mb-2 flex items-center gap-2.5 rounded-xl border border-white/[0.06] bg-white/[0.04] p-2.5">
+              <Avatar name={user.displayName} src={user.avatar} size="sm" className="ring-2 ring-white/10" />
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[12.5px] font-semibold text-white">{user.displayName}</p>
+                <p className="truncate text-[11px] text-slate-400">{roleLabel}</p>
               </div>
-              <p className="mt-1 text-[10.5px] leading-relaxed text-slate-500">
-                Khuôn mặt không lưu ảnh thô. Mọi thao tác đều có audit log.
-              </p>
+              <button
+                type="button"
+                onClick={onLogout}
+                aria-label={t("Đăng xuất")}
+                title={t("Đăng xuất")}
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-white/10 hover:text-white"
+              >
+                <Icon name="logout" size={16} />
+              </button>
             </div>
-          ) : null}
+          ) : (
+            <div className="mb-2 flex flex-col items-center gap-1.5">
+              <Avatar name={user.displayName} src={user.avatar} size="sm" className="ring-2 ring-white/10" />
+              <button
+                type="button"
+                onClick={onLogout}
+                aria-label={t("Đăng xuất")}
+                title={t("Đăng xuất")}
+                className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-white/10 hover:text-white"
+              >
+                <Icon name="logout" size={16} />
+              </button>
+            </div>
+          )}
           <button
             type="button"
             onClick={toggleSidebar}
             aria-label={t(collapsed ? "Mở rộng menu" : "Thu gọn menu")}
             aria-expanded={!collapsed}
             className={cn(
-              "flex h-10 w-full items-center gap-2 rounded-[10px] px-3 text-[13px] font-medium text-slate-400 transition-colors hover:bg-white/[0.06] hover:text-white",
+              "flex h-9 w-full items-center gap-2 rounded-[10px] px-3 text-[12.5px] font-medium text-slate-400 transition-colors hover:bg-white/[0.06] hover:text-white",
               collapsed && "justify-center px-0",
             )}
           >
-            <Icon name={collapsed ? "chevron-right" : "chevron-left"} size={17} />
+            <Icon name={collapsed ? "chevron-right" : "chevron-left"} size={16} />
             {!collapsed ? <span>{t("Thu gọn menu")}</span> : null}
           </button>
         </div>
@@ -379,7 +421,7 @@ export function AppShell({
 
       <div className="flex min-w-0 flex-1 flex-col">
         {/* Topbar */}
-        <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-2 border-b border-[var(--border)] bg-white px-4 backdrop-blur-xl sm:gap-3 sm:px-6">
+        <header className="sticky top-0 z-30 flex h-[var(--topbar-h)] shrink-0 items-center gap-2 border-b border-[var(--border)] bg-white/95 px-4 shadow-[0_1px_2px_rgba(16,27,60,0.04)] backdrop-blur-xl sm:gap-3 sm:px-6">
           <button
             type="button"
             onClick={() => setMobileOpen(true)}
@@ -389,6 +431,16 @@ export function AppShell({
           >
             <Icon name="menu" size={20} />
           </button>
+
+          <span className="hidden shrink-0 lg:inline-flex">
+            <IconButton
+              icon="panel-left"
+              label={t(collapsed ? "Mở rộng menu" : "Thu gọn menu")}
+              variant="ghost"
+              size="md"
+              onClick={toggleSidebar}
+            />
+          </span>
 
           <Breadcrumb pathname={pathname} />
 
@@ -416,14 +468,15 @@ export function AppShell({
               className="md:hidden"
             />
 
-            <IconButton
-              icon="info"
-              label={t("Phím tắt (⌘/)")}
-              variant="ghost"
-              size="md"
-              onClick={() => setShortcutsOpen(true)}
-              className="hidden sm:inline-flex"
-            />
+            <span className="hidden shrink-0 sm:inline-flex">
+              <IconButton
+                icon="help-circle"
+                label={t("Phím tắt (⌘/)")}
+                variant="ghost"
+                size="md"
+                onClick={() => setShortcutsOpen(true)}
+              />
+            </span>
 
             <NotificationBell
               notifications={notifications}
@@ -448,13 +501,15 @@ export function AppShell({
           </div>
         </header>
 
-        {/* Nội dung (trang tự quản max-width/padding) */}
-        <div className="min-w-0 flex-1 pb-20 lg:pb-0">{children}</div>
+        {/* Nội dung (trang tự quản padding qua .page-shell) */}
+        <div className="min-w-0 flex-1 pb-[calc(64px+env(safe-area-inset-bottom))] lg:pb-0">
+          {children}
+        </div>
 
         {/* Bottom-bar mobile */}
         <nav
           aria-label={t("Điều hướng nhanh")}
-          className="fixed inset-x-0 bottom-0 z-30 border-t border-[var(--border)] bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl lg:hidden"
+          className="fixed inset-x-0 bottom-0 z-30 border-t border-[var(--border)] bg-white/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_16px_-12px_rgba(16,27,60,0.25)] backdrop-blur-xl lg:hidden"
         >
           <div className="grid" style={{ gridTemplateColumns: `repeat(${mobile.length}, 1fr)` }}>
             {mobile.map((item) => (
@@ -476,7 +531,7 @@ export function AppShell({
             className="absolute inset-y-0 left-0 flex w-[286px] max-w-[86vw] flex-col overflow-hidden shadow-2xl animate-slide-in"
             style={{ backgroundImage: SIDEBAR_BG }}
           >
-            <div className="flex h-16 shrink-0 items-center justify-between px-4">
+            <div className="flex h-[var(--topbar-h)] shrink-0 items-center justify-between px-5">
               <BrandMark />
               <button
                 type="button"
@@ -487,12 +542,17 @@ export function AppShell({
                 <Icon name="x" size={18} />
               </button>
             </div>
-            <div className="scrollbar-slim flex-1 overflow-y-auto px-3 py-4">
+            <div className="scrollbar-dark flex-1 overflow-y-auto px-3 py-3">
               <SidebarNav groups={groups} collapsed={false} onNavigate={closeMobile} />
             </div>
-            <div className="shrink-0 border-t border-white/5 p-4">
-              <p className="truncate text-sm font-semibold text-white">{user.displayName}</p>
-              <p className="truncate text-xs text-slate-400">{user.email}</p>
+            <div className="shrink-0 border-t border-white/[0.07] p-4">
+              <div className="flex items-center gap-2.5">
+                <Avatar name={user.displayName} src={user.avatar} size="md" />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold text-white">{user.displayName}</p>
+                  <p className="truncate text-xs text-slate-400">{roleLabel}</p>
+                </div>
+              </div>
               <button
                 type="button"
                 onClick={onLogout}

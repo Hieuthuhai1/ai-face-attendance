@@ -9,10 +9,10 @@ export interface CardProps extends HTMLAttributes<HTMLDivElement> {
 
 const VARIANTS: Record<CardVariant, string> = {
   default:
-    "border border-[var(--border)] bg-white shadow-[var(--shadow-card)]",
-  flat: "border border-[var(--border)] bg-white",
+    "border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow-card)]",
+  flat: "border border-[var(--border)] bg-[var(--surface)]",
   interactive:
-    "border border-[var(--border)] bg-white shadow-[var(--shadow-card)] transition-all duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-[var(--shadow-card-hover)]",
+    "border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow-card)] transition-all duration-200 hover:-translate-y-1 hover:border-[var(--border-strong)] hover:shadow-[var(--shadow-card-hover)]",
 };
 
 export function Card({ className, variant = "default", ...rest }: CardProps) {
@@ -26,7 +26,7 @@ export function Card({ className, variant = "default", ...rest }: CardProps) {
 
 export function CardTitle({ children, className }: { children: ReactNode; className?: string }) {
   return (
-    <h2 className={cn("text-[15px] font-bold tracking-[-0.01em] text-[var(--navy-800)]", className)}>
+    <h2 className={cn("text-[15px] font-bold tracking-[-0.015em] text-[var(--navy-900)]", className)}>
       {children}
     </h2>
   );

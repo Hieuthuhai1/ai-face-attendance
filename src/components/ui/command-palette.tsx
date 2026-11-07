@@ -42,7 +42,7 @@ export function CommandPalette({
   const [search, setSearch] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
-  const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
   // Filter items based on search
   const filteredItems = useMemo(() => {
@@ -122,27 +122,30 @@ export function CommandPalette({
 
   return (
     <Portal>
-      <div className="fixed inset-0 z-[60] flex items-start justify-center pt-16 px-4">
+      <div className="fixed inset-0 z-[60] flex items-start justify-center px-4 pt-16 sm:pt-24">
         <div
-          className="fixed inset-0 bg-black/40 backdrop-blur-sm animate-fade-in"
+          className="fixed inset-0 bg-[var(--navy-950)]/55 backdrop-blur-sm animate-fade-in"
           onClick={onClose}
           aria-hidden="true"
         />
         <div
           className={cn(
-            "relative w-full max-w-2xl bg-white rounded-xl shadow-xl border border-slate-200 animate-scale-in",
+            "relative w-full max-w-2xl overflow-hidden rounded-[18px] border border-[var(--border)] bg-white shadow-[var(--shadow-dialog)] animate-scale-in",
             className
           )}
           role="dialog"
           aria-modal="true"
           aria-labelledby="command-palette-title"
         >
-          <div className="p-4 border-b border-slate-200">
+          <h2 id="command-palette-title" className="sr-only">
+            {title}
+          </h2>
+          <div className="border-b border-[var(--border)] p-4">
             <label htmlFor="command-input" className="sr-only">
               {title}
             </label>
             <div className="relative">
-              <Icon name="search" size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <Icon name="search" size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--text-3)]" />
               <input
                 ref={inputRef}
                 id="command-input"
@@ -150,30 +153,32 @@ export function CommandPalette({
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder={placeholder}
-                className="w-full h-10 pl-10 pr-4 rounded-lg border border-slate-300 bg-white text-sm focus-visible:outline-2 focus-visible:outline-[var(--brand)]"
+                className="h-12 w-full rounded-[var(--radius-control)] border border-[var(--border)] bg-[var(--surface-muted)] pl-11 pr-16 text-sm text-[var(--text-1)] placeholder:text-[var(--text-3)] focus-visible:border-[var(--brand)] focus-visible:bg-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[var(--brand-ring)]"
                 autoComplete="off"
                 autoFocus
               />
-              <kbd className="absolute right-3 top-1/2 -translate-y-1/2 px-2 py-0.5 text-[10px] font-mono text-slate-400 bg-slate-100 rounded">
+              <kbd className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md border border-[var(--border)] bg-white px-2 py-0.5 font-mono text-[10px] font-medium text-[var(--text-3)]">
                 ⌘K
               </kbd>
             </div>
           </div>
 
-          <div className="max-h-[60vh] overflow-y-auto">
+          <div className="max-h-[60vh] overflow-y-auto scrollbar-slim p-2">
             {Object.entries(groupedItems).map(([groupName, groupItems]) => (
               <div key={groupName} className="py-1">
-                <div className="px-4 py-2 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                <div className="px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--text-3)]">
                   {groupName}
                 </div>
-                {groupItems.map((item, index) => {
+                {groupItems.map((item) => {
                   const globalIndex = filteredItems.indexOf(item);
                   const isSelected = globalIndex === selectedIndex;
 
                   return (
                     <button
                       key={item.key}
-                      ref={(el) => (itemRefs.current[globalIndex] = el)}
+                      ref={(el) => {
+                        itemRefs.current[globalIndex] = el;
+                      }}
                       type="button"
                       onClick={() => {
                         if (!item.disabled) {
@@ -181,27 +186,42 @@ export function CommandPalette({
                           onClose();
                         }
                       }}
+                      onMouseEnter={() => setSelectedIndex(globalIndex)}
                       disabled={item.disabled}
                       className={cn(
-                        "w-full px-4 py-3 text-left flex items-center gap-3",
-                        "hover:bg-slate-50 focus:bg-slate-50",
-                        isSelected && "bg-[var(--brand-soft)]",
-                        item.disabled && "opacity-50 cursor-not-allowed"
+                        "relative flex w-full items-center gap-3 rounded-[10px] px-3 py-2.5 text-left transition-colors",
+                        isSelected ? "bg-[var(--brand-soft)]" : "hover:bg-[var(--surface-muted)]",
+                        item.disabled && "cursor-not-allowed opacity-50"
                       )}
                     >
-                      {item.icon && <span className="w-5 h-5 flex items-center justify-center text-slate-400">{item.icon}</span>}
-                      <div className="flex-1 min-w-0">
-                        <p className={cn("font-medium truncate", isSelected ? "text-[var(--brand)]" : "text-slate-900")}>
+                      {isSelected ? (
+                        <span
+                          aria-hidden="true"
+                          className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-[var(--brand)]"
+                        />
+                      ) : null}
+                      {item.icon && (
+                        <span
+                          className={cn(
+                            "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg",
+                            isSelected
+                              ? "bg-white text-[var(--brand)]"
+                              : "bg-[var(--surface-muted)] text-[var(--text-2)]"
+                          )}
+                        >
+                          {item.icon}
+                        </span>
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <p className={cn("truncate text-[13.5px] font-semibold", isSelected ? "text-[var(--brand-strong)]" : "text-[var(--text-1)]")}>
                           {item.label}
                         </p>
                         {item.description && (
-                          <p className={cn("text-xs truncate", isSelected ? "text-[var(--brand)]/80" : "text-slate-500")}>
-                            {item.description}
-                          </p>
+                          <p className="truncate text-xs text-[var(--text-3)]">{item.description}</p>
                         )}
                       </div>
                       {item.shortcut && (
-                        <kbd className="px-2 py-0.5 text-[10px] font-mono text-slate-400 bg-slate-100 rounded">
+                        <kbd className="shrink-0 rounded-md border border-[var(--border)] bg-white px-2 py-0.5 font-mono text-[10px] text-[var(--text-3)]">
                           {item.shortcut}
                         </kbd>
                       )}
@@ -212,19 +232,20 @@ export function CommandPalette({
             ))}
 
             {filteredItems.length === 0 && (
-              <div className="px-4 py-8 text-center text-slate-500">
-                <Icon name="search" size={24} className="mx-auto text-slate-300 mb-2" />
-                <p>Không tìm thấy lệnh phù hợp</p>
-                <p className="text-xs mt-1">Thử từ khóa khác</p>
+              <div className="px-4 py-12 text-center text-[var(--text-2)]">
+                <Icon name="search" size={26} className="mx-auto mb-2 text-[var(--text-3)]" />
+                <p className="text-sm font-semibold text-[var(--navy-900)]">Không tìm thấy lệnh phù hợp</p>
+                <p className="mt-1 text-xs text-[var(--text-3)]">Thử từ khóa khác</p>
               </div>
             )}
           </div>
 
-          <div className="p-3 border-t border-slate-200 bg-[var(--surface-muted)] rounded-b-xl text-center">
-            <kbd className="px-2 py-0.5 text-[10px] font-mono text-slate-400 bg-white border border-slate-200 rounded">
-              Esc
-            </kbd>{" "}
-            <span className="text-xs text-slate-500">Đóng</span>
+          <div className="flex items-center justify-center gap-1.5 border-t border-[var(--border)] bg-[var(--surface-muted)] px-3 py-2.5 text-xs text-[var(--text-3)]">
+            <kbd className="rounded border border-[var(--border)] bg-white px-1.5 py-0.5 font-mono text-[10px]">Esc</kbd>
+            <span>để đóng</span>
+            <span aria-hidden="true">·</span>
+            <kbd className="rounded border border-[var(--border)] bg-white px-1.5 py-0.5 font-mono text-[10px]">↑ ↓</kbd>
+            <span>di chuyển</span>
           </div>
         </div>
       </div>
@@ -284,23 +305,23 @@ export function ShortcutsHelp({ open, onClose, shortcuts, title = "Phím tắt" 
   return (
     <Portal>
       <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm animate-fade-in" onClick={onClose} aria-hidden="true" />
-        <div className="relative w-full max-w-2xl bg-white rounded-xl shadow-xl border border-slate-200 animate-scale-in max-h-[80vh] flex flex-col">
-          <header className="flex items-center justify-between p-4 border-b border-slate-200 sticky top-0 bg-white z-10">
-            <h2 className="text-base font-semibold text-slate-900">{title}</h2>
-            <button type="button" onClick={onClose} className="p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100" aria-label="Đóng">
+        <div className="fixed inset-0 bg-[var(--navy-950)]/55 backdrop-blur-sm animate-fade-in" onClick={onClose} aria-hidden="true" />
+        <div className="relative flex max-h-[80vh] w-full max-w-2xl flex-col overflow-hidden rounded-[18px] border border-[var(--border)] bg-white shadow-[var(--shadow-dialog)] animate-scale-in">
+          <header className="sticky top-0 z-10 flex items-center justify-between border-b border-[var(--border)] bg-white px-5 py-4">
+            <h2 className="text-[17px] font-bold text-[var(--navy-900)]">{title}</h2>
+            <button type="button" onClick={onClose} className="rounded-lg p-1.5 text-[var(--text-3)] transition-colors hover:bg-[var(--surface-muted)] hover:text-[var(--text-1)]" aria-label="Đóng">
               <Icon name="x" size={20} />
             </button>
           </header>
-          <div className="flex-1 overflow-y-auto p-4">
+          <div className="flex-1 overflow-y-auto scrollbar-slim p-5">
             {Object.entries(grouped).map(([category, items]) => (
-              <div key={category} className="mb-6">
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">{category}</h3>
-                <div className="space-y-2">
+              <div key={category} className="mb-6 last:mb-0">
+                <h3 className="mb-2.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--text-3)]">{category}</h3>
+                <div className="space-y-1">
                   {items.map((item) => (
-                    <div key={item.key} className="flex items-center justify-between gap-4 py-2 px-3 rounded-lg hover:bg-slate-50">
-                      <span className="text-sm text-slate-600">{item.description}</span>
-                      <kbd className="px-2 py-1 text-[11px] font-mono text-slate-700 bg-slate-100 border border-slate-200 rounded whitespace-nowrap shrink-0">
+                    <div key={item.key} className="flex items-center justify-between gap-4 rounded-lg px-3 py-2 hover:bg-[var(--surface-muted)]">
+                      <span className="text-sm text-[var(--text-2)]">{item.description}</span>
+                      <kbd className="shrink-0 whitespace-nowrap rounded-md border border-[var(--border)] bg-[var(--surface-muted)] px-2 py-1 font-mono text-[11px] text-[var(--text-1)]">
                         {item.key}
                       </kbd>
                     </div>
@@ -309,8 +330,10 @@ export function ShortcutsHelp({ open, onClose, shortcuts, title = "Phím tắt" 
               </div>
             ))}
           </div>
-          <footer className="p-4 border-t border-slate-200 bg-[var(--surface-muted)] sticky bottom-0">
-            <p className="text-xs text-slate-500 text-center">Nhấn <kbd className="px-1.5 py-0.5 text-[10px] font-mono bg-white border border-slate-200 rounded">Esc</kbd> để đóng</p>
+          <footer className="sticky bottom-0 border-t border-[var(--border)] bg-[var(--surface-muted)] p-4 text-center">
+            <p className="text-xs text-[var(--text-3)]">
+              Nhấn <kbd className="rounded border border-[var(--border)] bg-white px-1.5 py-0.5 font-mono text-[10px]">Esc</kbd> để đóng
+            </p>
           </footer>
         </div>
       </div>

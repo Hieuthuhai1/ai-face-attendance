@@ -80,7 +80,7 @@ export function Avatar({
       ) : icon ? (
         <span
           className={cn(
-            "inline-flex items-center justify-center rounded-full bg-[var(--brand-soft)] text-[var(--brand-strong)] font-medium",
+            "inline-flex items-center justify-center rounded-full [background-image:var(--brand-gradient)] font-semibold text-white",
             SIZE_CLASSES[size]
           )}
           aria-hidden="true"
@@ -90,7 +90,7 @@ export function Avatar({
       ) : (
         <span
           className={cn(
-            "inline-flex items-center justify-center rounded-full bg-[var(--brand-soft)] text-[var(--brand-strong)] font-medium",
+            "inline-flex items-center justify-center rounded-full [background-image:var(--brand-gradient)] font-semibold text-white",
             SIZE_CLASSES[size]
           )}
           aria-hidden="true"

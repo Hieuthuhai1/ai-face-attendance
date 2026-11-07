@@ -46,7 +46,7 @@ export default function HistoryPage({
   }>;
 }) {
   return (
-    <main className="flex-1 flex flex-col gap-6 px-4 sm:px-6 lg:px-8 py-6 max-w-[1600px] mx-auto">
+    <main className="page-shell flex flex-col gap-6">
       <PageHeader
         title="Lịch sử chấm công"
         description="Lịch sử chấm công và attendance records"

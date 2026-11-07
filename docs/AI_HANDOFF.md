@@ -1939,3 +1939,68 @@ người dùng/vai trò, nhật ký audit.
   hoàn toàn.
 - AWS Rekognition credentials chưa cấu hình trên Vercel.
 - Next task: xác nhận Vercel READY, báo build/test results.
+
+## Phase 35 — Redesign Premium Enterprise SaaS Dashboard, Phase 1 (2026-11-07)
+
+**Mục tiêu:** Thay lớp giao diện bằng design system "Premium Enterprise SaaS"
+(blue/navy, Be Vietnam Pro, sidebar tối 256px, topbar 68px, nội dung rộng tối đa
+1600px) nhưng giữ nguyên toàn bộ nghiệp vụ, API, database và routing.
+
+**Thay đổi chính:**
+- `src/app/globals.css` — bảng màu mới (`--brand:#2563eb`, `--navy-900:#101b3c`,
+  `--background:#f4f6fa`, `--border:#e2e8f0`), token semantic `*-strong` cho text
+  đạt AA, shadow card/popover/dialog, gradient sidebar/brand, biến layout
+  (`--sidebar-w:256px`, `--topbar-h:68px`), utility `.page-shell` (max 1600px,
+  padding 16/28/32/40), `.page-shell-form` (880px), `.page-shell-narrow` (520px),
+  `.card-surface`, animation scale/slide.
+- `src/app/layout.tsx` — font chính `Be_Vietnam_Pro` (latin + vietnamese,
+  400/500/600/700), giữ `Geist_Mono` cho số/mã.
+- `src/components/app/app-shell.tsx` — viết lại: sidebar Deep Navy 256px có
+  brand mark, nhóm menu theo luồng, item active nền xanh + viền accent cyan,
+  hover, profile/logout, thu gọn (lưu `localStorage`); topbar trắng 68px với
+  breadcrumb, ô tìm kiếm ⌘K, help, notification bell, user menu; drawer mobile;
+  bottom nav mobile; command palette + bảng phím tắt. Giữ export `PageHeader`.
+- Primitives: `button`, `badge`, `card`, `stat-card`, `input`, `select`,
+  `data-table`, `states`, `tabs`, `icon-button`, `avatar`, `dropdown-menu`,
+  `user-menu`, `modal`, `tooltip`, `pagination`, `command-palette`, `toast`
+  đồng bộ radius 10–18px, focus ring 4px, hover lift nhẹ, badge có icon + text.
+- `src/components/ui/icon.tsx` — thêm `chevron-up`, `panel-left`, `sparkles`,
+  `help-circle`, `activity`.
+- Toàn bộ trang trong `src/app/(protected)` + `employee-today.tsx` +
+  `settings-client.tsx` chuyển container sang `.page-shell` / `.page-shell-form`
+  (bỏ `max-w-5xl/6xl/7xl` và `max-w-[1600px]` rải rác).
+- Dashboard: khôi phục role router (employee → `EmployeeToday`, role khác →
+  `DashboardContent`) qua `requireUser()`.
+- Sửa lỗi tồn tại: crash dashboard do thiếu `profile`, biến `var(--primary)`
+  không tồn tại, typing Recharts v3 (`Label`, `ReferenceArea`, `ReferenceLine`,
+  `stackOffset`), `Tabs` icon nhận `ReactNode`, `Select` multi-value.
+- Xoá component chết không còn import: `ui/{index,table,calendar,work-calendar,
+  progress,filter-bar,form-wizard,search-input,error-boundary}.tsx`,
+  `ui/charts/{heatmap,index}`, `features/employees/employee-directory.tsx`.
+
+**Quyết định:**
+- Chỉ theme sáng; không đổi backend/DB/API/face recognition.
+- Tái sử dụng tối đa primitive hiện có, không tạo bộ component thứ hai.
+- Ẩn/hiện icon topbar bằng wrapper `span` thay vì truyền `hidden` vào
+  `IconButton` (base `inline-flex` thắng `hidden` trong Tailwind v4).
+
+**Kết quả kiểm tra:**
+- `npm run typecheck` ✅ 0 lỗi.
+- `npm test` ✅ 18 file pass / 4 skip; 147 test pass / 17 skip.
+- `npm run build` ✅ 28 route (chạy 2 lần do nudge bảo mật Next 16.4.0).
+- QA Playwright ở 1440/1280/1024/768/390: sidebar 256px từ ≥1024, topbar 68px,
+  không tràn ngang (`scrollWidth === innerWidth`), font Be Vietnam Pro, nền
+  `#F4F6FA`; đã kiểm tra sidebar thu gọn 84px, drawer mobile 286px, dropdown
+  tài khoản.
+- Không có secret trong diff; `.env.local` không được track.
+
+**Commit:** `feat(ui): premium enterprise dashboard shell and design system`.
+**Known issues / Next:**
+- Next.js 16.4.0 đang bị cảnh báo bảo mật; cần chạy
+  `next upgrade --agent=security` (xem khuyến nghị của CLI).
+- `npm run lint` vẫn còn lỗi cũ (`no-explicit-any`, react-hooks purity) trong
+  `settings-client.tsx` và các component face; không phát sinh từ Phase 35.
+- `next.config.ts` vẫn bật `typescript.ignoreBuildErrors`; typecheck đã sạch nên
+  có thể bỏ ở phase sau.
+- Phase 2 (nếu tiếp): tinh chỉnh dashboard/report charts theo token mới và
+  rà soát accessibility toàn bộ form.

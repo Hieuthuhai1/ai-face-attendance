@@ -207,10 +207,10 @@ export function PieChart({
             paddingAngle={paddingAngle}
             startAngle={startAngle}
             endAngle={endAngle}
-            label={CustomLabel}
+            label={CustomLabel as never}
             labelLine={labelLine}
             onClick={onSliceClick
-              ? (slice: SectorProps & { payload: PieChartData }, index: number) => onSliceClick(slice.payload, index)
+              ? ((slice: { payload: PieChartData }, index: number) => onSliceClick(slice.payload, index)) as never
               : undefined}
           >
             {data.map((entry, index) => (
@@ -220,7 +220,7 @@ export function PieChart({
               />
             ))}
           </Pie>
-          {showTooltip && <Tooltip content={CustomTooltip} />}
+          {showTooltip && <Tooltip content={CustomTooltip as never} />}
           {showLegend && (
             <Legend
               layout={legendPosition === "left" || legendPosition === "right" ? "vertical" : "horizontal"}
@@ -276,6 +276,14 @@ export function SimplePieChart({
   total,
 }: SimplePieChartProps) {
   const computedTotal = total ?? data.reduce((sum, d) => sum + d.value, 0);
+  const colors = [
+    "var(--brand)",
+    "var(--success)",
+    "var(--warning)",
+    "var(--danger)",
+    "var(--info)",
+    "var(--teal-accent)",
+  ];
 
   if (computedTotal === 0) {
     return (
@@ -290,7 +298,7 @@ export function SimplePieChart({
   const segments = data.map((d) => ({
     ...d,
     percent: d.value / computedTotal,
-    color: d.color ?? "var(--brand)",
+    color: d.color ?? colors[data.indexOf(d) % colors.length],
   }));
 
   let cumulativePercent = 0;

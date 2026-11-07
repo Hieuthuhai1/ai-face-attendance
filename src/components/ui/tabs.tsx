@@ -46,7 +46,6 @@ export function Tabs({
   );
 
   const handleKeyDown = (e: React.KeyboardEvent, index: number) => {
-    const enabledItems = items.filter((item) => !item.disabled);
     const enabledIndices = items
       .map((item, i) => (!item.disabled ? i : -1))
       .filter((i) => i !== -1);
@@ -109,18 +108,18 @@ export function Tabs({
   const VARIANT_CLASSES = {
     line: {
       base: "border-b-2 transition-colors",
-      active: "border-[var(--brand)] text-[var(--brand)]",
-      inactive: "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-200",
+      active: "border-[var(--brand)] text-[var(--brand-strong)]",
+      inactive: "border-transparent text-[var(--text-3)] hover:border-[var(--border-strong)] hover:text-[var(--text-1)]",
     },
     enclosed: {
       base: "rounded-lg transition-all",
-      active: "bg-[var(--brand)] text-white shadow-sm",
-      inactive: "text-slate-600 hover:bg-slate-100",
+      active: "bg-[var(--brand)] text-white shadow-[0_6px_14px_-8px_rgba(37,99,235,0.9)]",
+      inactive: "text-[var(--text-2)] hover:bg-[var(--surface-subtle)]",
     },
     soft: {
       base: "rounded-lg transition-all",
       active: "bg-[var(--brand-soft)] text-[var(--brand-strong)]",
-      inactive: "text-slate-500 hover:text-slate-700 hover:bg-slate-100",
+      inactive: "text-[var(--text-3)] hover:bg-[var(--surface-subtle)] hover:text-[var(--text-1)]",
     },
   };
 
@@ -150,8 +149,8 @@ export function Tabs({
           onKeyDown={(e) => handleKeyDown(e, index)}
           onFocus={() => setFocusedIndex(index)}
           className={cn(
-            "relative inline-flex items-center gap-1.5 font-medium",
-            "focus-visible:outline-2 focus-visible:outline-[var(--brand)] focus-visible:outline-offset-2",
+            "relative inline-flex items-center gap-1.5 font-semibold",
+            "focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[var(--brand-ring)]",
             "disabled:opacity-50 disabled:cursor-not-allowed",
             sizeClass,
             variantClasses.base,
@@ -159,17 +158,17 @@ export function Tabs({
             orientation === "vertical" && "w-full justify-start"
           )}
         >
-          {item.icon && <span aria-hidden="true">{item.icon}</span>}
+          {item.icon && <span aria-hidden="true" className="inline-flex items-center">{item.icon}</span>}
           <span>{item.label}</span>
           {item.badge !== undefined && item.badge !== "" && (
             <span
               className={cn(
-                "inline-flex items-center justify-center min-w-[18px] h-4 rounded-full px-1.5 text-[10px] font-medium",
+                "inline-flex h-4 min-w-[18px] items-center justify-center rounded-full px-1.5 text-[10px] font-semibold",
                 item.key === value
                   ? variant === "enclosed"
                     ? "bg-white/20 text-white"
                     : "bg-[var(--brand)] text-white"
-                  : "bg-slate-100 text-slate-600"
+                  : "bg-[var(--surface-subtle)] text-[var(--text-2)]"
               )}
             >
               {item.badge}
@@ -177,20 +176,6 @@ export function Tabs({
           )}
         </button>
       ))}
-      {variant === "line" && (
-        <div
-          className="absolute bottom-0 left-0 h-0.5 bg-[var(--brand)] transition-transform duration-200"
-          style={{
-            width: items[focusedIndex] ? "100%" : 0,
-            transform: `translateX(${
-              items
-                .slice(0, focusedIndex)
-                .reduce((acc, item) => acc + (item.disabled ? 0 : 1), 0) * 100
-            }%)`,
-          }}
-          aria-hidden="true"
-        />
-      )}
     </div>
   );
 }

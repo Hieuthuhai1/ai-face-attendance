@@ -51,10 +51,22 @@ export function resetToastsForTests(): { subscribe: (l: () => void) => () => voi
   };
 }
 
-const TONE: Record<ToastTone, { icon: IconName; classes: string }> = {
-  success: { icon: "check", classes: "border-green-300 bg-green-50 text-green-800" },
-  error: { icon: "x", classes: "border-red-300 bg-red-50 text-red-800" },
-  info: { icon: "info", classes: "border-sky-300 bg-sky-50 text-sky-800" },
+const TONE: Record<ToastTone, { icon: IconName; classes: string; iconClasses: string }> = {
+  success: {
+    icon: "check",
+    classes: "border-[var(--success-border)] text-[var(--success-strong)]",
+    iconClasses: "bg-[var(--success-bg)] text-[var(--success)]",
+  },
+  error: {
+    icon: "x",
+    classes: "border-[var(--danger-border)] text-[var(--danger-strong)]",
+    iconClasses: "bg-[var(--danger-bg)] text-[var(--danger)]",
+  },
+  info: {
+    icon: "info",
+    classes: "border-[var(--info-border)] text-[var(--info-strong)]",
+    iconClasses: "bg-[var(--info-bg)] text-[var(--info)]",
+  },
 };
 
 function useToasts(): ToastItem[] {
@@ -81,9 +93,11 @@ export function Toaster({ children }: { children?: ReactNode }): ReactNode {
           <div
             key={t.id}
             role={t.tone === "error" ? "alert" : "status"}
-            className={`pointer-events-auto flex items-center gap-2 rounded-lg border px-3 py-2 text-sm shadow-md ${TONE[t.tone].classes}`}
+            className={`pointer-events-auto flex items-center gap-2.5 rounded-xl border bg-white px-3.5 py-2.5 text-sm font-medium shadow-[var(--shadow-popover)] animate-slide-up ${TONE[t.tone].classes}`}
           >
-            <Icon name={TONE[t.tone].icon} />
+            <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${TONE[t.tone].iconClasses}`}>
+              <Icon name={TONE[t.tone].icon} size={15} />
+            </span>
             <span>{t.message}</span>
           </div>
         ))}

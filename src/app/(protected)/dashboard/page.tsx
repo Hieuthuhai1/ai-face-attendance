@@ -193,9 +193,22 @@ export default function DashboardPage({
 }) {
   return (
     <Suspense fallback={<DashboardSkeleton />}>
-      <DashboardContent searchParams={searchParams} />
+      <DashboardRouter searchParams={searchParams} />
     </Suspense>
   );
+}
+
+/** Chọn dashboard theo role: nhân viên thấy "Hôm nay của tôi", quản lý thấy tổng quan. */
+async function DashboardRouter({
+  searchParams,
+}: {
+  searchParams: Promise<DashboardSearchParams>;
+}) {
+  const { profile } = await requireUser();
+  if (profile.role === "employee") {
+    return <EmployeeToday profile={profile} />;
+  }
+  return <DashboardContent profile={profile} searchParams={searchParams} />;
 }
 
 async function DashboardContent({
@@ -224,7 +237,7 @@ async function DashboardContent({
 
   if (!result.ok) {
     return (
-      <main className="flex-1 flex flex-col gap-6 px-4 sm:px-6 lg:px-8 py-6 max-w-[1600px] mx-auto">
+      <main className="page-shell flex flex-col gap-6">
         <PageHeader
           title="Tổng quan chấm công"
           description={`${formatDateInZone(`${filters.date}T12:00:00`)} · ${ROLE_LABELS[profile.role]}`}
@@ -302,7 +315,7 @@ function DashboardView({
   };
 
   return (
-    <main className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6">
+    <main className="page-shell flex flex-col gap-6">
       <PageHeader
         title="Tổng quan chấm công"
         description={`${formatDateInZone(`${filters.date}T12:00:00`)} · ${ROLE_LABELS[profile.role]}`}
@@ -899,7 +912,7 @@ function MiniStat({
 /** Skeleton khi Suspense chờ dữ liệu (giữ đúng nhịp layout, tránh nhảy). */
 function DashboardSkeleton() {
   return (
-    <main className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6">
+    <main className="page-shell flex flex-col gap-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="space-y-2">
           <Skeleton className="h-8 w-64" />

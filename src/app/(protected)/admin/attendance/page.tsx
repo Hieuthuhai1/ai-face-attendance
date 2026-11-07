@@ -43,7 +43,7 @@ export default function AttendancePage({
   }>;
 }) {
   return (
-    <main className="mx-auto flex w-full max-w-7xl flex-col gap-4 px-4 py-6">
+    <main className="page-shell flex flex-col gap-4">
       <h1 className="text-2xl font-bold">Quản lý chấm công</h1>
       <Suspense fallback={<LoadingState message="Đang tải bảng chấm công…" />}>
         <AttendanceData searchParams={searchParams} />

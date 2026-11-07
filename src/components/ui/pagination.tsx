@@ -73,7 +73,7 @@ export function Pagination({
   if (totalPages <= 1) {
     return (
       <nav aria-label={ariaLabel} className={cn("flex flex-wrap items-center justify-between gap-2", className)}>
-        <p className="text-sm text-slate-500">Tổng {total} {label}</p>
+        <p className="text-sm text-[var(--text-3)]">Tổng {total} {label}</p>
       </nav>
     );
   }
@@ -93,29 +93,29 @@ export function Pagination({
     }
   };
 
-  const btn = "inline-flex h-9 min-w-9 items-center justify-center rounded-lg border px-2 text-sm focus-visible:outline-2 transition-colors";
+  const btn = "inline-flex h-9 min-w-9 items-center justify-center rounded-[10px] border px-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[var(--brand-ring)] disabled:cursor-not-allowed disabled:opacity-50";
 
   return (
     <nav aria-label={ariaLabel} className={cn("flex flex-wrap items-center justify-between gap-2", className)}>
       <div className="flex flex-wrap items-center gap-3">
-        <p className="text-sm text-slate-500">
-          Tổng <span className="font-medium tnum">{total}</span> {label} · Trang{" "}
-          <span className="font-medium tnum">{page}</span> /{" "}
-          <span className="font-medium tnum">{totalPages}</span>
+        <p className="text-sm text-[var(--text-3)]">
+          Tổng <span className="font-semibold text-[var(--text-1)] tnum">{total}</span> {label} · Trang{" "}
+          <span className="font-semibold text-[var(--text-1)] tnum">{page}</span> /{" "}
+          <span className="font-semibold text-[var(--text-1)] tnum">{totalPages}</span>
         </p>
 
         {showPageSize && onPageSizeChange && (
           <div className="flex items-center gap-1">
-            <span className="text-sm text-slate-500">Hiển thị</span>
+            <span className="text-sm text-[var(--text-3)]">Hiển thị</span>
             <Select
               value={String(pageSize)}
-              onChange={(v) => onPageSizeChange?.(parseInt(v, 10))}
+              onChange={(v) => onPageSizeChange?.(parseInt(Array.isArray(v) ? (v[0] ?? "") : v, 10))}
               options={pageSizes.map((s) => ({ value: String(s), label: String(s) }))}
               placeholder="Size"
               className="w-auto"
               disabled={disabled}
             />
-            <span className="text-sm text-slate-500">/ trang</span>
+            <span className="text-sm text-[var(--text-3)]">/ trang</span>
           </div>
         )}
       </div>
@@ -127,7 +127,7 @@ export function Pagination({
             onClick={() => onPageChange(page - 1)}
             disabled={disabled}
             aria-label="Trang trước"
-            className={cn(btn, "border-slate-300 bg-white disabled:opacity-50 disabled:cursor-not-allowed")}
+            className={cn(btn, "border-[var(--border)] bg-white text-[var(--text-2)] hover:bg-[var(--surface-muted)]")}
           >
             <Icon name="chevron-left" />
           </button>
@@ -139,7 +139,7 @@ export function Pagination({
             onClick={() => onPageChange(1)}
             disabled={disabled}
             aria-label="Trang đầu"
-            className={cn(btn, "border-slate-300 bg-white disabled:opacity-50 disabled:cursor-not-allowed")}
+            className={cn(btn, "border-[var(--border)] bg-white text-[var(--text-2)] hover:bg-[var(--surface-muted)]")}
           >
             <Icon name="chevron-left" />
             <Icon name="chevron-left" />
@@ -162,8 +162,8 @@ export function Pagination({
               className={cn(
                 btn,
                 item === page
-                  ? "border-[var(--brand)] bg-[var(--brand-soft)] font-semibold text-[var(--brand)]"
-                  : "border-slate-300 bg-white"
+                  ? "border-[var(--brand)] bg-[var(--brand)] font-semibold text-white shadow-[0_6px_14px_-8px_rgba(37,99,235,0.9)]"
+                  : "border-[var(--border)] bg-white text-[var(--text-2)] hover:bg-[var(--surface-muted)]"
               )}
             >
               {item}
@@ -177,7 +177,7 @@ export function Pagination({
             onClick={() => onPageChange(totalPages)}
             disabled={disabled}
             aria-label="Trang cuối"
-            className={cn(btn, "border-slate-300 bg-white disabled:opacity-50 disabled:cursor-not-allowed")}
+            className={cn(btn, "border-[var(--border)] bg-white text-[var(--text-2)] hover:bg-[var(--surface-muted)]")}
           >
             <Icon name="chevron-right" />
             <Icon name="chevron-right" />
@@ -190,7 +190,7 @@ export function Pagination({
             onClick={() => onPageChange(page + 1)}
             disabled={disabled}
             aria-label="Trang sau"
-            className={cn(btn, "border-slate-300 bg-white disabled:opacity-50 disabled:cursor-not-allowed")}
+            className={cn(btn, "border-[var(--border)] bg-white text-[var(--text-2)] hover:bg-[var(--surface-muted)]")}
           >
             <Icon name="chevron-right" />
           </button>
@@ -198,19 +198,19 @@ export function Pagination({
 
         {showJump && totalPages > 7 && (
           <form onSubmit={handleJump} className="flex items-center gap-1 ml-2">
-            <span className="text-sm text-slate-500">Đến</span>
+            <span className="text-sm text-[var(--text-3)]">Đến</span>
             <input
               type="text"
               value={jumpPage}
               onChange={(e) => setJumpPage(e.target.value)}
               onKeyDown={handleKeyDown}
               onBlur={(e) => handleJump(e as unknown as React.FormEvent)}
-              className="h-9 w-16 rounded-lg border border-slate-300 px-2 text-sm text-center focus-visible:outline-2 focus-visible:outline-[var(--brand)]"
+              className="h-9 w-16 rounded-[10px] border border-[var(--border)] px-2 text-center text-sm text-[var(--text-1)] focus-visible:border-[var(--brand)] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[var(--brand-ring)]"
               aria-label="Nhập số trang"
               placeholder="..."
               disabled={disabled}
             />
-            <span className="text-sm text-slate-500">trang</span>
+            <span className="text-sm text-[var(--text-3)]">trang</span>
           </form>
         )}
       </div>

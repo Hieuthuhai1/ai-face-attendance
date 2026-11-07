@@ -14,7 +14,7 @@ export default function EnrollForEmployeePage({
   params: Promise<{ id: string }>;
 }) {
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-col gap-4 px-4 py-6">
+    <main className="page-shell-form flex flex-col gap-4">
       <h1 className="text-2xl font-bold">Đăng ký khuôn mặt cho nhân viên</h1>
       <Suspense fallback={<LoadingState message="Đang tải trạng thái…" />}>
         <EnrollmentData params={params} />
