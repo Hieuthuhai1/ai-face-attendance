@@ -102,11 +102,11 @@ export function CommandPalette({
   }, [open, filteredItems, selectedIndex, onClose]);
 
   // Focus input on open
-  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => {
     if (open) {
-      setSearch((prev) => "");
-      setSelectedIndex((prev) => 0);
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- reset trạng thái mỗi lần mở palette
+      setSearch("");
+      setSelectedIndex(0);
       setTimeout(() => inputRef.current?.focus(), 0);
     }
   }, [open]);

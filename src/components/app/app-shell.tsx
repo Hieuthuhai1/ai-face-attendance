@@ -285,8 +285,8 @@ export function AppShell({
   const closeMobile = useCallback(() => setMobileOpen(false), []);
 
   // Đóng drawer khi đổi route
-  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- đóng drawer sau khi điều hướng
     setMobileOpen(false);
   }, [pathname]);
 
