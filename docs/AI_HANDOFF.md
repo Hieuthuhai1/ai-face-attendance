@@ -1994,7 +1994,12 @@ người dùng/vai trò, nhật ký audit.
   tài khoản.
 - Không có secret trong diff; `.env.local` không được track.
 
-**Commit:** `feat(ui): premium enterprise dashboard shell and design system`.
+**Commit:** `feat(ui): premium enterprise dashboard shell and design system`
+— SHA `c0b208e`; follow-up `chore(ui): silence React compiler lint…` — SHA `edab40e`
+(pushed `main`).
+**Deployment:** `dpl_PHNSnDwEN9pzHk5JCHkmTn6awAHY` → production READY, alias
+https://ai-face-attendance-zeta.vercel.app (verify `/login`: HTTP 200, Be Vietnam
+Pro, `--brand:#2563eb`, nền `#F4F6FA`).
 **Known issues / Next:**
 - Next.js 16.4.0 đang bị cảnh báo bảo mật; cần chạy
   `next upgrade --agent=security` (xem khuyến nghị của CLI).
