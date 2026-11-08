@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { Button } from "./button";
-import { Icon } from "./icon";
+import { Icon, type IconName } from "./icon";
 import { ScanLoader } from "./loading-screen";
 
 export function LoadingState({ message = "Đang tải dữ liệu…" }: { message?: string }) {
@@ -12,19 +12,38 @@ export function EmptyState({
   description,
   action,
   icon = "inbox",
+  compact = false,
 }: {
   title: string;
   description?: string;
   action?: ReactNode;
-  icon?: "inbox" | "search" | "calendar" | "users" | "file";
+  icon?: IconName;
+  /** Bản gọn cho empty state nằm trong card nhỏ (không tạo khoảng trống lớn). */
+  compact?: boolean;
 }) {
   return (
-    <div className="flex flex-col items-center gap-2 px-6 py-14 text-center">
-      <span className="flex h-14 w-14 items-center justify-center rounded-[var(--radius-icon)] bg-[var(--brand-soft)] text-[var(--brand)] ring-1 ring-blue-100">
-        <Icon name={icon} size={26} />
+    <div
+      className={
+        compact
+          ? "flex flex-col items-center gap-1.5 px-4 py-8 text-center"
+          : "flex flex-col items-center gap-2 px-6 py-14 text-center"
+      }
+    >
+      <span
+        className={
+          compact
+            ? "flex h-11 w-11 items-center justify-center rounded-[var(--radius-icon)] bg-[var(--brand-soft)] text-[var(--brand)] ring-1 ring-blue-100"
+            : "flex h-14 w-14 items-center justify-center rounded-[var(--radius-icon)] bg-[var(--brand-soft)] text-[var(--brand)] ring-1 ring-blue-100"
+        }
+      >
+        <Icon name={icon} size={compact ? 20 : 26} />
       </span>
-      <p className="mt-2 text-[15px] font-semibold text-[var(--navy-900)]">{title}</p>
-      {description ? <p className="max-w-sm text-[13px] leading-relaxed text-[var(--text-2)]">{description}</p> : null}
+      <p className={compact ? "mt-1 text-[14px] font-semibold text-[var(--navy-900)]" : "mt-2 text-[15px] font-semibold text-[var(--navy-900)]"}>
+        {title}
+      </p>
+      {description ? (
+        <p className="max-w-sm text-[12.5px] leading-relaxed text-[var(--text-2)]">{description}</p>
+      ) : null}
       {action ? <div className="mt-2">{action}</div> : null}
     </div>
   );

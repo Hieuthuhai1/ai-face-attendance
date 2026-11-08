@@ -22,8 +22,10 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar } from "@/components/ui/avatar";
 import { Icon, type IconName } from "@/components/ui/icon";
 import { CardSkeleton, Skeleton, TableSkeleton } from "@/components/ui/skeleton";
-import { PageHeader } from "@/components/app/app-shell";
 import { RefreshButton } from "@/components/ui/refresh-button";
+import { DashboardHeader } from "@/features/dashboard/dashboard-header";
+import { QuickActions, EMPLOYEE_QUICK_ACTIONS } from "@/features/dashboard/quick-actions";
+import { SectionHeading } from "@/features/dashboard/section-heading";
 import {
   BucketChart,
   DailyAttendanceChart,
@@ -33,12 +35,7 @@ import {
   OnTimeDonut,
   ShiftDistributionPie,
 } from "@/features/dashboard/charts";
-import {
-  formatDateInZone,
-  formatShortDateInZone,
-  formatTimeInZone,
-  todayInZone,
-} from "@/lib/datetime";
+import { formatShortDateInZone, formatTimeInZone, todayInZone } from "@/lib/datetime";
 
 // ============================================================
 // Kiểu & hằng số
@@ -204,6 +201,9 @@ async function DashboardRouter({
 }: {
   searchParams: Promise<DashboardSearchParams>;
 }) {
+  // Đánh dấu route là dynamic trước khi đọc session Supabase — tránh prerender
+  // gọi Date.now() trong Supabase auth client.
+  await connection();
   const { profile } = await requireUser();
   if (profile.role === "employee") {
     return <EmployeeToday profile={profile} />;
@@ -238,9 +238,9 @@ async function DashboardContent({
   if (!result.ok) {
     return (
       <main className="page-shell flex flex-col gap-6">
-        <PageHeader
-          title="Tổng quan chấm công"
-          description={`${formatDateInZone(`${filters.date}T12:00:00`)} · ${ROLE_LABELS[profile.role]}`}
+        <DashboardHeader
+          name={profile.display_name}
+          roleLabel={ROLE_LABELS[profile.role]}
         />
         <Card>
           <ErrorState title="Không thể tải dữ liệu" description={result.message} />
@@ -316,9 +316,9 @@ function DashboardView({
 
   return (
     <main className="page-shell flex flex-col gap-6">
-      <PageHeader
-        title="Tổng quan chấm công"
-        description={`${formatDateInZone(`${filters.date}T12:00:00`)} · ${ROLE_LABELS[profile.role]}`}
+      <DashboardHeader
+        name={profile.display_name}
+        roleLabel={ROLE_LABELS[profile.role]}
         actions={
           <div className="flex items-center gap-2">
             <span className="hidden text-xs text-[var(--text-3)] sm:inline">
@@ -393,19 +393,19 @@ function DashboardView({
 
       {/* Thẻ số liệu */}
       <section aria-labelledby="dashboard-kpi-heading" className="flex flex-col gap-3">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2
-            id="dashboard-kpi-heading"
-            className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--text-3)]"
-          >
-            Chỉ số ngày {formatShortDateInZone(`${filters.date}T12:00:00`)}
-          </h2>
-          {trends.truncated ? (
-            <Badge tone="warning">
-              <Icon name="alert" size={12} /> Dữ liệu biểu đồ có thể chưa đầy đủ
-            </Badge>
-          ) : null}
-        </div>
+        <SectionHeading
+          id="dashboard-kpi-heading"
+          icon="activity"
+          title={`Chỉ số ngày ${formatShortDateInZone(`${filters.date}T12:00:00`)}`}
+          description="Số liệu KPI luôn theo ngày đã chọn"
+          action={
+            trends.truncated ? (
+              <Badge tone="warning">
+                <Icon name="alert" size={12} /> Dữ liệu biểu đồ có thể chưa đầy đủ
+              </Badge>
+            ) : undefined
+          }
+        />
 
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {[...primaryKpis, ...secondaryKpis].map((kpi) => (
@@ -427,12 +427,12 @@ function DashboardView({
 
       {/* Biểu đồ chính */}
       <section aria-labelledby="dashboard-charts-heading" className="flex flex-col gap-3">
-        <h2
+        <SectionHeading
           id="dashboard-charts-heading"
-          className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--text-3)]"
-        >
-          Biểu đồ thống kê
-        </h2>
+          icon="chart"
+          title="Biểu đồ thống kê"
+          description="Xu hướng chấm công theo khoảng thời gian đã chọn"
+        />
 
         <div className="grid gap-4 xl:grid-cols-3">
           <Card className="xl:col-span-2">
@@ -568,12 +568,12 @@ function DashboardView({
 
       {/* Biểu đồ bổ sung */}
       <section aria-labelledby="dashboard-extra-heading" className="flex flex-col gap-3">
-        <h2
+        <SectionHeading
           id="dashboard-extra-heading"
-          className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--text-3)]"
-        >
-          Chi tiết vận hành
-        </h2>
+          icon="clipboard-check"
+          title="Chi tiết vận hành"
+          description="Phân bố theo giờ, ca làm và phòng ban"
+        />
 
         <div className="grid gap-4 xl:grid-cols-3">
           <Card className="xl:col-span-2">
@@ -872,6 +872,17 @@ function DashboardView({
         </Card>
       </div>
 
+      {/* Thao tác nhanh dùng chung với dashboard nhân viên */}
+      <section aria-labelledby="dashboard-quick-heading" className="flex flex-col gap-3">
+        <SectionHeading
+          id="dashboard-quick-heading"
+          icon="sparkles"
+          title="Thao tác nhanh"
+          description="Truy cập nhanh các chức năng thường dùng"
+        />
+        <QuickActions actions={EMPLOYEE_QUICK_ACTIONS} />
+      </section>
+
       <p className="text-[11px] leading-relaxed text-[var(--text-3)]">
         Nguồn dữ liệu: bảng tổng hợp chấm công, phân ca và đơn nghỉ đã duyệt của tổ chức. Tỷ lệ
         chuyên cần = nhân viên đã chấm công / nhân viên có ca trong ngày; vắng mặt không tính nhân
@@ -913,40 +924,64 @@ function MiniStat({
 function DashboardSkeleton() {
   return (
     <main className="page-shell flex flex-col gap-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
+      {/* Header */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div className="space-y-2">
-          <Skeleton className="h-8 w-64" />
-          <Skeleton className="h-4 w-80" />
+          <Skeleton className="h-4 w-48" />
+          <Skeleton className="h-8 w-40" />
+          <Skeleton className="h-4 w-72" />
         </div>
         <Skeleton className="h-9 w-28" />
       </div>
 
-      <Card>
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="space-y-2">
-            <Skeleton className="h-5 w-40" />
-            <Skeleton className="h-4 w-72" />
+      {/* Hero card */}
+      <div className="rounded-[var(--radius-card)] border border-[var(--border)] bg-white p-5 shadow-[var(--shadow-card)] sm:p-7">
+        <div className="grid gap-6 xl:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)]">
+          <div className="space-y-3">
+            <Skeleton className="h-3 w-28" />
+            <Skeleton className="h-8 w-56" />
+            <Skeleton className="h-6 w-48" />
+            <Skeleton className="h-5 w-64" />
+            <Skeleton className="mt-6 h-12 w-48" />
           </div>
-          <Skeleton className="h-9 w-64" />
+          <div className="space-y-3 rounded-2xl border border-[var(--border)] bg-[var(--surface-muted)] p-4">
+            <Skeleton className="h-3 w-24" />
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-9 w-full" />
+            <Skeleton className="h-10 w-full" />
+          </div>
         </div>
-        <Skeleton className="mt-4 h-10 w-48" />
-      </Card>
+      </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {Array.from({ length: 8 }).map((_, index) => (
+      {/* Statistic cards */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
+        {Array.from({ length: 5 }).map((_, index) => (
           <CardSkeleton key={index} />
         ))}
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-3">
-        <Card className="xl:col-span-2">
+      {/* History + recent */}
+      <div className="grid gap-5 xl:grid-cols-12">
+        <Card className="xl:col-span-7 2xl:col-span-8">
           <Skeleton className="h-5 w-48" />
-          <Skeleton className="mt-4 h-[286px] w-full" />
+          <Skeleton className="mt-4 h-[260px] w-full" />
         </Card>
-        <Card>
+        <Card className="xl:col-span-5 2xl:col-span-4">
           <Skeleton className="h-5 w-44" />
-          <Skeleton className="mt-4 h-[230px] w-full" />
+          <div className="mt-4 grid grid-cols-3 gap-2">
+            <Skeleton className="h-16" />
+            <Skeleton className="h-16" />
+            <Skeleton className="h-16" />
+          </div>
+          <Skeleton className="mt-4 h-[180px] w-full" />
         </Card>
+      </div>
+
+      {/* Quick actions */}
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, index) => (
+          <CardSkeleton key={index} />
+        ))}
       </div>
 
       <Card>

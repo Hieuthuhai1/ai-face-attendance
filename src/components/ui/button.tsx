@@ -2,7 +2,7 @@ import type { ButtonHTMLAttributes } from "react";
 import { cn } from "@/lib/cn";
 import { Icon } from "./icon";
 
-type Variant = "primary" | "secondary" | "danger" | "ghost" | "soft";
+type Variant = "primary" | "secondary" | "danger" | "ghost" | "soft" | "inverse" | "glass";
 type Size = "sm" | "md" | "lg";
 
 const VARIANTS: Record<Variant, string> = {
@@ -16,6 +16,12 @@ const VARIANTS: Record<Variant, string> = {
     "text-[var(--text-2)] hover:bg-[var(--surface-subtle)] hover:text-[var(--text-1)]",
   soft:
     "bg-[var(--brand-soft)] text-[var(--brand-strong)] hover:bg-blue-100 active:bg-blue-200/70",
+  // Dùng trên nền tối (hero card): trắng nổi bật + focus ring sáng.
+  inverse:
+    "bg-white text-[var(--navy-900)] shadow-[0_14px_30px_-14px_rgba(2,6,23,0.7)] hover:bg-slate-100 active:bg-slate-200 focus-visible:ring-white/45",
+  // Nút phụ dạng kính trên nền tối.
+  glass:
+    "border border-white/25 bg-white/10 text-white backdrop-blur-sm hover:border-white/40 hover:bg-white/[0.16] active:bg-white/20 focus-visible:ring-white/35",
 };
 
 const SIZES: Record<Size, string> = {

@@ -195,6 +195,19 @@ const PATHS: Record<string, React.ReactNode> = {
       <path d="M7 14l5 5 5-5" />
     </>
   ),
+  "arrow-up-right": (
+    <>
+      <path d="M7 17L17 7" />
+      <path d="M8 7h9v9" />
+    </>
+  ),
+  "log-in": (
+    <>
+      <path d="M14 4h4a2 2 0 012 2v12a2 2 0 01-2 2h-4" />
+      <path d="M3 12h11" />
+      <path d="M10.5 8.5L14 12l-3.5 3.5" />
+    </>
+  ),
   "more-horizontal": (
     <>
       <circle cx="5" cy="12" r="1.2" />
