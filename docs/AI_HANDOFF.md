@@ -2009,3 +2009,60 @@ Pro, `--brand:#2563eb`, nền `#F4F6FA`).
   có thể bỏ ở phase sau.
 - Phase 2 (nếu tiếp): tinh chỉnh dashboard/report charts theo token mới và
   rà soát accessibility toàn bộ form.
+
+## Phase 36 — Redesign Dashboard Premium, Phase 2 (2026-11-08)
+
+**Mục tiêu:** Dựng lại trang `/dashboard` thành trải nghiệm SaaS thương mại cao cấp
+bằng design system Phase 35, chỉ dùng dữ liệu thật, giữ nguyên API/nghiệp vụ.
+
+**Thay đổi chính:**
+- `src/features/dashboard/dashboard-header.tsx` — header dùng chung: lời chào theo
+  giờ Việt Nam, tên nhân viên, `h1` "Tổng quan", ngày hiện tại, `LiveClock`.
+- `src/features/dashboard/today-hero.tsx` — hero card nổi bật nhất: tên ca, giờ
+  vào/ra, trạng thái chấm công, trạng thái khuôn mặt, thông tin nhân viên, CTA
+  chấm công vào/ra (hoặc đăng ký khuôn mặt), panel kính mini-stat.
+- `src/features/dashboard/today-summary.ts` — tách nguyên logic tính giờ vào/ra,
+  giờ làm, đi muộn/về sớm từ bản cũ sang hàm thuần `summarizeToday()` (có test
+  được, không đổi kết quả).
+- `src/features/dashboard/quick-actions.tsx` — lưới thao tác nhanh dùng chung
+  (Chấm công, Lịch sử, Yêu cầu, Khuôn mặt), icon + mô tả + mũi tên hover.
+- `src/features/dashboard/section-heading.tsx` — tiêu đề section tái sử dụng.
+- `src/features/dashboard/employee-today.tsx` — bố cục mới: header → hero → 5 thẻ
+  số liệu thật (Giờ vào, Giờ ra, Thời gian làm việc, Đi muộn, Về sớm) → grid 12 cột
+  (lịch sử hôm nay 7/8 cột + chấm công gần đây 5/4 cột) → thao tác nhanh.
+- `src/app/(protected)/dashboard/page.tsx` — dashboard quản lý dùng header mới,
+  section heading mới và quick actions chung; skeleton khớp bố cục mới; thêm
+  `await connection()` trước `requireUser()` để route dynamic, hết lỗi prerender
+  `Date.now()` của Supabase auth.
+- Design system: `Button` thêm variant `inverse`/`glass`; `StatCard` thêm tone
+  `brand`, label 12px, value 28–30px, card cao bằng nhau; `EmptyState` thêm
+  `compact` và nhận mọi `IconName`; `Icon` thêm `arrow-up-right`, `log-in`.
+
+**Quyết định:**
+- Không gọi `getTodayStatus()` trên dashboard quản lý vì RPC `ensure_self_employee`
+  sẽ tự tạo hồ sơ nhân viên (side effect) — chỉ nhân viên mới có hero.
+- Không thêm API mới: mã nhân viên/phòng ban lấy từ `getPersonalHistory` thật.
+- Không hardcode giờ/số liệu; mọi giá trị đến từ server action hiện có.
+
+**Kết quả kiểm tra:**
+- `npm run typecheck` ✅ 0 lỗi.
+- `npm test` ✅ 18 file pass / 4 skip; 147 test pass / 17 skip.
+- `npx eslint` trên toàn bộ file thay đổi ✅ không lỗi.
+- `npm run build` ✅ 28 route (chạy lại sau nudge bảo mật Next 16.4.0).
+- QA production build (`next start -p 3100`) ở 1920/1440/1366/1024/768/390 cho
+  `nv.a@demo.vn` và `hr@demo.vn`: 0 console error, `h1` = "Tổng quan", không tràn
+  ngang; stat card 5 cột (≥1280) / 3 cột (768–1024) / 2 cột (390); quick action
+  4/2/1 cột; hero 326px desktop, 559px tablet, 527px mobile.
+- Không có secret trong diff; file QA tạm đã xoá trước commit.
+
+**Commit:** `feat(ui): redesign premium attendance dashboard` — SHA `27c21f5`
+(pushed `main`).
+**Deployment:** Git integration → production READY
+(`ai-face-attendance-glpwzj39y-hieu-98a8.vercel.app`), alias
+https://ai-face-attendance-zeta.vercel.app (verify `/login`: HTTP 200).
+**Known issues / Next:**
+- Next.js 16.4.0 vẫn bị cảnh báo bảo mật; cần chạy
+  `next upgrade --agent=security`.
+- Các route protected khác vẫn log cảnh báo prerender `Date.now()` (chưa thêm
+  `connection()`); không phát sinh từ phase này, nên xử lý đồng loạt ở phase sau.
+- `npm run lint` baseline còn lỗi cũ; file thay đổi của phase này sạch.
