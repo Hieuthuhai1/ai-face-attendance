@@ -24,14 +24,6 @@ const STATUS_MAP: Record<string, "ontime" | "late" | "early_leave" | "absent" | 
   incomplete: "needs_review",
 };
 
-const STATUS_LABELS: Record<string, string> = {
-  present: "Đúng giờ",
-  late: "Đi muộn",
-  early_leave: "Về sớm",
-  absent: "Vắng mặt",
-  incomplete: "Chưa hoàn tất",
-};
-
 const EXCEPTION_TYPE_LABELS: Record<string, string> = {
   unverified: "Chưa xác minh",
   missing_checkout: "Thiếu check-out",
@@ -45,8 +37,6 @@ const EXCEPTION_SEVERITY_COLORS: Record<string, "success" | "warning" | "danger"
   medium: "warning",
   low: "neutral",
 };
-
-const COLOR_PALETTE = ["var(--brand)", "var(--success)", "var(--warning)", "var(--danger)", "var(--info)"];
 
 export default function ReportsPage({
   searchParams,

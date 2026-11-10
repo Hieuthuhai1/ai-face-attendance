@@ -2131,8 +2131,12 @@ nghiệp vụ, API, database, authentication hay AI model; không xoá/tắt ch�
 - Đã kiểm tra tìm kiếm lịch sử và tab "Chỉnh công" ở trang yêu cầu.
 - Không có secret trong diff; file QA tạm đã xoá trước commit.
 
-**Commit:** `feat(ui): apply premium design to attendance, history, workflow and profile pages`.
-**Deployment:** xem ghi chú Vercel bên dưới.
+**Commit:** `feat(ui): apply premium design to attendance, history, workflow and profile pages`
+— SHA `4e53ebd` (pushed `main`); follow-up `chore(ui): drop unused report constants`
+— SHA (xem commit kế tiếp).
+**Deployment:** Vercel Git integration báo `success` cho commit `4e53ebd`
+(`vercel.com/hieu-98a8/ai-face-attendance`); alias
+https://ai-face-attendance-zeta.vercel.app (`/login`: HTTP 200).
 **Known issues / Next:**
 - Next.js 16.4.0 vẫn bị cảnh báo bảo mật; cần chạy
   `next upgrade --agent=security`.

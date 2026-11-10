@@ -41,7 +41,7 @@ export function Tabs({
   orientation = "horizontal",
   beforeChange,
 }: TabsProps) {
-  const [focusedIndex, setFocusedIndex] = useState(
+  const [, setFocusedIndex] = useState(
     items.findIndex((item) => item.key === value)
   );
 
