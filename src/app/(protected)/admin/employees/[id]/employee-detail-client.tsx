@@ -211,7 +211,7 @@ export function EmployeeDetailClient({ data }: EmployeeDetailClientProps) {
       {/* Tabs */}
       <Tabs items={tabs} value={activeTab} onChange={setActiveTab} />
 
-      <TabPanel key="overview" value={activeTab}>
+      <TabPanel tabKey="overview" value={activeTab}>
         <div className="grid gap-4 md:grid-cols-2">
           {/* Face Enrollment Status */}
           <Card>
@@ -287,7 +287,7 @@ export function EmployeeDetailClient({ data }: EmployeeDetailClientProps) {
         </Card>
       </TabPanel>
 
-      <TabPanel key="work_info" value={activeTab}>
+      <TabPanel tabKey="work_info" value={activeTab}>
         <div className="grid gap-4 md:grid-cols-2">
           <Card>
             <CardTitle>Thông tin cơ bản</CardTitle>
@@ -335,7 +335,7 @@ export function EmployeeDetailClient({ data }: EmployeeDetailClientProps) {
         </div>
       </TabPanel>
 
-      <TabPanel key="schedule" value={activeTab}>
+      <TabPanel tabKey="schedule" value={activeTab}>
         <Card>
           <CardTitle>Lịch phân ca</CardTitle>
           <div className="mt-4">
@@ -363,7 +363,7 @@ export function EmployeeDetailClient({ data }: EmployeeDetailClientProps) {
         </Card>
       </TabPanel>
 
-      <TabPanel key="attendance" value={activeTab}>
+      <TabPanel tabKey="attendance" value={activeTab}>
         <Card>
           <CardTitle>Lịch sử chấm công</CardTitle>
           <div className="mt-4">
@@ -393,7 +393,7 @@ export function EmployeeDetailClient({ data }: EmployeeDetailClientProps) {
         </Card>
       </TabPanel>
 
-      <TabPanel key="requests" value={activeTab}>
+      <TabPanel tabKey="requests" value={activeTab}>
         <div className="grid gap-4 md:grid-cols-2">
           <Card>
             <CardTitle>Điều chỉnh chấm công</CardTitle>
@@ -448,7 +448,7 @@ export function EmployeeDetailClient({ data }: EmployeeDetailClientProps) {
         </div>
       </TabPanel>
 
-      <TabPanel key="face_enrollment" value={activeTab}>
+      <TabPanel tabKey="face_enrollment" value={activeTab}>
         <Card>
           <CardTitle>Thiết lập nhận diện khuôn mặt</CardTitle>
           <div className="mt-4">

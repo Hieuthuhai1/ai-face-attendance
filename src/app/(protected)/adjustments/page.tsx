@@ -4,14 +4,18 @@ import { requireUser } from "@/server/auth";
 import { createClient } from "@/lib/supabase/server";
 import { AdjustmentForm, AdjustmentQueue, MyAdjustments, type AdjustmentRow } from "@/features/workflow/adjustment-panels";
 import { Card, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Icon } from "@/components/ui/icon";
 import { LoadingState } from "@/components/ui/states";
 
 export default function AdjustmentsPage() {
   return (
     <main className="page-shell flex flex-col gap-6">
       <PageHeader
+        eyebrow="Điều chỉnh công"
+        icon="edit"
         title="Chỉnh sửa công"
-        description="Yêu cầu chỉnh sửa thời gian làm việc"
+        description="Gửi yêu cầu điều chỉnh giờ vào/ra và theo dõi kết quả duyệt."
       />
       <Suspense fallback={<LoadingState message="Đang tải…" />}>
         <AdjustmentsData />
@@ -64,19 +68,51 @@ async function AdjustmentsData() {
       : rows;
   }
 
+  const mineRows = ((mine ?? []) as unknown as Array<Record<string, unknown>>).map(toRow);
+
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-5">
+      <div className="flex flex-wrap items-center gap-2">
+        <Badge tone="brand">{mineRows.length} yêu cầu của tôi</Badge>
+        <Badge tone={mineRows.some((row) => row.status === "pending") ? "warning" : "success"}>
+          <Icon name="clock" size={12} /> {mineRows.filter((row) => row.status === "pending").length} chờ duyệt
+        </Badge>
+        {isReviewer ? (
+          <Badge tone={queue.length > 0 ? "warning" : "success"}>
+            <Icon name="inbox" size={12} /> {queue.length} trong hàng đợi
+          </Badge>
+        ) : null}
+      </div>
+
       <AdjustmentForm />
+
       <Card>
-        <CardTitle>Yêu cầu của tôi</CardTitle>
-        <div className="mt-3">
-          <MyAdjustments rows={((mine ?? []) as unknown as Array<Record<string, unknown>>).map(toRow)} />
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <div>
+            <CardTitle>Yêu cầu của tôi</CardTitle>
+            <p className="mt-1 text-[13px] text-[var(--text-2)]">
+              Các yêu cầu chỉnh công đã gửi và phản hồi từ người duyệt.
+            </p>
+          </div>
+          <Badge tone="neutral">{mineRows.length} bản ghi</Badge>
+        </div>
+        <div className="mt-4">
+          <MyAdjustments rows={mineRows} />
         </div>
       </Card>
+
       {isReviewer ? (
         <Card>
-          <CardTitle>Hàng đợi duyệt</CardTitle>
-          <div className="mt-3">
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <div>
+              <CardTitle>Hàng đợi duyệt</CardTitle>
+              <p className="mt-1 text-[13px] text-[var(--text-2)]">
+                Yêu cầu chỉnh công đang chờ xử lý.
+              </p>
+            </div>
+            <Badge tone={queue.length > 0 ? "warning" : "success"}>{queue.length} chờ duyệt</Badge>
+          </div>
+          <div className="mt-4">
             <AdjustmentQueue rows={queue} />
           </div>
         </Card>

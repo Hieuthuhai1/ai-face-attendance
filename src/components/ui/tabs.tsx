@@ -183,7 +183,7 @@ export function Tabs({
 /** TabPanel - nội dung của tab */
 export interface TabPanelProps {
   /** Key của tab tương ứng */
-  key: string;
+  tabKey: string;
   /** Tab đang active */
   value: string;
   /** Nội dung */
@@ -192,13 +192,13 @@ export interface TabPanelProps {
   className?: string;
 }
 
-export function TabPanel({ key, value, children, className }: TabPanelProps) {
-  if (key !== value) return null;
+export function TabPanel({ tabKey, value, children, className }: TabPanelProps) {
+  if (tabKey !== value) return null;
   return (
     <div
       role="tabpanel"
-      id={`panel-${key}`}
-      aria-labelledby={`tab-${key}`}
+      id={`panel-${tabKey}`}
+      aria-labelledby={`tab-${tabKey}`}
       className={cn("mt-4 animate-fade-in", className)}
     >
       {children}

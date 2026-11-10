@@ -306,19 +306,19 @@ export function SettingsClient() {
         { key: "audit", label: "Nhật ký Audit", icon: <Icon name="file" size={15} /> },
       ]} value={activeTab} onChange={setActiveTab} />
 
-      <TabPanel key="organization" value={activeTab}>
+      <TabPanel tabKey="organization" value={activeTab}>
         <OrganizationSettings org={org} setOrg={setOrg} saving={saving} error={error} onSave={saveOrg} />
       </TabPanel>
 
-      <TabPanel key="policies" value={activeTab}>
+      <TabPanel tabKey="policies" value={activeTab}>
         <AttendancePoliciesSettings policies={policies} setPolicies={setPolicies} saving={saving} error={error} onSave={savePolicies} />
       </TabPanel>
 
-      <TabPanel key="face" value={activeTab}>
+      <TabPanel tabKey="face" value={activeTab}>
         <FaceVerificationSettings config={faceConfig} setFaceConfig={setFaceConfig} saving={saving} onSave={saveFaceConfig} />
       </TabPanel>
 
-      <TabPanel key="holidays" value={activeTab}>
+      <TabPanel tabKey="holidays" value={activeTab}>
         <HolidaysSettings
           holidays={holidays}
           setHolidays={setHolidays}
@@ -342,11 +342,11 @@ export function SettingsClient() {
         />
       </TabPanel>
 
-      <TabPanel key="roles" value={activeTab}>
+      <TabPanel tabKey="roles" value={activeTab}>
         <RolesSettings users={users} loading={loading} error={error} onHandleRoleChange={handleRoleChange} onHandleToggleActive={handleToggleActive} onHandleProfileUpdate={handleProfileUpdate} />
       </TabPanel>
 
-      <TabPanel key="audit" value={activeTab}>
+      <TabPanel tabKey="audit" value={activeTab}>
         <AuditLogsSettings filters={filters} setFilters={setFilters} exporting={exporting} setExporting={setExporting} onHandleExport={handleExport} />
       </TabPanel>
     </div>

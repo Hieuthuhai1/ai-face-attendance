@@ -8,8 +8,10 @@ export default function EnrollmentPage() {
   return (
     <main className="page-shell flex flex-col gap-6">
       <PageHeader
+        eyebrow="Nhận diện khuôn mặt AI"
+        icon="scan-face"
         title="Đăng ký khuôn mặt"
-        description="Đăng ký khuôn mặt cho hệ thống chấm công"
+        description="Đăng ký mẫu khuôn mặt một lần để chấm công nhanh và bảo mật hơn."
       />
       <Suspense fallback={<LoadingState message="Đang tải trạng thái…" />}>
         <EnrollmentData />

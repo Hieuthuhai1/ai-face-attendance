@@ -225,18 +225,37 @@ export function PageHeader({
   title,
   description,
   actions,
+  eyebrow,
+  icon,
 }: {
   title: string;
   description?: string;
   actions?: ReactNode;
+  /** Nhãn nhỏ phía trên tiêu đề (vd: "ĐIỂM DANH AI"). */
+  eyebrow?: string;
+  /** Icon hiển thị cạnh tiêu đề. */
+  icon?: IconName;
 }) {
   const { t } = useLanguage();
   return (
     <div className="flex flex-wrap items-start justify-between gap-3">
       <div className="min-w-0">
-        <h1 className="text-[24px] font-bold leading-tight tracking-[-0.025em] text-[var(--navy-900)] sm:text-[27px]">
-          {t(title)}
-        </h1>
+        {eyebrow ? (
+          <p className="eyebrow mb-1.5 flex items-center gap-1.5">
+            {icon ? <Icon name={icon} size={13} className="text-[var(--brand)]" /> : null}
+            {t(eyebrow)}
+          </p>
+        ) : null}
+        <div className="flex items-center gap-2.5">
+          {!eyebrow && icon ? (
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--radius-icon)] bg-[var(--brand-soft)] text-[var(--brand)] ring-1 ring-inset ring-blue-100">
+              <Icon name={icon} size={18} />
+            </span>
+          ) : null}
+          <h1 className="text-[24px] font-bold leading-tight tracking-[-0.025em] text-[var(--navy-900)] sm:text-[27px]">
+            {t(title)}
+          </h1>
+        </div>
         {description ? (
           <p className="mt-1.5 max-w-3xl text-sm leading-relaxed text-[var(--text-2)]">
             {t(description)}

@@ -2066,3 +2066,81 @@ https://ai-face-attendance-zeta.vercel.app (verify `/login`: HTTP 200).
 - Các route protected khác vẫn log cảnh báo prerender `Date.now()` (chưa thêm
   `connection()`); không phát sinh từ phase này, nên xử lý đồng loạt ở phase sau.
 - `npm run lint` baseline còn lỗi cũ; file thay đổi của phase này sạch.
+
+## Phase 37 — Premium UI cho 7 trang nghiệp vụ, Phase 3 (2026-11-10)
+
+**Mục tiêu:** Áp phong cách Premium SaaS (design system Phase 35/36) cho 7 trang:
+Chấm công AI, Nhận diện khuôn mặt AI, Lịch sử chấm công, Yêu cầu của tôi, Chỉnh
+công, Đơn nghỉ, Tài khoản. Chỉ đổi UI/UX + tích hợp frontend; **không** đổi
+nghiệp vụ, API, database, authentication hay AI model; không xoá/tắt chức năng.
+
+**Thay đổi chính:**
+- `src/components/app/app-shell.tsx` — `PageHeader` thêm `eyebrow` + `icon`
+  (mở rộng header dùng chung, không tạo hệ header thứ hai).
+- `src/components/ui/tabs.tsx` — `TabPanel` đổi prop `key` → `tabKey` vì React
+  nuốt `key` khiến **mọi tab panel trước đây render rỗng**; cập nhật toàn bộ
+  call site (settings, reports, employee detail, requests/adjustments/leave).
+- `src/app/(protected)/reports/page.tsx` + `reports/reports-tabs.tsx` (mới) —
+  tab bar chuyển thành client component (server component không được truyền
+  `onChange`, lỗi React #441/#419 digest `3495698090`); nút "Xử lý" ở bảng ngoại
+  lệ đổi sang `<a>` server-safe; sửa template literal cột "Phòng/Ca".
+- Chấm công AI: `face-verification-redesigned.tsx` — hero tối + đồng hồ, step
+  rail, camera card trung tâm (khung vuông responsive), rail ca/checklist/fallback,
+  modal PIN dự phòng, card thành công/thất bại; `face-scan-frame.tsx` — hiệu ứng
+  quét chuyển hoàn toàn sang CSS (bỏ RAF mỗi frame, không giảm hiệu năng camera);
+  `FaceDetectionProvider.tsx` — dynamic import `@vladmandic/face-api` phía browser
+  (hết lỗi SSR `this.util.TextEncoder is not a constructor`/#419) và ổn định
+  callback/provider; `check-in/page.tsx` truyền tên/mã/phòng ban thật từ
+  `requireUser()` + `employees`.
+- Đăng ký khuôn mặt: `enrollment-redesigned.tsx` — hero trạng thái, consent 2
+  cột, rail capture, card thành công/lỗi, modal thu hồi giữ loading tới khi server
+  phản hồi.
+- Lịch sử chấm công: `history/page.tsx` — header/filter bar mới, tìm kiếm `q`,
+  select phòng ban/trạng thái native GET, cột điều chỉnh, phân trang;
+  `getPersonalHistoryWithFilters` thêm `q` (mã + tên, trong scope role) và trả
+  danh sách phòng ban cho bộ lọc.
+- Yêu cầu/Chỉnh công/Đơn nghỉ: `unified-panels.tsx`, `adjustment-panels.tsx`,
+  `leave-panels.tsx` — card/form mới, `Textarea` dùng chung, CTA gửi rõ ràng,
+  modal duyệt đồng nhất, nhãn loại nghỉ tiếng Việt; page header + badge tổng hợp.
+- Tài khoản: `profile-client.tsx` — hero navy, card thông tin cá nhân/HR, chọn
+  ngôn ngữ, card bảo mật.
+- `AttendanceReceipt.tsx` — icon `refresh`, header responsive; `input.tsx` —
+  export `Textarea` (tái sử dụng hệ input, không tạo bộ thứ hai).
+- `admin/employees/[id]/page.tsx` — bỏ self-join `employees!employees_manager_id_fkey`
+  (PostgREST trả PGRST200 làm trang luôn báo "Không tìm thấy nhân viên"), tra
+  manager bằng truy vấn riêng; giữ nguyên dữ liệu/hợp đồng component.
+
+**Quyết định:**
+- Tái sử dụng primitive hiện có (`Card`, `DataTable`, `Badge`, `Pagination`,
+  `Modal`/`ConfirmModal`, `Input`/`Select`, `Tabs`, `StatCard`), không tạo bộ UI
+  song song.
+- Tab báo cáo dùng client wrapper (giống settings/employee detail) thay vì đổi
+  API `Tabs`; đánh đổi: 3 báo cáo phụ được render sẵn khi mở trang.
+- Hiệu ứng AI scan chỉ dùng CSS animation để không ảnh hưởng hiệu năng camera.
+- Không hardcode số liệu: mọi dữ liệu vẫn đi qua server action hiện có.
+
+**Kết quả kiểm tra:**
+- `npm run typecheck` ✅ 0 lỗi.
+- `npm test` ✅ 18 file pass / 4 skip; 149 test pass / 17 skip.
+- `npm run build` ✅ 28 route (lần đầu dừng ở nudge bảo mật Next 16.4.0, chạy
+  lại thành công).
+- QA production build (`next start -p 3100`, `hr@demo.vn`): 156/156 check pass ở
+  1920/1440/1024/768/390; 0 console/page error; không tràn ngang.
+- Tab smoke 15/15: `/settings` 6 tab, `/reports` 6 tab (đổi tab hiển thị đúng
+  panel), `/admin/employees/[id]` 6 tab + chuyển tab OK.
+- Đã kiểm tra tìm kiếm lịch sử và tab "Chỉnh công" ở trang yêu cầu.
+- Không có secret trong diff; file QA tạm đã xoá trước commit.
+
+**Commit:** `feat(ui): apply premium design to attendance, history, workflow and profile pages`.
+**Deployment:** xem ghi chú Vercel bên dưới.
+**Known issues / Next:**
+- Next.js 16.4.0 vẫn bị cảnh báo bảo mật; cần chạy
+  `next upgrade --agent=security`.
+- Các route protected vẫn log cảnh báo prerender `Date.now()` (từ Supabase auth,
+  không phát sinh ở phase này).
+- `npm run lint` baseline còn lỗi cũ (`portal.tsx`, `select.tsx`,
+  `settings-client.tsx`, charts...) + `react-hooks/set-state-in-effect` ở
+  `face-verification-redesigned.tsx`; chưa dọn trong phase này.
+- Còn thay đổi chưa commit không thuộc phase này (quản lý nhân viên/chấm công,
+  `PHASE_6_FINAL_SUMMARY.md`) — giữ nguyên cho phase tương ứng.
+

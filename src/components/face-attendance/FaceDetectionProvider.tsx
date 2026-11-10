@@ -1,7 +1,16 @@
 "use client";
 
-import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
-import * as faceapi from "@vladmandic/face-api";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
+import type * as FaceApi from "@vladmandic/face-api";
 
 export interface FaceDetectionResult {
   detected: boolean;
@@ -15,8 +24,8 @@ export interface FaceDetectionResult {
   size: "small" | "ok" | "large";
   brightness: "dark" | "ok" | "bright";
   sharpness: "blurry" | "ok" | "sharp";
-  landmarks: faceapi.FaceLandmarks68 | null;
-  box: faceapi.Box | null;
+  landmarks: FaceApi.FaceLandmarks68 | null;
+  box: FaceApi.Box | null;
 }
 
 interface FaceDetectionContextValue {
@@ -51,11 +60,16 @@ export function FaceDetectionProvider({ children }: { children: ReactNode }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const isDetecting = useRef(false);
   const disposed = useRef(false);
+  const faceapiRef = useRef<typeof import("@vladmandic/face-api") | null>(null);
 
   useEffect(() => {
     disposed.current = false;
     async function loadModels() {
       try {
+        // Chỉ tải face-api trong browser. Import tĩnh sẽ khiến Next SSR module
+        // node (yêu cầu @tensorflow/tfjs-node) và làm hỏng Suspense boundary.
+        const faceapi = await import("@vladmandic/face-api");
+        faceapiRef.current = faceapi;
         await Promise.all([
           faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
           faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
@@ -76,8 +90,9 @@ export function FaceDetectionProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  async function detectFaces(video: HTMLVideoElement) {
-    if (!video || video.readyState !== 4 || isDetecting.current || disposed.current) return;
+  const detectFaces = useCallback(async (video: HTMLVideoElement) => {
+    const faceapi = faceapiRef.current;
+    if (!faceapi || !video || video.readyState !== 4 || isDetecting.current || disposed.current) return;
     isDetecting.current = true;
 
     try {
@@ -174,24 +189,27 @@ export function FaceDetectionProvider({ children }: { children: ReactNode }) {
     } finally {
       isDetecting.current = false;
     }
-  }
+  }, []);
 
-  function startDetection(video: HTMLVideoElement) {
-    if (!canvasRef.current) {
-      canvasRef.current = document.createElement("canvas");
-      canvasRef.current.style.display = "none";
-      document.body.appendChild(canvasRef.current);
-    }
+  const startDetection = useCallback(
+    (video: HTMLVideoElement) => {
+      if (!canvasRef.current) {
+        canvasRef.current = document.createElement("canvas");
+        canvasRef.current.style.display = "none";
+        document.body.appendChild(canvasRef.current);
+      }
 
-    if (detectionInterval.current) clearInterval(detectionInterval.current);
-    detectionInterval.current = setInterval(() => {
+      if (detectionInterval.current) clearInterval(detectionInterval.current);
+      detectionInterval.current = setInterval(() => {
+        void detectFaces(video);
+      }, 150);
+
       void detectFaces(video);
-    }, 150);
+    },
+    [detectFaces],
+  );
 
-    void detectFaces(video);
-  }
-
-  function stopDetection() {
+  const stopDetection = useCallback(() => {
     if (detectionInterval.current) {
       clearInterval(detectionInterval.current);
       detectionInterval.current = null;
@@ -202,10 +220,17 @@ export function FaceDetectionProvider({ children }: { children: ReactNode }) {
       canvasRef.current.remove();
       canvasRef.current = null;
     }
-  }
+  }, []);
+
+  // Giữ identity của context value ổn định giữa các lần detect để component
+  // camera không bị cleanup effect (dừng stream) mỗi 150ms.
+  const value = useMemo(
+    () => ({ result, isLoading, error, startDetection, stopDetection }),
+    [result, isLoading, error, startDetection, stopDetection],
+  );
 
   return (
-    <FaceDetectionContext.Provider value={{ result, isLoading, error, startDetection, stopDetection }}>
+    <FaceDetectionContext.Provider value={value}>
       {children}
     </FaceDetectionContext.Provider>
   );

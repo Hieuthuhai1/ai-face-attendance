@@ -33,7 +33,6 @@ async function EmployeeDetailContentServer({ params }: EmployeeDetailProps) {
       hired_at,
       terminated_at,
       department:departments(name),
-      manager:employees!employees_manager_id_fkey(employee_code),
       profile:profiles!employees_profile_id_fkey(display_name, email, is_active, created_at)
     `)
     .eq("id", id)
@@ -49,6 +48,15 @@ async function EmployeeDetailContentServer({ params }: EmployeeDetailProps) {
       </div>
     );
   }
+
+  // Self-join employees→employees không có trong schema cache PostgREST → tra manager riêng.
+  const { data: managerRow } = employee.manager_id
+    ? await supabase.from("employees").select("employee_code").eq("id", employee.manager_id).maybeSingle()
+    : { data: null };
+  const employeeWithManager = {
+    ...employee,
+    manager: managerRow ? [{ employee_code: managerRow.employee_code }] : null,
+  };
 
   const { data: faceEnrollment } = await supabase
     .from("face_enrollments")
@@ -88,7 +96,7 @@ async function EmployeeDetailContentServer({ params }: EmployeeDetailProps) {
 
   const data = {
     id,
-    employee,
+    employee: employeeWithManager,
     faceEnrollment,
     attendanceEvents: attendanceEvents || [],
     adjustments: adjustments || [],

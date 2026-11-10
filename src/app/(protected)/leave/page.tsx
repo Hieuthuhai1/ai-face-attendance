@@ -4,14 +4,18 @@ import { requireUser } from "@/server/auth";
 import { createClient } from "@/lib/supabase/server";
 import { LeaveForm, LeaveList, type LeaveRow } from "@/features/workflow/leave-panels";
 import { Card, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Icon } from "@/components/ui/icon";
 import { LoadingState } from "@/components/ui/states";
 
 export default function LeavePage() {
   return (
     <main className="page-shell flex flex-col gap-6">
       <PageHeader
+        eyebrow="Nghỉ phép"
+        icon="calendar"
         title="Đơn nghỉ"
-        description="Xem và quản lý đơn nghỉ phép"
+        description="Gửi đơn nghỉ và theo dõi trạng thái duyệt của quản lý/HR."
       />
       <Suspense fallback={<LoadingState message="Đang tải…" />}>
         <LeaveData />
@@ -70,19 +74,51 @@ async function LeaveData() {
     status: r.status as string,
   });
 
+  const mineRows = ((mine ?? []) as unknown as Array<Record<string, unknown>>).map(toRow);
+
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-5">
+      <div className="flex flex-wrap items-center gap-2">
+        <Badge tone="brand">{mineRows.length} đơn của tôi</Badge>
+        <Badge tone={mineRows.some((row) => row.status === "pending") ? "warning" : "success"}>
+          <Icon name="clock" size={12} /> {mineRows.filter((row) => row.status === "pending").length} chờ duyệt
+        </Badge>
+        {isReviewer ? (
+          <Badge tone={queue.length > 0 ? "warning" : "success"}>
+            <Icon name="inbox" size={12} /> {queue.length} trong hàng đợi
+          </Badge>
+        ) : null}
+      </div>
+
       <LeaveForm />
+
       <Card>
-        <CardTitle>Đơn của tôi</CardTitle>
-        <div className="mt-3">
-          <LeaveList rows={((mine ?? []) as unknown as Array<Record<string, unknown>>).map(toRow)} reviewable={false} />
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <div>
+            <CardTitle>Đơn của tôi</CardTitle>
+            <p className="mt-1 text-[13px] text-[var(--text-2)]">
+              Các đơn nghỉ đã gửi và phản hồi từ người duyệt.
+            </p>
+          </div>
+          <Badge tone="neutral">{mineRows.length} bản ghi</Badge>
+        </div>
+        <div className="mt-4">
+          <LeaveList rows={mineRows} reviewable={false} />
         </div>
       </Card>
+
       {isReviewer ? (
         <Card>
-          <CardTitle>Hàng đợi duyệt</CardTitle>
-          <div className="mt-3">
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <div>
+              <CardTitle>Hàng đợi duyệt</CardTitle>
+              <p className="mt-1 text-[13px] text-[var(--text-2)]">
+                Đơn nghỉ đang chờ bạn hoặc HR xử lý.
+              </p>
+            </div>
+            <Badge tone={queue.length > 0 ? "warning" : "success"}>{queue.length} chờ duyệt</Badge>
+          </div>
+          <div className="mt-4">
             <LeaveList rows={queue} reviewable />
           </div>
         </Card>

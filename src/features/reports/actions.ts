@@ -133,6 +133,13 @@ export interface HistoryFilters {
   employee_id?: string;
   department_id?: string;
   status?: string;
+  /** Tìm theo mã nhân viên hoặc tên hiển thị. */
+  q?: string;
+}
+
+export interface HistoryDepartmentOption {
+  id: string;
+  name: string;
 }
 
 export async function getPersonalHistoryWithFilters(
@@ -146,6 +153,7 @@ export async function getPersonalHistoryWithFilters(
   page?: number;
   pageSize?: number;
   month?: string;
+  departments?: HistoryDepartmentOption[];
   message?: string;
 }> {
   const { profile } = await requireRole(["employee", "manager", "hr_admin", "system_admin"]);
@@ -174,6 +182,66 @@ export async function getPersonalHistoryWithFilters(
     employeeIds = [meId];
   }
 
+  const { data: departmentRows } = await supabase
+    .from("departments")
+    .select("id, name")
+    .eq("organization_id", orgId)
+    .order("name");
+  const departments: HistoryDepartmentOption[] = (
+    (departmentRows ?? []) as Array<{ id: string; name: string }>
+  ).map((department) => ({ id: department.id, name: department.name }));
+
+  // Tìm kiếm theo mã NV / tên hiển thị: xác định employee_id khớp trong cùng
+  // phạm vi quyền, sau đó lọc bảng tổng hợp theo danh sách này.
+  const search = filters.q?.trim();
+  if (search) {
+    let employeeQuery = supabase
+      .from("employees")
+      .select("id, employee_code, profiles!inner(display_name)")
+      .eq("organization_id", orgId);
+    if (filters.department_id) {
+      employeeQuery = employeeQuery.eq("department_id", filters.department_id);
+    }
+    if (employeeIds) {
+      employeeQuery = employeeQuery.in(
+        "id",
+        employeeIds.length > 0 ? employeeIds : ["00000000-0000-0000-0000-000000000000"],
+      );
+    }
+    const { data: employeeRows } = await employeeQuery;
+    const needle = search.toLocaleLowerCase("vi");
+    const matchedIds = (
+      (employeeRows ?? []) as unknown as Array<{
+        id: string;
+        employee_code: string | null;
+        profiles: { display_name: string | null } | Array<{ display_name: string | null }> | null;
+      }>
+    )
+      .filter((employee) => {
+        const profileRow = Array.isArray(employee.profiles)
+          ? employee.profiles[0]
+          : employee.profiles;
+        return (
+          (employee.employee_code ?? "").toLocaleLowerCase("vi").includes(needle) ||
+          (profileRow?.display_name ?? "").toLocaleLowerCase("vi").includes(needle)
+        );
+      })
+      .map((employee) => employee.id);
+
+    if (matchedIds.length === 0) {
+      return {
+        ok: true,
+        rows: [],
+        total: 0,
+        page: p,
+        pageSize: ps,
+        month,
+        departments,
+      };
+    }
+    employeeIds = matchedIds;
+  }
+
   let query = supabase
     .from("attendance_daily_summaries")
     .select(
@@ -200,10 +268,7 @@ export async function getPersonalHistoryWithFilters(
   if (filters.status) query = query.eq("status", filters.status);
   if (employeeIds) query = query.in("employee_id", employeeIds);
 
-  const [{ data, count }, { data: departments }] = await Promise.all([
-    query,
-    supabase.from("departments").select("id, name").eq("organization_id", orgId).order("name"),
-  ]);
+  const { data, count } = await query;
 
   const rows = ((data ?? []) as unknown) as Array<{
     work_date: string;
@@ -260,6 +325,7 @@ export async function getPersonalHistoryWithFilters(
     page: p,
     pageSize: ps,
     month,
+    departments,
   };
 }
 

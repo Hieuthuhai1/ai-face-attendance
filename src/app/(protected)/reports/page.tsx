@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import { PageHeader } from "@/components/app/app-shell";
 import { requireRole } from "@/server/auth";
 import { createClient } from "@/lib/supabase/server";
-import { getDashboard, getReport, getFullDashboardData, type ReportFilters, type ReportRow, type AnalyticsData, type KPIData, type ExceptionItem, type DepartmentSummaryRow, type LateEarlyReportRow, type MissingCheckReportRow } from "@/features/reports/actions";
+import { getReport, getFullDashboardData, type ReportFilters, type KPIData } from "@/features/reports/actions";
 import { ExportButton } from "@/features/reports/export-button";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
@@ -11,7 +11,7 @@ import { Icon } from "@/components/ui/icon";
 import { StatusIndicator } from "@/components/ui/status-indicator";
 import { LoadingState, EmptyState, ErrorState } from "@/components/ui/states";
 import { ReportsPagination } from "./pagination-client";
-import { Tabs, TabPanel } from "@/components/ui/tabs";
+import { ReportsTabs } from "./reports-tabs";
 import { Badge } from "@/components/ui/badge";
 import { formatTimeInZone } from "@/lib/datetime";
 import { ReportsTimeTrendChart, ReportsShiftDistributionChart, ReportsDepartmentAttendanceChart } from "./analytics-charts";
@@ -141,180 +141,173 @@ async function ReportsData({ searchParams }: { searchParams: Promise<Record<stri
         <p className="mt-2 text-xs text-slate-500">Vắng chỉ kết luận khi nhân viên có phân ca phủ ngày xem. Xuất CSV ghi audit.</p>
       </Card>
 
-      {/* Tabs */}
-      <Tabs items={[
-        { key: "overview", label: "Tổng quan", icon: "home" },
-        { key: "analytics", label: "Phân tích", icon: "chart" },
-        { key: "exceptions", label: "Ngoại lệ", icon: "alert" },
-        { key: "dept", label: "Theo phòng ban", icon: "users" },
-        { key: "late", label: "Trễ/Sớm", icon: "clock" },
-        { key: "missing", label: "Thiếu chấm", icon: "help" },
-      ]} value="overview" onChange={() => {}} />
-
-      {/* Overview Tab */}
-      <TabPanel key="overview" value="overview">
-        <Card>
-          <CardTitle>Chi tiết chấm công</CardTitle>
-          <div className="mt-3">
-            {!rows ? (
-              <ErrorState title="Lỗi tải dữ liệu" description={message ?? "Không xác định"} />
-            ) : (
-              <>
-                <DataTable
-                  ariaLabel="Báo cáo chấm công"
-                  rows={rows}
-                  keyOf={(r) => `${r.work_date}-${r.employee_code}`}
-                  emptyTitle="Không có dữ liệu"
-                  emptyDescription="Đổi khoảng ngày hoặc bộ lọc."
-                  columns={[
-                    { key: "date", header: "Ngày", render: (r) => <span className="tnum">{r.work_date}</span> },
-                    { key: "emp", header: "Nhân viên", render: (r) => `${r.employee_code} — ${r.display_name}` },
-                    { key: "dept", header: "Phòng/Ca", render: (r) => `${r.department} / {r.shift}` },
-                    {
-                      key: "inout",
-                      header: "Vào–Ra",
-                      render: (r) => (
-                        <span className="tnum">
-                          {r.first_in ? formatTimeInZone(r.first_in) : "—"}
-                          {" – "}
-                          {r.last_out ? formatTimeInZone(r.last_out) : "—"}
-                        </span>
-                      ),
-                    },
-                    {
-                      key: "late",
-                      header: "Trễ/Sớm",
-                      render: (r) => (r.late_min > 0 ? `Trễ ${r.late_min}′` : r.early_leave_min > 0 ? `Sớm ${r.early_leave_min}′` : r.overtime_min > 0 ? `OT ${r.overtime_min}′` : "—"),
-                    },
-                    { key: "status", header: "Trạng thái", render: (r) => <StatusIndicator status={STATUS_MAP[r.status] ?? "idle"} /> },
-                  ]}
-                  cardTitle={(r) => `${r.employee_code} — ${r.display_name}`}
-                  cardStatus={(r) => <StatusIndicator status={STATUS_MAP[r.status] ?? "idle"} />}
-                  cardMeta={(r) => (
-                    <span className="tnum">
-                      {r.work_date} · {r.department} / {r.shift} · Vào{" "}
-                      {r.first_in ? formatTimeInZone(r.first_in) : "—"}
-                      {" – Ra "}
-                      {r.last_out ? formatTimeInZone(r.last_out) : "—"}
-                      {r.overtime_min > 0 ? ` · OT ${r.overtime_min}′` : ""}
-                    </span>
-                  )}
-                />
-                <div className="mt-3">
-                  <ReportsPagination
-                    page={page ?? 1}
-                    totalPages={Math.max(1, Math.ceil((total ?? 0) / 20))}
-                    total={total ?? 0}
-                    label="dòng"
-                    baseParams={{
-                      from: filters.from,
-                      to: filters.to,
-                      ...(filters.departmentId ? { departmentId: filters.departmentId } : {}),
-                      ...(filters.shiftId ? { shiftId: filters.shiftId } : {}),
-                      ...(filters.status ? { status: filters.status } : {}),
-                    }}
+      <ReportsTabs
+        overview={
+          <Card>
+            <CardTitle>Chi tiết chấm công</CardTitle>
+            <div className="mt-3">
+              {!rows ? (
+                <ErrorState title="Lỗi tải dữ liệu" description={message ?? "Không xác định"} />
+              ) : (
+                <>
+                  <DataTable
+                    ariaLabel="Báo cáo chấm công"
+                    rows={rows}
+                    keyOf={(r) => `${r.work_date}-${r.employee_code}`}
+                    emptyTitle="Không có dữ liệu"
+                    emptyDescription="Đổi khoảng ngày hoặc bộ lọc."
+                    columns={[
+                      { key: "date", header: "Ngày", render: (r) => <span className="tnum">{r.work_date}</span> },
+                      { key: "emp", header: "Nhân viên", render: (r) => `${r.employee_code} — ${r.display_name}` },
+                      { key: "dept", header: "Phòng/Ca", render: (r) => `${r.department} / ${r.shift}` },
+                      {
+                        key: "inout",
+                        header: "Vào–Ra",
+                        render: (r) => (
+                          <span className="tnum">
+                            {r.first_in ? formatTimeInZone(r.first_in) : "—"}
+                            {" – "}
+                            {r.last_out ? formatTimeInZone(r.last_out) : "—"}
+                          </span>
+                        ),
+                      },
+                      {
+                        key: "late",
+                        header: "Trễ/Sớm",
+                        render: (r) => (r.late_min > 0 ? `Trễ ${r.late_min}′` : r.early_leave_min > 0 ? `Sớm ${r.early_leave_min}′` : r.overtime_min > 0 ? `OT ${r.overtime_min}′` : "—"),
+                      },
+                      { key: "status", header: "Trạng thái", render: (r) => <StatusIndicator status={STATUS_MAP[r.status] ?? "idle"} /> },
+                    ]}
+                    cardTitle={(r) => `${r.employee_code} — ${r.display_name}`}
+                    cardStatus={(r) => <StatusIndicator status={STATUS_MAP[r.status] ?? "idle"} />}
+                    cardMeta={(r) => (
+                      <span className="tnum">
+                        {r.work_date} · {r.department} / {r.shift} · Vào{" "}
+                        {r.first_in ? formatTimeInZone(r.first_in) : "—"}
+                        {" – Ra "}
+                        {r.last_out ? formatTimeInZone(r.last_out) : "—"}
+                        {r.overtime_min > 0 ? ` · OT ${r.overtime_min}′` : ""}
+                      </span>
+                    )}
                   />
-                </div>
-              </>
-            )}
-          </div>
-        </Card>
-      </TabPanel>
+                  <div className="mt-3">
+                    <ReportsPagination
+                      page={page ?? 1}
+                      totalPages={Math.max(1, Math.ceil((total ?? 0) / 20))}
+                      total={total ?? 0}
+                      label="dòng"
+                      baseParams={{
+                        from: filters.from,
+                        to: filters.to,
+                        ...(filters.departmentId ? { departmentId: filters.departmentId } : {}),
+                        ...(filters.shiftId ? { shiftId: filters.shiftId } : {}),
+                        ...(filters.status ? { status: filters.status } : {}),
+                      }}
+                    />
+                  </div>
+                </>
+              )}
+            </div>
+          </Card>
+        }
+        analytics={
+          <div className="grid gap-4 lg:grid-cols-2">
+            {/* Time Trend - Line Chart */}
+            <Card>
+              <CardTitle>Xu hướng chấm công theo giờ</CardTitle>
+              <div className="mt-4 h-72">
+                <ReportsTimeTrendChart data={analytics.timeTrend} />
+              </div>
+            </Card>
 
-      {/* Analytics Tab */}
-      <TabPanel key="analytics" value="analytics">
-        <div className="grid gap-4 lg:grid-cols-2">
-          {/* Time Trend - Line Chart */}
+            {/* Shift Distribution - Pie Chart */}
+            <Card>
+              <CardTitle>Phân bổ ca làm hôm nay</CardTitle>
+              <div className="mt-4 h-72">
+                <ReportsShiftDistributionChart data={analytics.shiftDistribution} />
+              </div>
+            </Card>
+
+            {/* Department Attendance - Bar Chart */}
+            <Card className="lg:col-span-2">
+              <CardTitle>Chấm công theo phòng ban (hôm nay)</CardTitle>
+              <div className="mt-4 h-72">
+                <ReportsDepartmentAttendanceChart data={analytics.departmentAttendance} />
+              </div>
+            </Card>
+          </div>
+        }
+        exceptions={
           <Card>
-            <CardTitle>Xu hướng chấm công theo giờ</CardTitle>
-            <div className="mt-4 h-72">
-              <ReportsTimeTrendChart data={analytics.timeTrend} />
+            <div className="flex items-center justify-between">
+              <CardTitle>Ngoại lệ cần xử lý</CardTitle>
+              <Badge tone={analytics.exceptions.some(e => e.severity === "high") ? "danger" : analytics.exceptions.some(e => e.severity === "medium") ? "warning" : "success"}>
+                {analytics.exceptions.length} mục
+              </Badge>
+            </div>
+            <div className="mt-3">
+              {analytics.exceptions.length === 0 ? (
+                <EmptyState title="Không có ngoại lệ" description="Tất cả hoạt động bình thường." />
+              ) : (
+                <DataTable
+                  ariaLabel="Ngoại lệ chấm công"
+                  rows={analytics.exceptions}
+                  keyOf={(e) => `${e.type}-${e.employee_code}-${e.date}`}
+                  emptyTitle="Không có ngoại lệ"
+                  emptyDescription="Tất cả hoạt động bình thường."
+                  columns={[
+                    { key: "type", header: "Loại", render: (e) => <Badge tone={EXCEPTION_SEVERITY_COLORS[e.severity]}>{EXCEPTION_TYPE_LABELS[e.type] ?? e.type}</Badge> },
+                    { key: "severity", header: "Mức độ", render: (e) => <Badge tone={EXCEPTION_SEVERITY_COLORS[e.severity]}>{e.severity === "high" ? "Cao" : e.severity === "medium" ? "Trung bình" : "Thấp"}</Badge> },
+                    { key: "emp", header: "Nhân viên", render: (e) => `${e.employee_code} — ${e.employee_name}` },
+                    { key: "dept", header: "Phòng ban", render: (e) => e.department },
+                    { key: "date", header: "Ngày", render: (e) => <span className="tnum">{e.date}</span> },
+                    { key: "detail", header: "Chi tiết", render: (e) => <span className="max-w-64 truncate text-xs">{e.detail}</span> },
+                    {
+                      key: "action",
+                      header: <span className="sr-only">Xử lý</span>,
+                      render: (e) => (e.link ? <ReportActionLink href={e.link} /> : null),
+                    },
+                  ]}
+                  cardTitle={(e) => `${e.employee_code} — ${e.employee_name}`}
+                  cardMeta={(e) => `${e.date} · ${e.department ?? "—"} · ${e.detail}`}
+                  cardStatus={(e) => <Badge tone={EXCEPTION_SEVERITY_COLORS[e.severity]}>{EXCEPTION_TYPE_LABELS[e.type] ?? e.type}</Badge>}
+                  cardActions={(e) => (e.link ? <ReportActionLink href={e.link} /> : undefined)}
+                />
+              )}
             </div>
           </Card>
-
-          {/* Shift Distribution - Pie Chart */}
-          <Card>
-            <CardTitle>Phân bổ ca làm hôm nay</CardTitle>
-            <div className="mt-4 h-72">
-              <ReportsShiftDistributionChart data={analytics.shiftDistribution} />
-            </div>
-          </Card>
-
-          {/* Department Attendance - Bar Chart */}
-          <Card className="lg:col-span-2">
-            <CardTitle>Chấm công theo phòng ban (hôm nay)</CardTitle>
-            <div className="mt-4 h-72">
-              <ReportsDepartmentAttendanceChart data={analytics.departmentAttendance} />
-            </div>
-          </Card>
-        </div>
-      </TabPanel>
-
-      {/* Exceptions Tab */}
-      <TabPanel key="exceptions" value="exceptions">
-        <Card>
-          <div className="flex items-center justify-between">
-            <CardTitle>Ngoại lệ cần xử lý</CardTitle>
-            <Badge tone={analytics.exceptions.some(e => e.severity === "high") ? "danger" : analytics.exceptions.some(e => e.severity === "medium") ? "warning" : "success"}>
-              {analytics.exceptions.length} mục
-            </Badge>
-          </div>
-          <div className="mt-3">
-            {analytics.exceptions.length === 0 ? (
-              <EmptyState title="Không có ngoại lệ" description="Tất cả hoạt động bình thường." />
-            ) : (
-              <DataTable
-                ariaLabel="Ngoại lệ chấm công"
-                rows={analytics.exceptions}
-                keyOf={(e) => `${e.type}-${e.employee_code}-${e.date}`}
-                emptyTitle="Không có ngoại lệ"
-                emptyDescription="Tất cả hoạt động bình thường."
-                columns={[
-                  { key: "type", header: "Loại", render: (e) => <Badge tone={EXCEPTION_SEVERITY_COLORS[e.severity]}>{EXCEPTION_TYPE_LABELS[e.type] ?? e.type}</Badge> },
-                  { key: "severity", header: "Mức độ", render: (e) => <Badge tone={EXCEPTION_SEVERITY_COLORS[e.severity]}>{e.severity === "high" ? "Cao" : e.severity === "medium" ? "Trung bình" : "Thấp"}</Badge> },
-                  { key: "emp", header: "Nhân viên", render: (e) => `${e.employee_code} — ${e.employee_name}` },
-                  { key: "dept", header: "Phòng ban", render: (e) => e.department },
-                  { key: "date", header: "Ngày", render: (e) => <span className="tnum">{e.date}</span> },
-                  { key: "detail", header: "Chi tiết", render: (e) => <span className="max-w-64 truncate text-xs">{e.detail}</span> },
-                  {
-                    key: "action",
-                    header: <span className="sr-only">Xử lý</span>,
-                    render: (e) => e.link ? (
-                      <Button size="sm" variant="secondary" onClick={() => { if (e.link) window.location.href = e.link; }}>Xử lý</Button>
-                    ) : null,
-                  },
-                ]}
-                cardTitle={(e) => `${e.employee_code} — ${e.employee_name}`}
-                cardMeta={(e) => `${e.date} · ${e.department ?? "—"} · ${e.detail}`}
-                cardStatus={(e) => <Badge tone={EXCEPTION_SEVERITY_COLORS[e.severity]}>{EXCEPTION_TYPE_LABELS[e.type] ?? e.type}</Badge>}
-                cardActions={(e) => e.link ? <Button size="sm" variant="secondary" onClick={() => { if (e.link) window.location.href = e.link; }}>Xử lý</Button> : undefined}
-              />
-            )}
-          </div>
-        </Card>
-      </TabPanel>
-
-      {/* Department Summary Tab */}
-      <TabPanel key="dept" value="dept">
-        <Suspense fallback={<LoadingState message="Đang tải tổng hợp phòng ban…" />}>
-          <DepartmentSummaryTable filters={filters} />
-        </Suspense>
-      </TabPanel>
-
-      {/* Late/Early Tab */}
-      <TabPanel key="late" value="late">
-        <Suspense fallback={<LoadingState message="Đang tải báo cáo trễ/sớm…" />}>
-          <LateEarlyTable filters={filters} />
-        </Suspense>
-      </TabPanel>
-
-      {/* Missing Check Tab */}
-      <TabPanel key="missing" value="missing">
-        <Suspense fallback={<LoadingState message="Đang tải báo cáo thiếu chấm…" />}>
-          <MissingCheckTable filters={filters} />
-        </Suspense>
-      </TabPanel>
+        }
+        dept={
+          <Suspense fallback={<LoadingState message="Đang tải tổng hợp phòng ban…" />}>
+            <DepartmentSummaryTable filters={filters} />
+          </Suspense>
+        }
+        late={
+          <Suspense fallback={<LoadingState message="Đang tải báo cáo trễ/sớm…" />}>
+            <LateEarlyTable filters={filters} />
+          </Suspense>
+        }
+        missing={
+          <Suspense fallback={<LoadingState message="Đang tải báo cáo thiếu chấm…" />}>
+            <MissingCheckTable filters={filters} />
+          </Suspense>
+        }
+      />
     </div>
+  );
+}
+
+// ============================ Exception action link ============================
+
+/** Liên kết điều hướng tới trang xử lý ngoại lệ (thẻ <a> để chạy được trong server component). */
+function ReportActionLink({ href }: { href: string }) {
+  return (
+    <a
+      href={href}
+      className="inline-flex h-9 select-none items-center justify-center rounded-[var(--radius-control)] border border-[var(--border)] bg-white px-3.5 text-[13px] font-semibold text-[var(--text-1)] shadow-[var(--shadow-xs)] transition-colors hover:border-[var(--border-strong)] hover:bg-[var(--surface-muted)] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[var(--brand-ring)]"
+    >
+      Xử lý
+    </a>
   );
 }
 

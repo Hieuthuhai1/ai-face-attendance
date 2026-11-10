@@ -93,19 +93,19 @@ export function AttendanceReceipt({
   return (
     <div className={cn("rounded-2xl border p-6 shadow-sm", config.borderColor, config.bgColor, className)}>
       {/* Header */}
-      <div className="flex items-center justify-between gap-4 mb-6">
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
-          <div className={cn("flex h-16 w-16 items-center justify-center rounded-2xl", config.bgColor, config.color)}>
+          <div className={cn("flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl", config.bgColor, config.color)}>
             <Icon name={config.icon} size={28} />
           </div>
           <div>
-            <p className="text-2xl font-bold text-slate-900">{actionLabel} {config.label}</p>
-            <p className="text-sm text-slate-500">
+            <p className="text-xl font-bold tracking-[-0.02em] text-[var(--navy-900)] sm:text-2xl">{actionLabel} {config.label}</p>
+            <p className="text-[12.5px] text-[var(--text-2)]">
               {dateStr} · {timeStr} · Giờ máy chủ
             </p>
           </div>
         </div>
-        <Badge tone={config.tone} className="text-xs">
+        <Badge tone={config.tone} className="self-start text-xs">
           <Icon name={config.icon} size={12} /> {config.label}
         </Badge>
       </div>
@@ -203,7 +203,7 @@ export function AttendanceReceipt({
         </Button>
         {status !== "success" && onFallback && (
           <Button variant="secondary" size="lg" className="flex-1" onClick={onFallback}>
-            <Icon name="rotate-ccw" size={18} /> Dùng phương thức thay thế
+            <Icon name="refresh" size={18} /> Dùng phương thức thay thế
           </Button>
         )}
       </div>
