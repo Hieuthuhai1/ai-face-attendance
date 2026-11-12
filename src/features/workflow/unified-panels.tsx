@@ -202,7 +202,7 @@ export function UnifiedRequestForm() {
               </p>
             ) : null}
             <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--border)] pt-4">
-              <p className="flex items-center gap-1.5 text-[11.5px] text-[var(--text-3)]">
+              <p className="flex items-center gap-1.5 text-[12px] text-[var(--text-3)]">
                 <Icon name="info" size={13} /> Đơn nghỉ không tự xóa công đã ghi.
               </p>
               <Button type="submit" loading={leaveSaving}>
@@ -252,7 +252,7 @@ export function UnifiedRequestForm() {
               </p>
             ) : null}
             <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--border)] pt-4">
-              <p className="flex items-center gap-1.5 text-[11.5px] text-[var(--text-3)]">
+              <p className="flex items-center gap-1.5 text-[12px] text-[var(--text-3)]">
                 <Icon name="info" size={13} /> Bản ghi gốc được giữ nguyên, duyệt sẽ ghi correction + audit.
               </p>
               <Button type="submit" loading={adjSaving}>
@@ -305,13 +305,13 @@ export function MyRequests({ rows }: { rows: UnifiedRequestRow[] }) {
         {
           key: "detail",
           header: "Chi tiết",
-          render: (r) => <span className="text-[12.5px] text-[var(--text-2)]">{requestDetailRow(r)}</span>,
+          render: (r) => <span className="text-[13px] text-[var(--text-2)]">{requestDetailRow(r)}</span>,
         },
         {
           key: "created",
           header: "Gửi lúc",
           render: (r) => (
-            <span className="tnum text-[12.5px] text-[var(--text-2)]">
+            <span className="tnum text-[13px] text-[var(--text-2)]">
               {new Date(r.created_at).toLocaleDateString("vi-VN")}
             </span>
           ),
@@ -321,7 +321,7 @@ export function MyRequests({ rows }: { rows: UnifiedRequestRow[] }) {
           key: "resolution",
           header: "Phản hồi",
           render: (r) => (
-            <span className="line-clamp-2 max-w-56 text-[12.5px] text-[var(--text-2)]">
+            <span className="line-clamp-2 max-w-56 text-[13px] text-[var(--text-2)]">
               {r.resolution_note ?? "—"}
             </span>
           ),
@@ -330,7 +330,7 @@ export function MyRequests({ rows }: { rows: UnifiedRequestRow[] }) {
       cardTitle={(r) => `${requestTypeLabel(r.type)} · ${new Date(r.created_at).toLocaleDateString("vi-VN")}`}
       cardStatus={(r) => statusBadge(r.status)}
       cardMeta={(r) => (
-        <span className="flex flex-col gap-1 text-[12.5px] text-[var(--text-2)]">
+        <span className="flex flex-col gap-1 text-[13px] text-[var(--text-2)]">
           <span>{requestDetailRow(r)}</span>
           {r.resolution_note ? <span>Phản hồi: {r.resolution_note}</span> : null}
           {r.reviewed_at ? <span>Đã xử lý: {new Date(r.reviewed_at).toLocaleString("vi-VN")}</span> : null}
@@ -381,8 +381,8 @@ function ReviewDialog({ open, onClose, title, row, busy, note, setNote, onConfir
           <p className="text-[13px] font-semibold text-[var(--navy-800)]">
             {requestTypeLabel(row.type)} · {row.employee_code ?? "—"}
           </p>
-          <p className="mt-0.5 text-[12.5px] text-[var(--text-2)]">{requestDetailRow(row)}</p>
-          {row.reason ? <p className="mt-1.5 text-[12.5px] text-[var(--text-2)]">Lý do: {row.reason}</p> : null}
+          <p className="mt-0.5 text-[13px] text-[var(--text-2)]">{requestDetailRow(row)}</p>
+          {row.reason ? <p className="mt-1.5 text-[13px] text-[var(--text-2)]">Lý do: {row.reason}</p> : null}
         </div>
         <Textarea
           label={requiredNote ? "Lý do từ chối (bắt buộc)" : "Ghi chú (không bắt buộc)"}
@@ -462,13 +462,13 @@ export function ApprovalQueue({ rows }: ApprovalQueueProps) {
           {
             key: "detail",
             header: "Chi tiết",
-            render: (r) => <span className="text-[12.5px] text-[var(--text-2)]">{requestDetailRow(r)}</span>,
+            render: (r) => <span className="text-[13px] text-[var(--text-2)]">{requestDetailRow(r)}</span>,
           },
           {
             key: "reason",
             header: "Lý do",
             render: (r) => (
-              <span className="line-clamp-2 max-w-56 text-[12.5px] text-[var(--text-2)]" title={r.reason ?? ""}>
+              <span className="line-clamp-2 max-w-56 text-[13px] text-[var(--text-2)]" title={r.reason ?? ""}>
                 {r.reason ?? "—"}
               </span>
             ),
@@ -491,7 +491,7 @@ export function ApprovalQueue({ rows }: ApprovalQueueProps) {
         ]}
         cardTitle={(r) => `${r.employee_code ?? "—"} · ${requestTypeLabel(r.type)}`}
         cardMeta={(r) => (
-          <span className="flex flex-col gap-1 text-[12.5px] text-[var(--text-2)]">
+          <span className="flex flex-col gap-1 text-[13px] text-[var(--text-2)]">
             <span>{requestDetailRow(r)}</span>
             {r.reason ? <span>Lý do: {r.reason}</span> : null}
           </span>
@@ -531,7 +531,7 @@ export function UnifiedRequestDetail({ row }: { row: UnifiedRequestRow }) {
       <div className="flex items-start justify-between gap-3">
         <div>
           <h3 className="text-[17px] font-bold text-[var(--navy-900)]">{requestTypeLabel(row.type)}</h3>
-          <p className="tnum mt-0.5 text-[12.5px] text-[var(--text-3)]">{row.created_at.slice(0, 19).replace("T", " ")}</p>
+          <p className="tnum mt-0.5 text-[13px] text-[var(--text-3)]">{row.created_at.slice(0, 19).replace("T", " ")}</p>
         </div>
         {statusBadge(row.status)}
       </div>

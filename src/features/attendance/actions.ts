@@ -6,12 +6,13 @@ import { createClient } from "@/lib/supabase/server";
 import { getFaceProvider } from "@/server/face";
 import { PROVIDER_TIMEOUT_MS, withProviderTimeout } from "@/server/face/service";
 import { checkRateLimit, VERIFY_LIMIT } from "@/server/rate-limit";
-import { REVIEW_BAND_LOW, VERIFY_THRESHOLD } from "@/config/app";
+import { APP_TZ, REVIEW_BAND_LOW, VERIFY_THRESHOLD } from "@/config/app";
 import { idempotencyKeySchema } from "@/lib/validation";
 import { logger } from "@/server/logger";
 import type { FaceFixture, FaceImageInput } from "@/server/face/types";
 import { decideVerification, resolveShiftFor, wallDateString } from "@/server/attendance/decision";
 import { minutesEarlyLeave, minutesLate, wallMinutes, zonedStartOfDayIso } from "@/lib/attendance/rules";
+import { monthRange } from "@/lib/reports/csv";
 
 /** Error classification for UI handling */
 export type ErrorCategory = "retryable" | "permanent" | "configuration" | "requires_fallback";
@@ -709,5 +710,264 @@ export async function getAttendanceRecords(
     total: count ?? 0,
     page: p,
     pageSize: ps,
+  };
+}
+
+/** ============================ Bảng chấm công theo ngày (HR/Manager) ============================ */
+
+export type AttendanceMethod = "face" | "pin_fallback" | "manual";
+export type AttendanceDailyStatus = "present" | "late" | "early_leave" | "absent" | "incomplete";
+
+export interface AttendanceDailyRecord {
+  /** Khoá tổng hợp từ employee + work_date + shift (bảng summary không có id riêng). */
+  id: string;
+  employee_id: string;
+  employee_code: string;
+  display_name: string;
+  email: string;
+  department_id: string | null;
+  department_name: string;
+  title: string;
+  work_date: string;
+  shift_id: string | null;
+  shift_name: string;
+  first_in: string | null;
+  last_out: string | null;
+  late_min: number;
+  early_leave_min: number;
+  total_work_min: number;
+  status: AttendanceDailyStatus;
+  /** Suy ra từ attendance_events của đúng nhân viên + ngày; null nếu chưa có event. */
+  method: AttendanceMethod | "mixed" | null;
+}
+
+export interface AttendanceDailyFilters {
+  date?: string; // YYYY-MM-DD
+  month?: string; // YYYY-MM
+  employee_id?: string;
+  department_id?: string;
+  status?: string;
+}
+
+const SUMMARY_STATUSES = new Set<string>([
+  "present",
+  "late",
+  "early_leave",
+  "absent",
+  "incomplete",
+]);
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const MONTH_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
+
+function addDays(dateStr: string, days: number): string {
+  const [year, month, day] = dateStr.split("-").map(Number);
+  return new Date(Date.UTC(year, month - 1, day + days)).toISOString().slice(0, 10);
+}
+
+/**
+ * Bảng chấm công theo nhân viên + ngày (nguồn: attendance_daily_summaries).
+ * Phương thức chấm công không nằm trong summary nên được suy ra từ events cùng ngày.
+ */
+export async function getAttendanceDailyRecords(
+  filters: AttendanceDailyFilters,
+  page: number,
+  pageSize: number,
+): Promise<{
+  ok: boolean;
+  records?: AttendanceDailyRecord[];
+  total?: number;
+  page?: number;
+  pageSize?: number;
+  message?: string;
+  employees?: Array<{ id: string; employee_code: string; display_name: string }>;
+  departments?: Array<{ id: string; name: string }>;
+}> {
+  const { profile, userId } = await requireRole(["manager", "hr_admin", "system_admin"]);
+  const orgId = profile.organization_id;
+  if (!orgId) return { ok: false, message: "Tài khoản chưa thuộc tổ chức nào." };
+
+  const supabase = await createClient();
+  const p = Math.max(1, page || 1);
+  const ps = Math.min(100, Math.max(1, pageSize || 20));
+
+  // Manager chỉ thấy team của mình + bản thân.
+  let employeeIds: string[] | null = null;
+  if (profile.role === "manager") {
+    const { data: me } = await supabase
+      .from("employees")
+      .select("id")
+      .eq("profile_id", userId)
+      .single();
+    const meId = (me as { id?: string } | null)?.id;
+    if (!meId) {
+      return { ok: true, records: [], total: 0, page: p, pageSize: ps, employees: [], departments: [] };
+    }
+    const { data: team } = await supabase.from("employees").select("id").eq("manager_id", meId);
+    const ids = ((team ?? []) as Array<{ id: string }>).map((t) => t.id);
+    ids.push(meId);
+    employeeIds = ids;
+  }
+
+  let query = supabase
+    .from("attendance_daily_summaries")
+    .select(
+      `
+      employee_id, work_date, shift_id, first_in, last_out,
+      late_min, early_leave_min, total_work_min, status,
+      employees!inner(
+        id, employee_code, department_id, title,
+        profiles(display_name, email),
+        departments(name)
+      ),
+      work_shifts(name)
+    `,
+      { count: "exact" },
+    )
+    .eq("organization_id", orgId);
+
+  if (filters.date && DATE_RE.test(filters.date)) {
+    query = query.eq("work_date", filters.date);
+  } else if (filters.month && MONTH_RE.test(filters.month)) {
+    const range = monthRange(filters.month);
+    if (range) query = query.gte("work_date", range.from).lte("work_date", range.to);
+  }
+
+  if (filters.employee_id && UUID_RE.test(filters.employee_id)) {
+    query = query.eq("employee_id", filters.employee_id);
+  }
+  if (filters.department_id && UUID_RE.test(filters.department_id)) {
+    query = query.eq("employees.department_id", filters.department_id);
+  }
+  if (filters.status && SUMMARY_STATUSES.has(filters.status)) {
+    query = query.eq("status", filters.status);
+  }
+  if (employeeIds) query = query.in("employee_id", employeeIds);
+
+  let employeeQuery = supabase
+    .from("employees")
+    .select("id, employee_code, profiles(display_name)")
+    .eq("organization_id", orgId)
+    .order("employee_code");
+  if (employeeIds) employeeQuery = employeeQuery.in("id", employeeIds);
+
+  const [{ data, count, error }, { data: departments }, { data: employeeRows }] = await Promise.all([
+    query
+      .order("work_date", { ascending: false })
+      .order("employee_id", { ascending: true })
+      .range((p - 1) * ps, p * ps - 1),
+    supabase.from("departments").select("id, name").eq("organization_id", orgId).order("name"),
+    employeeQuery,
+  ]);
+
+  if (error) {
+    logger.warn("getAttendanceDailyRecords failed", { code: error.code });
+    return { ok: false, message: "Không tải được bảng chấm công." };
+  }
+
+  const summaryRows = ((data ?? []) as unknown) as Array<{
+    employee_id: string;
+    work_date: string;
+    shift_id: string | null;
+    first_in: string | null;
+    last_out: string | null;
+    late_min: number;
+    early_leave_min: number;
+    total_work_min: number;
+    status: string;
+    employees: {
+      id: string;
+      employee_code: string;
+      department_id: string | null;
+      title: string;
+      profiles: { display_name: string; email: string } | null;
+      departments: { name: string } | null;
+    };
+    work_shifts: { name: string } | null;
+  }>;
+
+  // Suy ra phương thức chấm công từ events của các cặp nhân viên + ngày trên trang.
+  const methodsByKey = new Map<string, Set<AttendanceMethod>>();
+  if (summaryRows.length > 0) {
+    const ids = [...new Set(summaryRows.map((row) => row.employee_id))];
+    const dates = [...new Set(summaryRows.map((row) => row.work_date))].sort();
+    const from = zonedStartOfDayIso(dates[0], APP_TZ);
+    const to = zonedStartOfDayIso(addDays(dates[dates.length - 1], 1), APP_TZ);
+
+    const { data: events } = await supabase
+      .from("attendance_events")
+      .select("employee_id, occurred_at, method, status")
+      .in("employee_id", ids)
+      .gte("occurred_at", from)
+      .lt("occurred_at", to);
+
+    for (const event of ((events ?? []) as unknown) as Array<{
+      employee_id: string;
+      occurred_at: string;
+      method: string;
+      status: string;
+    }>) {
+      if (event.status === "failed") continue;
+      if (event.method !== "face" && event.method !== "pin_fallback" && event.method !== "manual") {
+        continue;
+      }
+      const key = `${event.employee_id}:${wallDateString(new Date(event.occurred_at), APP_TZ)}`;
+      const set = methodsByKey.get(key) ?? new Set<AttendanceMethod>();
+      set.add(event.method);
+      methodsByKey.set(key, set);
+    }
+  }
+
+  const records: AttendanceDailyRecord[] = summaryRows.map((row) => {
+    const methods = methodsByKey.get(`${row.employee_id}:${row.work_date}`);
+    let method: AttendanceDailyRecord["method"] = null;
+    if (methods && methods.size === 1) {
+      method = Array.from(methods)[0] ?? null;
+    } else if (methods && methods.size > 1) {
+      method = "mixed";
+    }
+
+    return {
+      id: `${row.employee_id}:${row.work_date}:${row.shift_id ?? "none"}`,
+      employee_id: row.employee_id,
+      employee_code: row.employees.employee_code,
+      display_name: row.employees.profiles?.display_name || row.employees.employee_code,
+      email: row.employees.profiles?.email || "",
+      department_id: row.employees.department_id,
+      department_name: row.employees.departments?.name || "—",
+      title: row.employees.title || "",
+      work_date: row.work_date,
+      shift_id: row.shift_id,
+      shift_name: row.work_shifts?.name || "—",
+      first_in: row.first_in,
+      last_out: row.last_out,
+      late_min: row.late_min,
+      early_leave_min: row.early_leave_min,
+      total_work_min: row.total_work_min,
+      status: (SUMMARY_STATUSES.has(row.status) ? row.status : "incomplete") as AttendanceDailyStatus,
+      method,
+    };
+  });
+
+  return {
+    ok: true,
+    records,
+    total: count ?? 0,
+    page: p,
+    pageSize: ps,
+    employees: ((employeeRows ?? []) as unknown as Array<{
+      id: string;
+      employee_code: string;
+      profiles: { display_name: string } | null;
+    }>).map((employee) => ({
+      id: employee.id,
+      employee_code: employee.employee_code,
+      display_name: employee.profiles?.display_name || employee.employee_code,
+    })),
+    departments: (departments ?? []).map((department) => ({
+      id: department.id as string,
+      name: department.name as string,
+    })),
   };
 }

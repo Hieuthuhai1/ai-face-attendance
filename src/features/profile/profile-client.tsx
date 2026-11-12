@@ -71,7 +71,7 @@ function InfoRow({
         <Icon name={icon} size={14} />
       </span>
       <div className="min-w-0">
-        <dt className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-[var(--text-3)]">{label}</dt>
+        <dt className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--text-3)]">{label}</dt>
         <dd
           className="mt-0.5 truncate text-[13px] font-semibold text-[var(--navy-800)]"
           data-i18n-skip={skipTranslation ? "true" : undefined}
@@ -118,7 +118,7 @@ function LanguageOption({
         <span className="block text-[13px] font-semibold text-[var(--navy-800)]" data-i18n-skip="true">
           {nativeLabel}
         </span>
-        <span className="block text-[11.5px] text-[var(--text-3)]" data-i18n-skip="true">
+        <span className="block text-[12px] text-[var(--text-3)]" data-i18n-skip="true">
           {englishLabel}
         </span>
       </span>
@@ -179,19 +179,19 @@ export function ProfileClient({ profile, employee, organizationName }: ProfilePa
               <h2 className="mt-1 truncate text-xl font-bold tracking-[-0.02em] sm:text-2xl">
                 {profile.displayName || t("Chưa cập nhật")}
               </h2>
-              <p className="truncate text-[12.5px] text-slate-300">{profile.email}</p>
+              <p className="truncate text-[13px] text-slate-300">{profile.email}</p>
               <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
                 <Badge tone={roleTone === "danger" ? "danger" : roleTone === "warning" ? "warning" : roleTone === "info" ? "info" : "neutral"}>
                   <Icon name="shield" size={12} /> {roleLabel}
                 </Badge>
                 {employee ? (
-                  <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/[0.07] px-2.5 py-1 text-[11.5px] font-medium text-slate-200">
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/[0.07] px-2.5 py-1 text-[12px] font-medium text-slate-200">
                     <Icon name="id-card" size={12} /> {employee.employeeCode}
                   </span>
                 ) : null}
                 {employee ? (
                   <span className={cn(
-                    "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11.5px] font-medium",
+                    "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[12px] font-medium",
                     employee.employmentStatus === "active"
                       ? "border-emerald-300/25 bg-emerald-400/10 text-emerald-200"
                       : "border-amber-300/25 bg-amber-400/10 text-amber-200",
@@ -204,14 +204,14 @@ export function ProfileClient({ profile, employee, organizationName }: ProfilePa
           </div>
           <div className="grid grid-cols-2 gap-2 sm:min-w-[230px]">
             <div className="rounded-xl border border-white/10 bg-white/[0.06] px-3 py-2.5 backdrop-blur-sm">
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">{t("Phòng ban")}</p>
-              <p className="mt-1 truncate text-[12.5px] font-semibold text-white">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-300">{t("Phòng ban")}</p>
+              <p className="mt-1 truncate text-[13px] font-semibold text-white">
                 {employee?.department ?? t("Chưa cập nhật")}
               </p>
             </div>
             <div className="rounded-xl border border-white/10 bg-white/[0.06] px-3 py-2.5 backdrop-blur-sm">
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">{t("Chức danh")}</p>
-              <p className="mt-1 truncate text-[12.5px] font-semibold text-white">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-300">{t("Chức danh")}</p>
+              <p className="mt-1 truncate text-[13px] font-semibold text-white">
                 {employee?.title || t("Chưa cập nhật")}
               </p>
             </div>
@@ -235,7 +235,7 @@ export function ProfileClient({ profile, employee, organizationName }: ProfilePa
                   <Icon name="shield" size={14} />
                 </span>
                 <div className="min-w-0">
-                  <dt className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-[var(--text-3)]">{t("Vai trò")}</dt>
+                  <dt className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--text-3)]">{t("Vai trò")}</dt>
                   <dd className="mt-1"><Badge tone={roleTone}>{roleLabel}</Badge></dd>
                 </div>
               </div>
@@ -311,7 +311,7 @@ export function ProfileClient({ profile, employee, organizationName }: ProfilePa
                 onSelect={() => void chooseLocale("en")}
               />
             </div>
-            <p className="mt-3 flex items-start gap-1.5 text-[11.5px] leading-relaxed text-[var(--text-3)]">
+            <p className="mt-3 flex items-start gap-1.5 text-[12px] leading-relaxed text-[var(--text-3)]">
               <Icon name="info" size={13} className="mt-0.5 shrink-0" />
               {t("Tùy chọn này được lưu vào hồ sơ của bạn và áp dụng cho mọi trang.")}
             </p>
@@ -322,7 +322,7 @@ export function ProfileClient({ profile, employee, organizationName }: ProfilePa
               title={t("Bảo mật & quyền truy cập")}
               description={t("Quyền được quản lý phía máy chủ, không thể thay đổi từ trình duyệt.")}
             />
-            <ul className="mt-4 flex flex-col gap-2.5 text-[12.5px] text-[var(--text-2)]">
+            <ul className="mt-4 flex flex-col gap-2.5 text-[13px] text-[var(--text-2)]">
               {[
                 "Vai trò do quản trị viên cấp",
                 "Dữ liệu khuôn mặt chỉ dùng để chấm công",
@@ -337,8 +337,8 @@ export function ProfileClient({ profile, employee, organizationName }: ProfilePa
               ))}
             </ul>
             <div className="mt-4 rounded-[var(--radius-control)] border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-2.5">
-              <p className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-[var(--text-3)]">{t("Email đăng nhập")}</p>
-              <p className="mt-0.5 truncate text-[12.5px] font-semibold text-[var(--navy-800)]">{profile.email}</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--text-3)]">{t("Email đăng nhập")}</p>
+              <p className="mt-0.5 truncate text-[13px] font-semibold text-[var(--navy-800)]">{profile.email}</p>
             </div>
           </Card>
         </div>

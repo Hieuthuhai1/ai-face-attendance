@@ -30,7 +30,7 @@ const STATUS_CONFIG = {
     label: "Thành công",
     icon: "check",
     tone: "success" as const,
-    color: "text-[var(--success)]",
+    color: "text-[var(--success-strong)]",
     bgColor: "bg-[var(--success-bg)]",
     borderColor: "border-[var(--success)]",
   },
@@ -38,7 +38,7 @@ const STATUS_CONFIG = {
     label: "Chờ rà soát",
     icon: "flag",
     tone: "warning" as const,
-    color: "text-[var(--warning)]",
+    color: "text-[var(--warning-strong)]",
     bgColor: "bg-[var(--warning-bg)]",
     borderColor: "border-[var(--warning)]",
   },
@@ -46,7 +46,7 @@ const STATUS_CONFIG = {
     label: "Phương thức thay thế",
     icon: "clock",
     tone: "info" as const,
-    color: "text-[var(--info)]",
+    color: "text-[var(--info-strong)]",
     bgColor: "bg-[var(--info-bg)]",
     borderColor: "border-[var(--info)]",
   },
@@ -100,7 +100,7 @@ export function AttendanceReceipt({
           </div>
           <div>
             <p className="text-xl font-bold tracking-[-0.02em] text-[var(--navy-900)] sm:text-2xl">{actionLabel} {config.label}</p>
-            <p className="text-[12.5px] text-[var(--text-2)]">
+            <p className="text-[13px] text-[var(--text-2)]">
               {dateStr} · {timeStr} · Giờ máy chủ
             </p>
           </div>
@@ -113,14 +113,14 @@ export function AttendanceReceipt({
       {/* Employee & Shift Info */}
       <div className="grid gap-4 md:grid-cols-2 mb-6">
         <div className={cn("rounded-xl p-4", config.bgColor)}>
-          <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">Nhân viên</p>
+          <p className="text-xs font-medium text-[var(--text-3)] uppercase tracking-wide mb-1">Nhân viên</p>
           <p className="text-lg font-semibold text-slate-900">{employeeName}</p>
-          <p className="text-sm text-slate-500">Mã: {employeeCode}</p>
+          <p className="text-sm text-[var(--text-3)]">Mã: {employeeCode}</p>
         </div>
         <div className={cn("rounded-xl p-4", config.bgColor)}>
-          <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">Ca làm việc</p>
+          <p className="text-xs font-medium text-[var(--text-3)] uppercase tracking-wide mb-1">Ca làm việc</p>
           <p className="text-lg font-semibold text-slate-900">{shiftName}</p>
-          <p className="text-sm text-slate-500">{shiftTime}</p>
+          <p className="text-sm text-[var(--text-3)]">{shiftTime}</p>
         </div>
       </div>
 
@@ -129,27 +129,27 @@ export function AttendanceReceipt({
         <div className="flex gap-3 mb-6">
           {hasLate && (
             <div className="flex-1 rounded-xl bg-[var(--warning-bg)] border border-[var(--warning)] p-4">
-              <div className="flex items-center gap-2 text-[var(--warning)]">
+              <div className="flex items-center gap-2 text-[var(--warning-strong)]">
                 <Icon name="clock" size={20} />
                 <span className="font-medium">Đi muộn</span>
               </div>
-              <p className="mt-1 text-2xl font-bold text-[var(--warning)]">{lateMinutes} phút</p>
+              <p className="mt-1 text-2xl font-bold text-[var(--warning-strong)]">{lateMinutes} phút</p>
             </div>
           )}
           {hasEarly && (
             <div className="flex-1 rounded-xl bg-[var(--info-bg)] border border-[var(--info)] p-4">
-              <div className="flex items-center gap-2 text-[var(--info)]">
+              <div className="flex items-center gap-2 text-[var(--info-strong)]">
                 <Icon name="clock" size={20} />
                 <span className="font-medium">Về sớm</span>
               </div>
-              <p className="mt-1 text-2xl font-bold text-[var(--info)]">{earlyMinutes} phút</p>
+              <p className="mt-1 text-2xl font-bold text-[var(--info-strong)]">{earlyMinutes} phút</p>
             </div>
           )}
         </div>
       ) : (
         <div className="flex items-center justify-center gap-2 mb-6 p-4 rounded-xl bg-[var(--success-bg)] border border-[var(--success)]">
-          <Icon name="check" size={20} className="text-[var(--success)]" />
-          <span className="font-medium text-[var(--success)]">
+          <Icon name="check" size={20} className="text-[var(--success-strong)]" />
+          <span className="font-medium text-[var(--success-strong)]">
             {isCheckIn ? "Đúng giờ - Không đi muộn" : "Đủ giờ - Không về sớm"}
           </span>
         </div>
@@ -157,10 +157,10 @@ export function AttendanceReceipt({
 
       {/* Method & Verification Details */}
       <div className="rounded-xl border border-slate-200 bg-white p-4 mb-6">
-        <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-3">Chi tiết xác minh</p>
+        <p className="text-xs font-medium text-[var(--text-3)] uppercase tracking-wide mb-3">Chi tiết xác minh</p>
         <div className="grid gap-2 sm:grid-cols-2">
           <div>
-            <p className="text-xs text-slate-500">Phương thức</p>
+            <p className="text-xs text-[var(--text-3)]">Phương thức</p>
             <p className="flex items-center gap-1 font-medium text-slate-900">
               <Icon name={METHOD_ICONS[method]} size={14} />
               {METHOD_LABELS[method]}
@@ -168,7 +168,7 @@ export function AttendanceReceipt({
           </div>
           {confidence !== null && confidence !== undefined && (
             <div>
-              <p className="text-xs text-slate-500">Độ khớp (confidence)</p>
+              <p className="text-xs text-[var(--text-3)]">Độ khớp (confidence)</p>
               <p className="font-mono font-semibold text-lg text-slate-900">
                 {(confidence * 100).toFixed(1)}%
               </p>
@@ -176,15 +176,15 @@ export function AttendanceReceipt({
           )}
           {livenessStatus && (
             <div>
-              <p className="text-xs text-slate-500">Liveness</p>
-              <p className={cn("font-medium capitalize", livenessStatus === "pass" ? "text-[var(--success)]" : livenessStatus === "fail" ? "text-[var(--danger)]" : "text-slate-600")}>
+              <p className="text-xs text-[var(--text-3)]">Liveness</p>
+              <p className={cn("font-medium capitalize", livenessStatus === "pass" ? "text-[var(--success-strong)]" : livenessStatus === "fail" ? "text-[var(--danger-strong)]" : "text-slate-600")}>
                 {livenessStatus}
               </p>
             </div>
           )}
           {verificationRef && (
             <div>
-              <p className="text-xs text-slate-500">Mã tham chiếu</p>
+              <p className="text-xs text-[var(--text-3)]">Mã tham chiếu</p>
               <p className="font-mono text-xs text-slate-600 truncate">{verificationRef}</p>
             </div>
           )}
@@ -209,7 +209,7 @@ export function AttendanceReceipt({
       </div>
 
       {/* Timestamp footer */}
-      <p className="mt-4 text-center text-xs text-slate-400 font-mono">
+      <p className="mt-4 text-center text-xs text-[var(--text-3)] font-mono">
         Bản ghi được tạo lúc {formatTimeInZone(occurredAt, undefined, true)} · Giờ do máy chủ ghi nhận
       </p>
     </div>

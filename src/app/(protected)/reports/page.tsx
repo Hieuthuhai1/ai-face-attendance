@@ -87,7 +87,7 @@ async function ReportsData({ searchParams }: { searchParams: Promise<Record<stri
   return (
     <div className="flex flex-col gap-4">
       {/* KPI Cards */}
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8">
+      <div className="grid gap-2.5 sm:grid-cols-2 sm:gap-3 lg:grid-cols-4 xl:grid-cols-8">
         {analytics.kpis.map((kpi) => (
           <KPICard key={kpi.label} kpi={kpi} />
         ))}
@@ -305,23 +305,23 @@ function ReportActionLink({ href }: { href: string }) {
 
 function KPICard({ kpi }: { kpi: KPIData }) {
   const trendColor = kpi.label.includes("Đi muộn") || kpi.label.includes("Vắng") || kpi.label.includes("Về sớm")
-    ? (kpi.trend === "up" ? "text-[var(--danger)]" : "text-[var(--success)]")
-    : (kpi.trend === "up" ? "text-[var(--success)]" : "text-[var(--danger)]");
+    ? (kpi.trend === "up" ? "text-[var(--danger-strong)]" : "text-[var(--success-strong)]")
+    : (kpi.trend === "up" ? "text-[var(--success-strong)]" : "text-[var(--danger-strong)]");
 
   return (
-    <Card className="relative overflow-hidden">
+    <Card className="relative overflow-hidden p-3.5 sm:p-4">
       <div className="absolute top-0 right-0 h-full w-1 bg-[var(--brand)]" />
-      <div className="p-4">
-        <p className="text-sm text-slate-500">{kpi.label}</p>
-        <p className="mt-1 text-3xl font-bold text-slate-900">{kpi.value.toLocaleString("vi-VN")}</p>
-        {kpi.change !== undefined && kpi.change !== 0 && (
-          <p className={["mt-1 flex items-center gap-1 text-xs font-bold", trendColor].join(" ")}>
-            <Icon name={kpi.trend === "up" ? "chevron-up" : kpi.trend === "down" ? "chevron-down" : "minus"} size={12} />
-            <span>{kpi.change > 0 ? "+" : ""}{kpi.change}%</span>
-            <span className="text-slate-400">vs hôm qua</span>
-          </p>
-        )}
+      <div className="flex items-baseline justify-between gap-3 sm:block">
+        <p className="text-[13px] text-slate-500">{kpi.label}</p>
+        <p className="text-2xl font-bold text-slate-900 sm:mt-1 sm:text-3xl">{kpi.value.toLocaleString("vi-VN")}</p>
       </div>
+      {kpi.change !== undefined && kpi.change !== 0 && (
+        <p className={["mt-1 flex items-center gap-1 text-xs font-bold", trendColor].join(" ")}>
+          <Icon name={kpi.trend === "up" ? "chevron-up" : kpi.trend === "down" ? "chevron-down" : "minus"} size={12} />
+          <span>{kpi.change > 0 ? "+" : ""}{kpi.change}%</span>
+          <span className="text-[var(--text-3)]">vs hôm qua</span>
+        </p>
+      )}
     </Card>
   );
 }
@@ -348,10 +348,10 @@ async function DepartmentSummaryTable({ filters }: { filters: ReportFilters }) {
             columns={[
               { key: "dept", header: "Phòng ban", render: (r) => <span className="font-medium">{r.department}</span> },
               { key: "total", header: "Tổng NV", render: (r) => <span className="tnum">{r.total_employees}</span> },
-              { key: "present", header: "Đúng giờ", render: (r) => <span className="tnum text-[var(--success)]">{r.present}</span> },
+              { key: "present", header: "Đúng giờ", render: (r) => <span className="tnum text-[var(--success-strong)]">{r.present}</span> },
               { key: "late", header: "Trễ", render: (r) => <span className="tnum text-[var(--warning)]">{r.late}</span> },
-              { key: "early", header: "Về sớm", render: (r) => <span className="tnum text-[var(--danger)]">{r.early_leave}</span> },
-              { key: "absent", header: "Vắng", render: (r) => <span className="tnum text-[var(--danger)]">{r.absent}</span> },
+              { key: "early", header: "Về sớm", render: (r) => <span className="tnum text-[var(--danger-strong)]">{r.early_leave}</span> },
+              { key: "absent", header: "Vắng", render: (r) => <span className="tnum text-[var(--danger-strong)]">{r.absent}</span> },
               { key: "incomplete", header: "Chưa xong", render: (r) => <span className="tnum">{r.incomplete}</span> },
               { key: "avg", header: "TB làm/ngày", render: (r) => <span className="tnum">{Math.round(r.avg_work_min / 60 * 10) / 10}h</span> },
               { key: "ot", header: "Tổng OT", render: (r) => <span className="tnum text-[var(--info)]">{Math.round(r.total_overtime_min / 60 * 10) / 10}h</span> },
@@ -392,7 +392,7 @@ async function LateEarlyTable({ filters }: { filters: ReportFilters }) {
               { key: "dept", header: "Phòng ban", render: (r) => r.department },
               { key: "shift", header: "Ca", render: (r) => r.shift },
               { key: "late", header: "Trễ (phút)", render: (r) => r.late_min > 0 ? <span className="tnum text-[var(--warning)] font-medium">{r.late_min}</span> : "—" },
-              { key: "early", header: "Về sớm (phút)", render: (r) => r.early_leave_min > 0 ? <span className="tnum text-[var(--danger)] font-medium">{r.early_leave_min}</span> : "—" },
+              { key: "early", header: "Về sớm (phút)", render: (r) => r.early_leave_min > 0 ? <span className="tnum text-[var(--danger-strong)] font-medium">{r.early_leave_min}</span> : "—" },
               { key: "status", header: "Trạng thái", render: (r) => <StatusIndicator status={STATUS_MAP[r.status] ?? "idle"} /> },
             ]}
             cardTitle={(r) => `${r.employee_code} — ${r.display_name}`}

@@ -54,7 +54,7 @@ export function CardHeader({
         <CardTitle>{title}</CardTitle>
         {description ? <CardDescription>{description}</CardDescription> : null}
       </div>
-      {action ? <div className="shrink-0">{action}</div> : null}
+      {action ? <div className="min-w-0 max-w-full shrink-0">{action}</div> : null}
     </div>
   );
 }

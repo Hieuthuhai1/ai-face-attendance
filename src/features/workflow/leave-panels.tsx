@@ -130,7 +130,7 @@ export function LeaveForm() {
           </p>
         ) : null}
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--border)] pt-4">
-          <p className="flex items-center gap-1.5 text-[11.5px] text-[var(--text-3)]">
+          <p className="flex items-center gap-1.5 text-[12px] text-[var(--text-3)]">
             <Icon name="info" size={13} /> Ngày nghỉ không tự xóa công đã ghi.
           </p>
           <Button type="submit" loading={saving}>
@@ -239,7 +239,7 @@ export function LeaveList({ rows, reviewable }: { rows: LeaveRow[]; reviewable: 
         cardTitle={(r) => `${leaveTypeLabel(r.leave_type)} · ${r.start_date}`}
         cardStatus={(r) => leaveBadge(r.status)}
         cardMeta={(r) => (
-          <span className="flex flex-col gap-1 text-[12.5px] text-[var(--text-2)]">
+          <span className="flex flex-col gap-1 text-[13px] text-[var(--text-2)]">
             <span className="tnum">{r.start_date} → {r.end_date}</span>
             {reviewable && r.employee_code ? <span>Nhân viên: {r.employee_code}</span> : null}
             {r.reason ? <span>Lý do: {r.reason}</span> : null}
@@ -271,7 +271,7 @@ export function LeaveList({ rows, reviewable }: { rows: LeaveRow[]; reviewable: 
         }
       >
         <form id="review-leave-form" onSubmit={onConfirm} className="flex flex-col gap-4">
-          <div className="rounded-[var(--radius-control)] border border-[var(--border)] bg-[var(--surface-muted)] px-3.5 py-3 text-[12.5px] text-[var(--text-2)]">
+          <div className="rounded-[var(--radius-control)] border border-[var(--border)] bg-[var(--surface-muted)] px-3.5 py-3 text-[13px] text-[var(--text-2)]">
             <p className="font-semibold text-[var(--navy-800)]">
               {target?.row.employee_code ?? "—"} · {target ? leaveTypeLabel(target.row.leave_type) : ""}
             </p>

@@ -50,8 +50,9 @@ export function DataTable<T>(props: DataTableProps<T>) {
 
   return (
     <>
-      {/* Desktop */}
-      <div className="hidden overflow-x-auto rounded-[var(--radius-card)] border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow-card)] md:block">
+      {/* Desktop — chỉ hiển thị khi đủ chỗ (≥1280px) để bảng không bị cắt cột;
+          dưới ngưỡng này dùng danh sách card dễ đọc hơn. */}
+      <div className="relative hidden overflow-x-auto rounded-[var(--radius-card)] border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow-card)] xl:block">
         <table aria-label={ariaLabel} className="w-full text-left text-sm">
           <thead>
             <tr>
@@ -77,7 +78,7 @@ export function DataTable<T>(props: DataTableProps<T>) {
       </div>
 
       {/* Mobile: mỗi dòng thành 1 card */}
-      <div className="flex flex-col gap-2.5 md:hidden">
+      <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:hidden">
         {rows.map((row, i) => (
           <article
             key={keyOf(row, i)}

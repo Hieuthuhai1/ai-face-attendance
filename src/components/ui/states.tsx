@@ -42,7 +42,7 @@ export function EmptyState({
         {title}
       </p>
       {description ? (
-        <p className="max-w-sm text-[12.5px] leading-relaxed text-[var(--text-2)]">{description}</p>
+        <p className="max-w-sm text-[13px] leading-relaxed text-[var(--text-2)]">{description}</p>
       ) : null}
       {action ? <div className="mt-2">{action}</div> : null}
     </div>

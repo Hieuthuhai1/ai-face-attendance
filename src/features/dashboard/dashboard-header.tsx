@@ -43,7 +43,7 @@ export function DashboardHeader({
   return (
     <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
       <div className="min-w-0">
-        <p className="flex items-center gap-1.5 text-[12.5px] font-semibold text-[var(--brand)]">
+        <p className="flex items-center gap-1.5 text-[13px] font-semibold text-[var(--brand)]">
           <Icon name="sparkles" size={14} />
           <span className="truncate">
             {greetingForNow(now)}, {name}

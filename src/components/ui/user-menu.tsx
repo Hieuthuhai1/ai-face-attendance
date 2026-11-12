@@ -93,7 +93,7 @@ export function UserMenu({
             <p className="truncate text-xs text-[var(--text-2)]">{user.email}</p>
           </div>
         </div>
-        <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-[var(--brand-soft)] px-2 py-0.5 text-[10px] font-semibold text-[var(--brand-strong)] ring-1 ring-inset ring-blue-200">
+        <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-[var(--brand-soft)] px-2 py-0.5 text-[11px] font-semibold text-[var(--brand-strong)] ring-1 ring-inset ring-blue-200">
           {ROLE_LABELS[user.role] ?? user.role}
         </span>
       </div>
@@ -169,7 +169,7 @@ export function UserMenuWithSubmenu({
       <div className="border-b border-[var(--border)] px-3 pb-2.5 pt-2">
         <p className="truncate text-sm font-semibold text-[var(--navy-800)]">{user.displayName}</p>
         <p className="truncate text-xs text-[var(--text-2)]">{user.email}</p>
-        <span className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-[var(--brand-soft)] px-2 py-0.5 text-[10px] font-semibold text-[var(--brand-strong)]">
+        <span className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-[var(--brand-soft)] px-2 py-0.5 text-[11px] font-semibold text-[var(--brand-strong)]">
           {ROLE_LABELS[user.role] ?? user.role}
         </span>
       </div>
@@ -294,7 +294,7 @@ export function NotificationBell({
       <div className="flex items-center justify-between border-b border-[var(--border)] px-3 pb-2.5 pt-2">
         <h3 className="text-sm font-semibold text-[var(--navy-800)]">Thông báo</h3>
         {unreadCount > 0 ? (
-          <span className="rounded-full bg-[var(--brand-soft)] px-2 py-0.5 text-[10px] font-semibold text-[var(--brand-strong)]">
+          <span className="rounded-full bg-[var(--brand-soft)] px-2 py-0.5 text-[11px] font-semibold text-[var(--brand-strong)]">
             {unreadCount} mới
           </span>
         ) : null}
@@ -337,7 +337,7 @@ export function NotificationBell({
                   {notification.title}
                 </span>
                 <span className="mt-0.5 line-clamp-2 block text-xs text-[var(--text-2)]">{notification.message}</span>
-                <span className="mt-1 block text-[10px] text-[var(--text-3)]">
+                <span className="mt-1 block text-[11px] text-[var(--text-3)]">
                   {notification.time.toLocaleString("vi-VN")}
                 </span>
               </span>

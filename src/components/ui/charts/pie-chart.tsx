@@ -288,7 +288,7 @@ export function SimplePieChart({
   if (computedTotal === 0) {
     return (
       <div className={cn("flex items-center justify-center", className)} style={{ width: size, height: size }}>
-        <div className="text-center text-slate-400">
+        <div className="text-center text-[var(--text-3)]">
           <p className="text-xs">Không có dữ liệu</p>
         </div>
       </div>

@@ -163,20 +163,20 @@ export function ApprovalCenter({ rows: rowsProp = [] }: { rows?: ApprovalRow[] }
       {/* Stats */}
       <div className="grid gap-3 sm:grid-cols-4">
         <Card className="border-[var(--warning)] bg-[var(--warning-bg)]">
-          <p className="text-2xl font-bold text-[var(--warning)]">{pendingRows.length}</p>
-          <p className="text-sm text-slate-500">Chờ duyệt</p>
+          <p className="text-2xl font-bold text-[var(--warning-strong)]">{pendingRows.length}</p>
+          <p className="text-sm text-[var(--text-2)]">Chờ duyệt</p>
         </Card>
         <Card className="border-[var(--success)] bg-[var(--success-bg)]">
-          <p className="text-2xl font-bold text-[var(--success)]">{filteredRows.filter((r) => r.status === "approved").length}</p>
-          <p className="text-sm text-slate-500">Đã duyệt</p>
+          <p className="text-2xl font-bold text-[var(--success-strong)]">{filteredRows.filter((r) => r.status === "approved").length}</p>
+          <p className="text-sm text-[var(--text-2)]">Đã duyệt</p>
         </Card>
         <Card className="border-[var(--danger)] bg-[var(--danger-bg)]">
-          <p className="text-2xl font-bold text-[var(--danger)]">{filteredRows.filter((r) => r.status === "rejected").length}</p>
-          <p className="text-sm text-slate-500">Từ chối</p>
+          <p className="text-2xl font-bold text-[var(--danger-strong)]">{filteredRows.filter((r) => r.status === "rejected").length}</p>
+          <p className="text-sm text-[var(--text-2)]">Từ chối</p>
         </Card>
         <Card>
           <p className="text-2xl font-bold">{filteredRows.length}</p>
-          <p className="text-sm text-slate-500">Tổng (theo bộ lọc)</p>
+          <p className="text-sm text-[var(--text-2)]">Tổng (theo bộ lọc)</p>
         </Card>
       </div>
 

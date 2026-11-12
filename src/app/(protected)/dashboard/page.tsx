@@ -544,8 +544,8 @@ function DashboardView({
                         aria-current={active ? "true" : undefined}
                         className={
                           active
-                            ? "inline-flex h-7 items-center rounded-full bg-white px-3 text-xs font-semibold text-[var(--navy-800)] shadow-sm"
-                            : "inline-flex h-7 items-center rounded-full px-3 text-xs font-medium text-[var(--text-2)] transition-colors hover:text-[var(--navy-800)]"
+                            ? "inline-flex h-8 items-center rounded-full bg-white px-3.5 text-xs font-semibold text-[var(--navy-800)] shadow-sm"
+                            : "inline-flex h-8 items-center rounded-full px-3.5 text-xs font-medium text-[var(--text-2)] transition-colors hover:text-[var(--navy-800)]"
                         }
                       >
                         {option === "week" ? "Tuần" : "Tháng"}
@@ -841,7 +841,7 @@ function DashboardView({
                   key: "actions",
                   header: <span className="sr-only">Thao tác</span>,
                   render: (exception) => (
-                    <Link href={exception.href}>
+                    <Link href={exception.href} className="inline-flex">
                       <Button variant="ghost" size="sm">
                         Xem
                       </Button>
@@ -904,11 +904,11 @@ function MiniStat({
 }) {
   const toneClass =
     tone === "success"
-      ? "text-[var(--success)]"
+      ? "text-[var(--success-strong)]"
       : tone === "warning"
-        ? "text-[var(--warning)]"
+        ? "text-[var(--warning-strong)]"
         : tone === "danger"
-          ? "text-[var(--danger)]"
+          ? "text-[var(--danger-strong)]"
           : "text-[var(--navy-800)]";
   return (
     <div>

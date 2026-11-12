@@ -62,6 +62,28 @@ export function formatDateTimeInZone(value: DateInput, timeZone: string = APP_TZ
 }
 
 /**
+ * Định dạng chuỗi ngày thuần `YYYY-MM-DD` (work_date, hired_at) → `dd/mm/yyyy`.
+ * Không dùng `new Date()` để tránh lệch ngày khi server chạy UTC.
+ */
+export function formatDateOnly(value: string | null | undefined): string {
+  if (!value) return "—";
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(value);
+  if (!m) return "—";
+  return `${m[3]}/${m[2]}/${m[1]}`;
+}
+
+/**
+ * Tổng thời gian làm việc từ số phút → `8h32` (ngắn, dùng trong bảng).
+ * Giá trị âm/không hợp lệ trả về `0h00`.
+ */
+export function formatDurationMinutes(minutes: number | null | undefined): string {
+  const total = minutes == null || !Number.isFinite(minutes) ? 0 : Math.max(0, Math.round(minutes));
+  const h = Math.floor(total / 60);
+  const m = total % 60;
+  return `${h}h${String(m).padStart(2, "0")}`;
+}
+
+/**
  * Ngày hôm nay (YYYY-MM-DD) theo múi giờ ứng dụng.
  * Server chạy UTC nên `new Date().toISOString().slice(0, 10)` sẽ lệch ngày
  * trong khoảng 00:00–07:00 giờ Việt Nam — dùng helper này cho `work_date`.

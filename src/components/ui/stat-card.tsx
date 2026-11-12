@@ -63,7 +63,7 @@ export function StatCard({
           </p>
         </div>
         <span
-          className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-[var(--radius-icon)] ${toneClass.icon}`}
+          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--radius-icon)] sm:h-11 sm:w-11 ${toneClass.icon}`}
         >
           <Icon name={icon} size={21} />
         </span>
@@ -83,13 +83,17 @@ export function StatCard({
               {change}%
             </span>
           ) : null}
-          {hint ? <p className="min-w-0 flex-1 truncate text-xs text-[var(--text-3)]">{hint}</p> : null}
+          {hint ? (
+            <p title={hint} className="line-clamp-2 min-w-0 flex-1 text-xs leading-snug text-[var(--text-3)]">
+              {hint}
+            </p>
+          ) : null}
         </div>
       )}
     </div>
   );
   return (
-    <div className="group h-full rounded-[var(--radius-card)] border border-[var(--border)] bg-[var(--surface)] p-5 shadow-[var(--shadow-card)] transition-all duration-200 hover:-translate-y-1 hover:border-[var(--border-strong)] hover:shadow-[var(--shadow-card-hover)]">
+    <div className="group h-full rounded-[var(--radius-card)] border border-[var(--border)] bg-[var(--surface)] p-4 shadow-[var(--shadow-card)] transition-all duration-200 hover:-translate-y-1 hover:border-[var(--border-strong)] hover:shadow-[var(--shadow-card-hover)] sm:p-5">
       {href ? (
         <Link href={href} className="block h-full rounded-lg focus-visible:outline-none" aria-label={`${label}: ${value}`}>
           {body}

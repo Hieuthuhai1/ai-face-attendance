@@ -244,6 +244,42 @@ const PATHS: Record<string, React.ReactNode> = {
       <path d="M14.5 10h4M14.5 13.5h4" />
     </>
   ),
+  eye: (
+    <>
+      <path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z" />
+      <circle cx="12" cy="12" r="3" />
+    </>
+  ),
+  pencil: (
+    <>
+      <path d="M4 20h4L18.5 9.5a2.1 2.1 0 00-3-3L5 17v3z" />
+      <path d="M14.5 5.5l3 3" />
+    </>
+  ),
+  trash: (
+    <>
+      <path d="M4 7h16" />
+      <path d="M9.5 4h5" />
+      <path d="M6.5 7l1 13h9l1-13" />
+      <path d="M10 11v5.5M14 11v5.5" />
+    </>
+  ),
+  phone: (
+    <path d="M6.5 3.5h3l1.5 4-2 1.5a12 12 0 005 5l1.5-2 4 1.5v3a2 2 0 01-2 2A16.5 16.5 0 014.5 5.5a2 2 0 012-2z" />
+  ),
+  mail: (
+    <>
+      <rect x="3" y="5" width="18" height="14" rx="2" />
+      <path d="M3.5 7l8.5 6 8.5-6" />
+    </>
+  ),
+  briefcase: (
+    <>
+      <rect x="3" y="7" width="18" height="13" rx="2" />
+      <path d="M8.5 7V5.5a2 2 0 012-2h3a2 2 0 012 2V7" />
+      <path d="M3 12h18" />
+    </>
+  ),
 };
 
 export type IconName = keyof typeof PATHS;

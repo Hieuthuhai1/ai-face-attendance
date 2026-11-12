@@ -1,50 +1,87 @@
 import { Suspense } from "react";
+import { PageHeader } from "@/components/app/app-shell";
 import { requireRole } from "@/server/auth";
-import { getAttendanceRecords, type AttendanceRecord } from "@/features/attendance/actions";
-import { Card } from "@/components/ui/card";
-import { DataTable } from "@/components/ui/data-table";
-import { ErrorState, LoadingState } from "@/components/ui/states";
-import { formatTimeInZone } from "@/lib/datetime";
+import {
+  getAttendanceDailyRecords,
+  type AttendanceDailyRecord,
+  type AttendanceDailyStatus,
+} from "@/features/attendance/actions";
+import { AttendanceFilters } from "@/features/attendance/attendance-filters";
+import { AttendancePagination } from "@/features/attendance/attendance-pagination";
 import { Badge } from "@/components/ui/badge";
-import { Icon } from "@/components/ui/icon";
+import { DataTable } from "@/components/ui/data-table";
+import { Icon, type IconName } from "@/components/ui/icon";
+import { ErrorState, LoadingState } from "@/components/ui/states";
+import { formatDateOnly, formatDurationMinutes, formatTimeInZone } from "@/lib/datetime";
 
 const PAGE_SIZE = 20;
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const MONTH_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-const STATUS_LABELS: Record<string, string> = {
-  success: "Thành công",
-  pending_review: "Chờ xét duyệt",
-  failed: "Thất bại",
-  fallback: "Phương thức thay thế",
+const STATUS_LABELS: Record<AttendanceDailyStatus, string> = {
+  present: "Đúng giờ",
+  late: "Đi muộn",
+  early_leave: "Về sớm",
+  absent: "Vắng mặt",
+  incomplete: "Chưa hoàn tất",
 };
 
-const STATUS_TONE: Record<string, "success" | "warning" | "danger" | "neutral"> = {
-  success: "success",
-  pending_review: "warning",
-  failed: "danger",
-  fallback: "neutral",
+const STATUS_TONE: Record<
+  AttendanceDailyStatus,
+  "success" | "warning" | "info" | "danger" | "neutral"
+> = {
+  present: "success",
+  late: "warning",
+  early_leave: "info",
+  absent: "danger",
+  incomplete: "neutral",
 };
 
-const METHOD_LABELS: Record<string, string> = {
+const STATUS_ICON: Record<AttendanceDailyStatus, IconName> = {
+  present: "check",
+  late: "alert",
+  early_leave: "clock",
+  absent: "x",
+  incomplete: "clock",
+};
+
+type MethodKey = NonNullable<AttendanceDailyRecord["method"]>;
+
+const METHOD_LABELS: Record<MethodKey, string> = {
   face: "Khuôn mặt",
   pin_fallback: "PIN thay thế",
   manual: "Nhập thủ công",
+  mixed: "Kết hợp",
 };
+
+const METHOD_ICONS: Record<MethodKey, IconName> = {
+  face: "scan-face",
+  pin_fallback: "key",
+  manual: "file-text",
+  mixed: "sparkles",
+};
+
+interface AttendanceSearchParams {
+  date?: string;
+  month?: string;
+  employee_id?: string;
+  department_id?: string;
+  status?: string;
+  page?: string;
+}
 
 export default function AttendancePage({
   searchParams,
 }: {
-  searchParams: Promise<{
-    date?: string;
-    month?: string;
-    employee_id?: string;
-    department_id?: string;
-    status?: string;
-    page?: string;
-  }>;
+  searchParams: Promise<AttendanceSearchParams>;
 }) {
   return (
-    <main className="page-shell flex flex-col gap-4">
-      <h1 className="text-2xl font-bold">Quản lý chấm công</h1>
+    <main className="page-shell flex flex-col gap-6">
+      <PageHeader
+        title="Quản lý chấm công"
+        description="Theo dõi giờ vào/ra, tổng thời gian làm việc và trạng thái chấm công theo từng nhân viên, từng ngày."
+      />
       <Suspense fallback={<LoadingState message="Đang tải bảng chấm công…" />}>
         <AttendanceData searchParams={searchParams} />
       </Suspense>
@@ -55,211 +92,233 @@ export default function AttendancePage({
 async function AttendanceData({
   searchParams,
 }: {
-  searchParams: Promise<{
-    date?: string;
-    month?: string;
-    employee_id?: string;
-    department_id?: string;
-    status?: string;
-    page?: string;
-  }>;
+  searchParams: Promise<AttendanceSearchParams>;
 }) {
   await requireRole(["manager", "hr_admin", "system_admin"]);
+
   const params = await searchParams;
   const page = Math.max(1, Number(params.page ?? "1") || 1);
 
-  const filters = {
-    date: params.date ?? undefined,
-    month: params.month ?? undefined,
-    employee_id: params.employee_id ?? undefined,
-    department_id: params.department_id ?? undefined,
-    status: params.status ?? undefined,
-  };
+  const date = DATE_RE.test(params.date ?? "") ? (params.date as string) : "";
+  const month = !date && MONTH_RE.test(params.month ?? "") ? (params.month as string) : "";
+  const employeeId = UUID_RE.test(params.employee_id ?? "") ? (params.employee_id as string) : "";
+  const departmentId = UUID_RE.test(params.department_id ?? "")
+    ? (params.department_id as string)
+    : "";
+  const status =
+    params.status && Object.prototype.hasOwnProperty.call(STATUS_LABELS, params.status)
+      ? (params.status as AttendanceDailyStatus)
+      : "";
 
-  const { ok, records, total } = await getAttendanceRecords(filters, page, PAGE_SIZE);
-  const totalPages = Math.max(1, Math.ceil((total ?? 0) / PAGE_SIZE));
+  const hasFilters = Boolean(date || month || employeeId || departmentId || status);
+
+  const { ok, records, total, message, employees, departments } = await getAttendanceDailyRecords(
+    {
+      date: date || undefined,
+      month: month || undefined,
+      employee_id: employeeId || undefined,
+      department_id: departmentId || undefined,
+      status: status || undefined,
+    },
+    page,
+    PAGE_SIZE,
+  );
 
   if (!ok) {
     return (
-      <div className="flex flex-col gap-4">
-        <ErrorState title="Không tải được dữ liệu" description="Lỗi khi tải bảng chấm công." />
-      </div>
+      <ErrorState
+        title="Không tải được bảng chấm công"
+        description={message ?? "Vui lòng thử lại sau."}
+      />
     );
   }
 
-  const rows: AttendanceRecord[] = (records ?? []).map((r) => r);
+  const rows = records ?? [];
+  const totalCount = total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
+
+  const baseParams: Record<string, string> = {};
+  if (date) baseParams.date = date;
+  if (month) baseParams.month = month;
+  if (employeeId) baseParams.employee_id = employeeId;
+  if (departmentId) baseParams.department_id = departmentId;
+  if (status) baseParams.status = status;
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Bộ lọc */}
-      <Card>
-        <form method="get" className="flex flex-wrap items-end gap-3">
-          <div className="flex items-end gap-2">
-            <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
-              Ngày
-              <input
-                type="date"
-                name="date"
-                defaultValue={filters.date ?? ""}
-                className="h-10 rounded-lg border border-slate-300 px-3"
-              />
-            </label>
-            <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
-              Tháng
-              <input
-                type="month"
-                name="month"
-                defaultValue={filters.month ?? ""}
-                className="h-10 rounded-lg border border-slate-300 px-3"
-              />
-            </label>
-          </div>
-          <div className="flex items-end gap-2">
-            <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
-              Trạng thái
-              <select
-                name="status"
-                defaultValue={filters.status ?? ""}
-                className="h-10 rounded-lg border border-slate-300 px-3 font-normal"
-              >
-                <option value="">Tất cả trạng thái</option>
-                <option value="success">Thành công</option>
-                <option value="pending_review">Chờ xét duyệt</option>
-                <option value="failed">Thất bại</option>
-                <option value="fallback">Phương thức thay thế</option>
-              </select>
-            </label>
-            <button
-              type="submit"
-              className="inline-flex h-10 items-center rounded-lg bg-[var(--brand)] px-4 text-sm font-medium text-white"
-            >
-              Lọc
-            </button>
-            <a
-              href="?page=1"
-              className="inline-flex h-10 items-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700"
-            >
-              Đặt lại
-            </a>
-          </div>
-        </form>
-      </Card>
+      <AttendanceFilters
+        key={[date, month, employeeId, departmentId, status].join("|")}
+        date={date}
+        month={month}
+        employeeId={employeeId}
+        departmentId={departmentId}
+        status={status}
+        employees={employees ?? []}
+        departments={departments ?? []}
+      />
 
-      {/* Bảng dữ liệu */}
-      <Card>
-        <DataTable
-          ariaLabel="Bảng chấm công"
-          rows={rows}
-          keyOf={(r) => r.id}
-          emptyTitle="Chưa có bản ghi chấm công"
-          emptyDescription="Thử đổi bộ lọc hoặc thêm dữ liệu chấm công."
-          columns={[
-            {
-              key: "employee",
-              header: "Nhân viên",
-              render: (r) => (
-                <div className="min-w-0">
-                  <p className="font-medium text-slate-800 truncate">{r.display_name}</p>
-                  <p className="tnum text-[11px] text-slate-500 truncate">{r.employee_code}</p>
-                </div>
+      {hasFilters ? (
+        <p className="text-[13px] text-[var(--text-2)]">
+          Đang hiển thị <span className="font-semibold text-[var(--text-1)]">{totalCount}</span> bản
+          ghi phù hợp bộ lọc.
+        </p>
+      ) : null}
+
+      <DataTable
+        ariaLabel="Bảng chấm công theo ngày"
+        rows={rows}
+        keyOf={(row) => row.id}
+        emptyTitle={hasFilters ? "Không có bản ghi phù hợp" : "Chưa có dữ liệu chấm công"}
+        emptyDescription={
+          hasFilters
+            ? "Thử đổi ngày/tháng, nhân viên, phòng ban hoặc trạng thái."
+            : "Dữ liệu sẽ xuất hiện sau khi nhân viên chấm công."
+        }
+        columns={[
+          {
+            key: "employee",
+            header: "Nhân viên",
+            render: (row) => (
+              <div className="min-w-0">
+                <p className="truncate font-semibold text-[var(--navy-900)]">{row.display_name}</p>
+                <p className="tnum mt-0.5 truncate text-[12px] text-[var(--text-3)]">
+                  {row.employee_code} · {row.department_name}
+                </p>
+              </div>
+            ),
+          },
+          {
+            key: "date",
+            header: "Ngày chấm công",
+            render: (row) => (
+              <div className="min-w-0">
+                <p className="tnum whitespace-nowrap font-medium text-[var(--text-1)]">
+                  {formatDateOnly(row.work_date)}
+                </p>
+                <p className="truncate text-[12px] text-[var(--text-3)]">Ca: {row.shift_name}</p>
+              </div>
+            ),
+          },
+          {
+            key: "check_in",
+            header: "Giờ vào",
+            render: (row) => (
+              <span className="tnum whitespace-nowrap text-[13px] font-medium">
+                {row.first_in ? formatTimeInZone(row.first_in) : "—"}
+              </span>
+            ),
+          },
+          {
+            key: "check_out",
+            header: "Giờ ra",
+            render: (row) => (
+              <span className="tnum whitespace-nowrap text-[13px] font-medium">
+                {row.last_out ? formatTimeInZone(row.last_out) : "—"}
+              </span>
+            ),
+          },
+          {
+            key: "total",
+            header: "Tổng thời gian",
+            render: (row) => (
+              <span className="tnum whitespace-nowrap text-[13px] font-semibold text-[var(--navy-900)]">
+                {formatDurationMinutes(row.total_work_min)}
+              </span>
+            ),
+          },
+          {
+            key: "method",
+            header: "Phương thức",
+            render: (row) =>
+              row.method ? (
+                <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-[13px] text-[var(--text-1)]">
+                  <Icon name={METHOD_ICONS[row.method]} size={14} className="text-[var(--text-3)]" />
+                  {METHOD_LABELS[row.method]}
+                </span>
+              ) : (
+                <span className="whitespace-nowrap text-[12px] text-[var(--text-3)]">Chưa có dữ liệu</span>
               ),
-            },
-            {
-              key: "department",
-              header: "Phòng ban",
-              render: (r) => <span>{r.department_name}</span>,
-            },
-            {
-              key: "title",
-              header: "Chức vụ",
-              render: (r) => <span className="text-slate-600">{r.title || "—"}</span>,
-            },
-            {
-              key: "date",
-              header: "Ngày",
-              render: (r) => <span className="tnum">{r.occurred_at.slice(0, 10)}</span>,
-            },
-            {
-              key: "time",
-              header: "Vào – Ra",
-              render: (r) => {
-                const isIn = r.event_type === "check_in";
-                const label = isIn ? "Vào" : "Ra";
-                return (
-                  <span className="tnum text-sm font-medium text-slate-700">
-                    {label}
-                    {" "}
-                    {formatTimeInZone(r.occurred_at)}
-                  </span>
-                );
-              },
-            },
-            {
-              key: "method",
-              header: "Phương thức",
-              render: (r) => (
-                <span className="text-slate-600 text-sm">{METHOD_LABELS[r.method] || r.method}</span>
-              ),
-            },
-            {
-              key: "late",
-              header: "Trễ / Sớm",
-              render: (r) => {
-                if (r.late_min > 0) return <span className="tnum text-[var(--warning)]">Trễ {r.late_min}′</span>;
-                if (r.early_leave_min > 0)
-                  return <span className="tnum text-[var(--info)]">Sớm {r.early_leave_min}′</span>;
-                return <span className="tnum text-slate-400">—</span>;
-              },
-            },
-            {
-              key: "status",
-              header: "Trạng thái",
-              render: (r) => (
-                <Badge tone={STATUS_TONE[r.status] ?? "neutral"}>
-                  <Icon name={r.status === "success" ? "check" : "alert"} size={12} />
-                  {STATUS_LABELS[r.status]}
+          },
+          {
+            key: "status",
+            header: "Trạng thái",
+            render: (row) => (
+              <div className="flex flex-col items-start gap-0.5">
+                <Badge tone={STATUS_TONE[row.status]}>
+                  <Icon name={STATUS_ICON[row.status]} size={12} />
+                  {STATUS_LABELS[row.status]}
                 </Badge>
-              ),
-            },
-          ]}
-          cardTitle={(r) => `${r.display_name} · ${r.employee_code}`}
-          cardStatus={(r) => (
-            <Badge tone={STATUS_TONE[r.status] ?? "neutral"}>{STATUS_LABELS[r.status]}</Badge>
-          )}
-          cardMeta={(r) => (
-            <span className="tnum text-sm">
-              {r.department_name} · {r.occurred_at.slice(0, 10)} · {formatTimeInZone(r.occurred_at)}
-              {r.late_min > 0 ? ` · Trễ ${r.late_min}′` : r.early_leave_min > 0 ? ` · Sớm ${r.early_leave_min}′` : ""}
-            </span>
-          )}
-        />
-        {((total ?? 0) > 0) && (
-          <div className="mt-3 flex justify-between items-center">
-            <span className="text-sm text-slate-500">
-              {rows.length} / {(total ?? 0)} bản ghi
-            </span>
-            <div className="flex items-center gap-2">
-              {page > 1 && (
-                <a
-                  href={`?${new URLSearchParams({ ...Object.fromEntries(Object.entries(filters).filter(([, v]) => v)), page: String(page - 1) }).toString()}`}
-                  className="text-sm text-[var(--brand)] hover:underline"
-                >
-                  Trang trước
-                </a>
-              )}
-              <span className="text-sm text-slate-500">Trang {page} / {totalPages}</span>
-              {page < totalPages && (
-                <a
-                  href={`?${new URLSearchParams({ ...Object.fromEntries(Object.entries(filters).filter(([, v]) => v)), page: String(page + 1) }).toString()}`}
-                  className="text-sm text-[var(--brand)] hover:underline"
-                >
-                  Trang sau
-                </a>
-              )}
-            </div>
+                {row.late_min > 0 ? (
+                  <span className="tnum text-[11px] font-medium text-[var(--warning-strong)]">
+                    Trễ {row.late_min}′
+                  </span>
+                ) : null}
+                {row.early_leave_min > 0 ? (
+                  <span className="tnum text-[11px] font-medium text-[var(--info-strong)]">
+                    Sớm {row.early_leave_min}′
+                  </span>
+                ) : null}
+              </div>
+            ),
+          },
+        ]}
+        cardTitle={(row) => (
+          <div className="min-w-0">
+            <p className="truncate">{row.display_name}</p>
+            <p className="tnum mt-0.5 text-[11px] font-medium text-[var(--text-3)]">
+              {row.employee_code}
+            </p>
           </div>
         )}
-      </Card>
+        cardStatus={(row) => (
+          <Badge tone={STATUS_TONE[row.status]}>
+            <Icon name={STATUS_ICON[row.status]} size={12} />
+            {STATUS_LABELS[row.status]}
+          </Badge>
+        )}
+        cardMeta={(row) => (
+          <div className="grid gap-1 text-[13px]">
+            <span className="flex items-center gap-1.5">
+              <Icon name="calendar" size={13} className="text-[var(--text-3)]" />
+              {formatDateOnly(row.work_date)} · Ca {row.shift_name}
+            </span>
+            <span className="flex items-center gap-1.5">
+              <Icon name="clock" size={13} className="text-[var(--text-3)]" />
+              Vào {row.first_in ? formatTimeInZone(row.first_in) : "—"} · Ra{" "}
+              {row.last_out ? formatTimeInZone(row.last_out) : "—"}
+            </span>
+            <span className="flex items-center gap-1.5">
+              <Icon name="activity" size={13} className="text-[var(--text-3)]" />
+              Tổng {formatDurationMinutes(row.total_work_min)}
+              {row.late_min > 0 ? ` · Trễ ${row.late_min}′` : ""}
+              {row.early_leave_min > 0 ? ` · Sớm ${row.early_leave_min}′` : ""}
+            </span>
+            <span className="flex items-center gap-1.5">
+              <Icon
+                name={row.method ? METHOD_ICONS[row.method] : "scan-face"}
+                size={13}
+                className="text-[var(--text-3)]"
+              />
+              {row.method ? METHOD_LABELS[row.method] : "Chưa có phương thức"}
+            </span>
+            <span className="flex items-center gap-1.5">
+              <Icon name="building" size={13} className="text-[var(--text-3)]" />
+              {row.department_name}
+            </span>
+          </div>
+        )}
+      />
+
+      <div className="flex justify-end">
+        <AttendancePagination
+          page={page}
+          totalPages={totalPages}
+          total={totalCount}
+          label="bản ghi"
+          showPageSize={false}
+          baseParams={baseParams}
+        />
+      </div>
     </div>
   );
 }

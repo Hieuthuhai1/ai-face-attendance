@@ -92,7 +92,7 @@ async function AuditData({ searchParams }: { searchParams: Promise<{ action?: st
                 <dl className="grid max-w-64 grid-cols-[auto_1fr] gap-x-2 text-xs">
                   {parseMeta(r.metadata).map(([k, v]) => (
                     <div key={k} className="contents">
-                      <dt className="truncate text-slate-400">{k}</dt>
+                      <dt className="truncate text-[var(--text-3)]">{k}</dt>
                       <dd className="truncate text-slate-600" title={v}>{v}</dd>
                     </div>
                   ))}

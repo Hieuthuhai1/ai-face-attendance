@@ -139,7 +139,7 @@ export function ShiftManager(props: {
   return (
     <div className="flex flex-col gap-4">
       {error ? (
-        <div className="rounded-lg border border-[var(--danger)] bg-[var(--danger)]/10 px-3 py-2 text-sm text-[var(--danger)]" role="alert">
+        <div className="rounded-lg border border-[var(--danger)] bg-[var(--danger)]/10 px-3 py-2 text-sm text-[var(--danger-strong)]" role="alert">
           {error}
         </div>
       ) : null}
@@ -339,7 +339,7 @@ export function ShiftManager(props: {
             <Input label="Làm tròn (′)" type="number" min={1} max={60} value={shiftForm.rounding_min} onChange={(e) => setField("rounding_min", Number(e.target.value))} />
           </div>
           {error && (
-            <div className="rounded-lg border border-[var(--danger)] bg-[var(--danger)]/10 px-3 py-2 text-sm text-[var(--danger)]">{error}</div>
+            <div className="rounded-lg border border-[var(--danger)] bg-[var(--danger)]/10 px-3 py-2 text-sm text-[var(--danger-strong)]">{error}</div>
           )}
           <div className="flex justify-end gap-2 pt-4">
             <Button type="button" variant="secondary" onClick={() => setShiftOpen(false)}>

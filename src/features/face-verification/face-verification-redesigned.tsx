@@ -392,9 +392,9 @@ function FaceScanCameraInner({
                     : "bg-slate-400"
             }`}
           />
-          <span className="text-[11.5px] font-medium text-slate-200">{cameraMeta.label}</span>
+          <span className="text-[12px] font-medium text-slate-200">{cameraMeta.label}</span>
         </div>
-        <span className="flex items-center gap-1.5 text-[11.5px] text-slate-300">
+        <span className="flex items-center gap-1.5 text-[12px] text-slate-300">
           {isLoading ? (
             <>
               <Icon name="refresh" size={12} className="animate-spin" /> Đang tải AI…
@@ -744,14 +744,14 @@ export function FaceVerificationRedesigned(props: FaceVerificationRedesignedProp
             </p>
             <div className="mt-3 flex flex-wrap items-center gap-2">
               {shift ? (
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/[0.07] px-2.5 py-1 text-[11.5px] font-medium text-slate-200">
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/[0.07] px-2.5 py-1 text-[12px] font-medium text-slate-200">
                   <Icon name="clock" size={12} /> {shift.name} · {shift.start_time}–{shift.end_time}
                   {shift.overnight ? " (qua đêm)" : ""}
                 </span>
               ) : (
                 <Badge tone="warning">Hôm nay không có ca làm</Badge>
               )}
-              <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11.5px] font-medium ${
+              <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[12px] font-medium ${
                 status.canCheckOut
                   ? "border-emerald-300/25 bg-emerald-400/10 text-emerald-200"
                   : "border-sky-300/25 bg-sky-400/10 text-sky-200"
@@ -768,8 +768,8 @@ export function FaceVerificationRedesigned(props: FaceVerificationRedesignedProp
           </div>
           <div className="rounded-2xl border border-white/10 bg-white/[0.06] px-4 py-3 text-right backdrop-blur-sm lg:min-w-[190px]">
             <p className="tnum text-[30px] font-bold leading-none tracking-[-0.02em] text-white">{timeLabel}</p>
-            <p className="mt-1.5 text-[11.5px] capitalize text-slate-300">{dateLabel}</p>
-            <p className="mt-1 text-[10.5px] uppercase tracking-[0.12em] text-slate-400">Giờ Việt Nam</p>
+            <p className="mt-1.5 text-[12px] capitalize text-slate-300">{dateLabel}</p>
+            <p className="mt-1 text-[11px] uppercase tracking-[0.12em] text-[var(--text-3)]">Giờ Việt Nam</p>
           </div>
         </div>
       </div>
@@ -893,21 +893,21 @@ export function FaceVerificationRedesigned(props: FaceVerificationRedesignedProp
               {shift ? (
                 <dl className="mt-4 grid grid-cols-2 gap-3">
                   <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-2.5">
-                    <dt className="text-[10.5px] font-medium uppercase tracking-wide text-[var(--text-3)]">Tên ca</dt>
+                    <dt className="text-[11px] font-medium uppercase tracking-wide text-[var(--text-3)]">Tên ca</dt>
                     <dd className="mt-0.5 truncate text-[13px] font-semibold text-[var(--navy-800)]">{shift.name}</dd>
                   </div>
                   <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-2.5">
-                    <dt className="text-[10.5px] font-medium uppercase tracking-wide text-[var(--text-3)]">Thời gian</dt>
+                    <dt className="text-[11px] font-medium uppercase tracking-wide text-[var(--text-3)]">Thời gian</dt>
                     <dd className="tnum mt-0.5 text-[13px] font-semibold text-[var(--navy-800)]">
                       {shift.start_time}–{shift.end_time}{shift.overnight ? " · qua đêm" : ""}
                     </dd>
                   </div>
                   <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-2.5">
-                    <dt className="text-[10.5px] font-medium uppercase tracking-wide text-[var(--text-3)]">Lượt gần nhất</dt>
+                    <dt className="text-[11px] font-medium uppercase tracking-wide text-[var(--text-3)]">Lượt gần nhất</dt>
                     <dd className="mt-0.5 truncate text-[13px] font-semibold text-[var(--navy-800)]">{lastEventLabel}</dd>
                   </div>
                   <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-2.5">
-                    <dt className="text-[10.5px] font-medium uppercase tracking-wide text-[var(--text-3)]">Trạng thái</dt>
+                    <dt className="text-[11px] font-medium uppercase tracking-wide text-[var(--text-3)]">Trạng thái</dt>
                     <dd className="mt-0.5 text-[13px] font-semibold text-[var(--navy-800)]">
                       {status.canCheckOut ? "Đang trong ca" : status.canCheckIn ? "Sẵn sàng vào ca" : "Chờ ca kế tiếp"}
                     </dd>

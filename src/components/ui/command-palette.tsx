@@ -16,6 +16,17 @@ export interface CommandItem {
   action: () => void;
 }
 
+/** Chuẩn hoá chuỗi để tìm kiếm không phân biệt dấu: "báo cáo" ~ "bao cao". */
+function normalizeSearch(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/Đ/g, "D")
+    .toLowerCase()
+    .trim();
+}
+
 export interface CommandPaletteProps {
   /** Mở/đóng */
   open: boolean;
@@ -44,16 +55,15 @@ export function CommandPalette({
   const inputRef = useRef<HTMLInputElement>(null);
   const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
-  // Filter items based on search
+  // Filter items based on search.
+  // Bỏ dấu tiếng Việt để người dùng gõ "bao cao" vẫn ra "Báo cáo thống kê".
   const filteredItems = useMemo(() => {
     if (!search) return items;
-    const lowerSearch = search.toLowerCase();
-    return items.filter(
-      (item) =>
-        item.label.toLowerCase().includes(lowerSearch) ||
-        item.description?.toLowerCase().includes(lowerSearch) ||
-        item.shortcut?.toLowerCase().includes(lowerSearch) ||
-        item.group?.toLowerCase().includes(lowerSearch)
+    const needle = normalizeSearch(search);
+    return items.filter((item) =>
+      [item.label, item.description, item.shortcut, item.group].some((field) =>
+        field ? normalizeSearch(field).includes(needle) : false
+      )
     );
   }, [items, search]);
 
@@ -150,6 +160,13 @@ export function CommandPalette({
                 ref={inputRef}
                 id="command-input"
                 type="text"
+                role="combobox"
+                aria-expanded="true"
+                aria-controls="command-list"
+                aria-autocomplete="list"
+                aria-activedescendant={
+                  filteredItems[selectedIndex] ? `command-item-${filteredItems[selectedIndex].key}` : undefined
+                }
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder={placeholder}
@@ -157,16 +174,16 @@ export function CommandPalette({
                 autoComplete="off"
                 autoFocus
               />
-              <kbd className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md border border-[var(--border)] bg-white px-2 py-0.5 font-mono text-[10px] font-medium text-[var(--text-3)]">
+              <kbd className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md border border-[var(--border)] bg-white px-2 py-0.5 font-mono text-[11px] font-medium text-[var(--text-3)]">
                 ⌘K
               </kbd>
             </div>
           </div>
 
-          <div className="max-h-[60vh] overflow-y-auto scrollbar-slim p-2">
+          <div id="command-list" role="listbox" aria-label={title} className="max-h-[60vh] overflow-y-auto scrollbar-slim p-2">
             {Object.entries(groupedItems).map(([groupName, groupItems]) => (
               <div key={groupName} className="py-1">
-                <div className="px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--text-3)]">
+                <div className="px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--text-3)]">
                   {groupName}
                 </div>
                 {groupItems.map((item) => {
@@ -176,6 +193,9 @@ export function CommandPalette({
                   return (
                     <button
                       key={item.key}
+                      id={`command-item-${item.key}`}
+                      role="option"
+                      aria-selected={isSelected}
                       ref={(el) => {
                         itemRefs.current[globalIndex] = el;
                       }}
@@ -213,7 +233,7 @@ export function CommandPalette({
                         </span>
                       )}
                       <div className="min-w-0 flex-1">
-                        <p className={cn("truncate text-[13.5px] font-semibold", isSelected ? "text-[var(--brand-strong)]" : "text-[var(--text-1)]")}>
+                        <p className={cn("truncate text-[14px] font-semibold", isSelected ? "text-[var(--brand-strong)]" : "text-[var(--text-1)]")}>
                           {item.label}
                         </p>
                         {item.description && (
@@ -221,7 +241,7 @@ export function CommandPalette({
                         )}
                       </div>
                       {item.shortcut && (
-                        <kbd className="shrink-0 rounded-md border border-[var(--border)] bg-white px-2 py-0.5 font-mono text-[10px] text-[var(--text-3)]">
+                        <kbd className="shrink-0 rounded-md border border-[var(--border)] bg-white px-2 py-0.5 font-mono text-[11px] text-[var(--text-3)]">
                           {item.shortcut}
                         </kbd>
                       )}
@@ -241,10 +261,10 @@ export function CommandPalette({
           </div>
 
           <div className="flex items-center justify-center gap-1.5 border-t border-[var(--border)] bg-[var(--surface-muted)] px-3 py-2.5 text-xs text-[var(--text-3)]">
-            <kbd className="rounded border border-[var(--border)] bg-white px-1.5 py-0.5 font-mono text-[10px]">Esc</kbd>
+            <kbd className="rounded border border-[var(--border)] bg-white px-1.5 py-0.5 font-mono text-[11px]">Esc</kbd>
             <span>để đóng</span>
             <span aria-hidden="true">·</span>
-            <kbd className="rounded border border-[var(--border)] bg-white px-1.5 py-0.5 font-mono text-[10px]">↑ ↓</kbd>
+            <kbd className="rounded border border-[var(--border)] bg-white px-1.5 py-0.5 font-mono text-[11px]">↑ ↓</kbd>
             <span>di chuyển</span>
           </div>
         </div>
@@ -316,7 +336,7 @@ export function ShortcutsHelp({ open, onClose, shortcuts, title = "Phím tắt" 
           <div className="flex-1 overflow-y-auto scrollbar-slim p-5">
             {Object.entries(grouped).map(([category, items]) => (
               <div key={category} className="mb-6 last:mb-0">
-                <h3 className="mb-2.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--text-3)]">{category}</h3>
+                <h3 className="mb-2.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--text-3)]">{category}</h3>
                 <div className="space-y-1">
                   {items.map((item) => (
                     <div key={item.key} className="flex items-center justify-between gap-4 rounded-lg px-3 py-2 hover:bg-[var(--surface-muted)]">
@@ -332,7 +352,7 @@ export function ShortcutsHelp({ open, onClose, shortcuts, title = "Phím tắt" 
           </div>
           <footer className="sticky bottom-0 border-t border-[var(--border)] bg-[var(--surface-muted)] p-4 text-center">
             <p className="text-xs text-[var(--text-3)]">
-              Nhấn <kbd className="rounded border border-[var(--border)] bg-white px-1.5 py-0.5 font-mono text-[10px]">Esc</kbd> để đóng
+              Nhấn <kbd className="rounded border border-[var(--border)] bg-white px-1.5 py-0.5 font-mono text-[11px]">Esc</kbd> để đóng
             </p>
           </footer>
         </div>

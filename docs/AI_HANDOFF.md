@@ -2148,3 +2148,104 @@ https://ai-face-attendance-zeta.vercel.app (`/login`: HTTP 200).
 - Còn thay đổi chưa commit không thuộc phase này (quản lý nhân viên/chấm công,
   `PHASE_6_FINAL_SUMMARY.md`) — giữ nguyên cho phase tương ứng.
 
+## Phase 38 — Premium UI polish & QA toàn ứng dụng (2026-11-12)
+
+**Mục tiêu:** Rà soát và hoàn thiện UI/UX toàn bộ ứng dụng (layout, màu, tương
+phản, typography, spacing, sidebar/topbar, button/icon/badge, bảng, modal) và
+kiểm thử chức năng thật trên production build ở 5 độ rộng màn hình. Chỉ sửa
+UI/UX + tích hợp frontend cần thiết; **không** đổi nghiệp vụ, API, database,
+authentication hay AI model; không xoá/tắt chức năng đang chạy.
+
+**Cách kiểm chứng (evidence-based, không đoán):**
+- `.tmp-audit.mjs`: 16 route × 5 width (1920/1440/1024/768/390) = 80 tổ hợp;
+  đo `scrollWidth` so với viewport, liệt kê phần tử tràn ngang, đo font-size,
+  tính contrast WCAG theo màu nền thực, kiểm tra tap target < 32px, thống kê
+  radius/shadow, bắt console/page error.
+- `.tmp-functional.mjs`: 23 kịch bản chức năng (đăng nhập, sidebar thu gọn,
+  dropdown, command palette, tìm kiếm, modal, CRUD, tab, filter, drawer/bottom
+  nav mobile, camera, xác minh 1:1, check-in/out + fallback).
+- `.tmp-shots.mjs`: ảnh chụp từng trang ở desktop/tablet/mobile để soi bằng mắt.
+
+**Thay đổi chính:**
+- `src/app/globals.css` — bổ sung/sửa token để đạt WCAG AA: `--text-3: #5b6779`,
+  `--info-strong: #0369a1`, `--teal-accent: #0f766e`, `--danger-strong: #b91c1c`
+  (màu cũ `#dc2626` chỉ đạt 4.41:1 trên nền trang); legend Recharts dùng
+  `var(--text-2)`; `.scrollbar-none` cho tab/rail mobile.
+- `src/components/ui/data-table.tsx` — bảng desktop chỉ hiện từ `xl` (≥1280),
+  dưới ngưỡng dùng card `grid-cols-1 sm:grid-cols-2`; wrapper `relative` để
+  `sr-only` của cột cuối không tạo scroll ngang; sửa gốc lỗi tràn 1024/768.
+- `src/components/ui/stat-card.tsx` — padding `p-4 sm:p-5`, icon `h-9 w-9
+  sm:h-11 sm:w-11` cho mobile; hint chuyển `truncate` → `line-clamp-2` +
+  `title` để không cắt cụt nội dung.
+- `src/components/app/nav.ts` + `app-shell.tsx` — `NavItem.short` cho nhãn
+  bottom-bar (`Lịch sử`, `Báo cáo`) hết bị cắt ở 390px; breadcrumb ẩn nhóm
+  trang dưới `xl` để không còn "Quản trị ..." bị truncate ở 768/1024.
+- `src/components/ui/command-palette.tsx` — tìm kiếm không phân biệt dấu
+  (`normalizeSearch` NFD + `đ→d`), ARIA combobox/listbox/option đầy đủ
+  (`aria-expanded`, `aria-controls`, `aria-activedescendant`, `role="option"`).
+- `reports/page.tsx` — KPI mobile 1 cột dạng hàng (label trái, số phải),
+  `p-3.5 sm:p-4`, `text-2xl sm:text-3xl`; màu xu hướng dùng `*-strong`;
+  grid `gap-2.5 sm:grid-cols-2 sm:gap-3 lg:grid-cols-4 xl:grid-cols-8`.
+- `dashboard/page.tsx` — chip lọc Tuần/Tháng `h-8 px-3.5` (đạt 32px tap
+  target), link "Xem" trong bảng ngoại lệ `inline-flex` để không lệch baseline.
+- `tabs.tsx`, `card.tsx`, `badge.tsx`, `icon-button.tsx`, `modal.tsx`,
+  `select.tsx`, `states.tsx`, `user-menu.tsx`, `loading-screen.tsx`,
+  `charts/*` — đồng bộ spacing/typography (11/12/13/14/15/16px), màu trạng
+  thái `*-strong`, tab mobile cuộn ngang + badge 11px, CardHeader action
+  `min-w-0 max-w-full`, trạng thái loading/empty/error rõ ràng.
+- `checkin-flow.tsx`, `face-verification-*.tsx`, `enrollment-*.tsx`,
+  `attendance-receipt`, `profile-client`, `workflow/*`, `shift-manager`,
+  `dashboard/*` — thay `text-slate-400` bằng `var(--text-3)`, màu trạng thái
+  đạt tương phản, nhãn hero sáng hơn, icon SVG thay ký tự rời.
+- Hoàn tất phần UI còn dở từ phase trước (đã được QA trong phase này):
+  `features/hr/employee-manager.tsx` (bảng/card, modal, filter, CRUD),
+  `admin/attendance/page.tsx` + `attendance-filters.tsx` +
+  `attendance-pagination.tsx` (lọc ngày/phòng ban/trạng thái + phân trang
+  server-side), `features/attendance/actions.ts` (truy vấn danh sách có lọc),
+  `features/dashboard/today-summary.ts`, `lib/datetime.ts` (+ test),
+  `components/ui/icon.tsx` (bổ sung icon còn thiếu).
+- `admin/employees/page.tsx` — bỏ self-join `employees!employees_manager_id_fkey`
+  (PostgREST PGRST200 làm trang lỗi), tra quản lý bằng truy vấn riêng; thêm
+  lọc phòng ban + trạng thái và tìm theo tên/email.
+
+**Kết quả kiểm tra (production build `next start -p 3100`):**
+- `npm run typecheck` ✅ 0 lỗi.
+- `npm test` ✅ 18 file pass / 4 skip; 149 test pass / 17 skip.
+- `npm run build` ✅ 28 route (`✓ Compiled successfully`,
+  `✓ Generating static pages (28/28)`); lần đầu có thể dừng ở nudge bảo mật
+  Next 16.4.0, chạy lại là xanh (lỗi hạ tầng có sẵn, không do phase này).
+- Audit 80 tổ hợp: **0 tràn ngang, 0 console/page error, 0 màu chưa đạt
+  4.5:1, 0 tap target < 32px**; font-size chỉ còn trên thang thiết kế
+  (11/12/13/14/15/16/20/24/26/27/28/30px).
+- Functional: **PASS 23 · FAIL 0 · SKIP 3**, 0 console/page error. Bao gồm:
+  đăng nhập HR/nhân viên, sidebar thu gọn 256→84→256, user menu, chuông thông
+  báo, command palette (gõ "bao cao" ra "Báo cáo thống kê"), tìm kiếm nhân
+  viên, dropdown + modal chi tiết, sửa nhân viên rồi hoàn tác, tabs báo
+  cáo/cài đặt, lọc ngày chấm công, drawer + bottom nav mobile, camera
+  1280×720 live, chụp frame + phản hồi provider 1:1, check-in/check-out qua
+  phương thức thay thế (receipt "Bản ghi được tạo lúc …").
+- Ảnh chụp đã soi: dashboard 1440/390, nhân viên 1024/768, báo cáo 390,
+  cài đặt 390, tài khoản 1440, chấm công 390, lịch sử 390, ca làm 768,
+  đăng nhập 390.
+- Không có secret trong diff; `.tmp-*` (script/JSON/ảnh QA) đã xoá trước commit.
+
+**Commit:** `feat(ui): phase 4 premium UI polish and full-app QA`
+**Deployment:** (cập nhật sau khi Vercel build xong)
+**Known issues / Next:**
+- Next.js 16.4.0 vẫn bị cảnh báo bảo mật và thỉnh thoảng chặn 1 lần build;
+  cần chạy `next upgrade --agent=security` (chưa chạy trong phase này).
+- `FACE_PROVIDER=local` là matcher thật (không phải mock): frame camera tổng
+  hợp bị từ chối `POOR_IMAGE_QUALITY`, nên **không thể xác minh khớp 1:1 thật
+  + liveness bằng headless**; luồng đã kiểm chứng dừng đúng ở bước provider
+  và đi tiếp bằng phương thức thay thế (có receipt, giờ máy chủ).
+- SKIP có lý do: tạo/xoá nhân viên (mọi tài khoản demo đã liên kết),
+  phân trang chấm công (dữ liệu demo chỉ 1 trang).
+- `npm run lint` toàn repo vẫn lỗi ở các file có sẵn từ trước (`portal.tsx`,
+  `select.tsx`, `settings-client.tsx`, charts,
+  `react-hooks/set-state-in-effect` trong `face-verification-redesigned.tsx`);
+  phase này không làm nặng thêm.
+- QA cục bộ cần Docker Desktop + Supabase local (`127.0.0.1:54321`) đang chạy;
+  Docker từng dừng giữa phiên nên phải bật lại rồi chạy lại toàn bộ audit.
+- `PHASE_6_FINAL_SUMMARY.md` (bản nháp cũ, lỗi encoding) vẫn để untracked,
+  không đưa vào commit.
+

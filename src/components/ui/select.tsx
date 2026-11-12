@@ -237,7 +237,7 @@ export function Select({
           <div className="flex items-center gap-2">
             {opt.icon && <span>{opt.icon}</span>}
             <span className="truncate">{opt.label}</span>
-            {opt.description && <span className="text-xs text-slate-400 ml-auto">{opt.description}</span>}
+            {opt.description && <span className="text-xs text-[var(--text-3)] ml-auto">{opt.description}</span>}
             {displayValue.includes(opt.value) && !isMulti && (
               <Icon name="check" size={14} className="text-[var(--brand)] ml-auto" />
             )}
@@ -313,7 +313,7 @@ export function Select({
                     )}
                   </>
                 ) : (
-                  <span className="text-slate-400">{placeholder}</span>
+                  <span className="text-[var(--text-3)]">{placeholder}</span>
                 )
               ) : (
                 displayValue[0] ? (
@@ -326,7 +326,7 @@ export function Select({
                     )}
                   </>
                 ) : (
-                  <span className="text-slate-400 truncate">{placeholder}</span>
+                  <span className="text-[var(--text-3)] truncate">{placeholder}</span>
                 )
               )}
 

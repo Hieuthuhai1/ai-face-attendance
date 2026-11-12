@@ -233,7 +233,7 @@ export function CheckInFlow(props: { status: TodayStatus; providerDemo: boolean 
             <span className="text-[var(--danger)]"><Icon name="x" size={36} /></span>
             <p role="alert" className="text-lg font-semibold">{failed.title}</p>
             <p className="text-sm text-slate-600">{failed.hint}</p>
-            <p className="text-xs text-slate-400">Mã lỗi: {ui.error.code} (để đối chiếu với HR/kỹ thuật)</p>
+            <p className="text-xs text-[var(--text-3)]">Mã lỗi: {ui.error.code} (để đối chiếu với HR/kỹ thuật)</p>
           </div>
           <div className="flex flex-wrap justify-center gap-2">
             <Button size="sm" variant="secondary" onClick={retry}>Thử lại (cùng mã)</Button>

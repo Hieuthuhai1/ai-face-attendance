@@ -214,7 +214,7 @@ export async function EmployeeToday({ profile }: { profile: Profile }) {
             action={
               <Link
                 href="/history"
-                className="inline-flex items-center gap-1 text-[12.5px] font-semibold text-[var(--brand)] hover:underline"
+                className="inline-flex items-center gap-1 text-[13px] font-semibold text-[var(--brand)] hover:underline"
               >
                 Xem tất cả <Icon name="arrow-up-right" size={13} />
               </Link>
@@ -239,7 +239,7 @@ export async function EmployeeToday({ profile }: { profile: Profile }) {
             />
           ) : (
             <div className="mt-4 overflow-hidden rounded-xl border border-[var(--border)]">
-              <div className="hidden grid-cols-[minmax(0,0.9fr)_minmax(0,1fr)_minmax(0,1.1fr)_auto] items-center gap-3 border-b border-[var(--border)] bg-[var(--surface-muted)] px-4 py-2 text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[var(--text-3)] sm:grid">
+              <div className="hidden grid-cols-[minmax(0,0.9fr)_minmax(0,1fr)_minmax(0,1.1fr)_auto] items-center gap-3 border-b border-[var(--border)] bg-[var(--surface-muted)] px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--text-3)] sm:grid">
                 <span>Thời gian</span>
                 <span>Loại chấm công</span>
                 <span>Phương thức</span>
@@ -270,7 +270,7 @@ export async function EmployeeToday({ profile }: { profile: Profile }) {
                           <p className="tnum text-[15px] font-semibold leading-tight text-[var(--navy-900)]">
                             {formatTime(event.occurred_at)}
                           </p>
-                          <p className="mt-0.5 truncate text-[11.5px] text-[var(--text-3)] sm:hidden">
+                          <p className="mt-0.5 truncate text-[12px] text-[var(--text-3)] sm:hidden">
                             {typeLabel} · {methodLabel}
                             {confidence !== null ? ` · ${confidence}%` : ""}
                           </p>
@@ -281,7 +281,7 @@ export async function EmployeeToday({ profile }: { profile: Profile }) {
                         {typeLabel}
                       </p>
 
-                      <div className="hidden min-w-0 items-center gap-1.5 text-[12.5px] text-[var(--text-2)] sm:flex">
+                      <div className="hidden min-w-0 items-center gap-1.5 text-[13px] text-[var(--text-2)] sm:flex">
                         <Icon
                           name={METHOD_ICONS[event.method] ?? "camera"}
                           size={14}
@@ -317,7 +317,7 @@ export async function EmployeeToday({ profile }: { profile: Profile }) {
             action={
               <Link
                 href="/history"
-                className="inline-flex items-center gap-1 text-[12.5px] font-semibold text-[var(--brand)] hover:underline"
+                className="inline-flex items-center gap-1 text-[13px] font-semibold text-[var(--brand)] hover:underline"
               >
                 Chi tiết <Icon name="arrow-up-right" size={13} />
               </Link>
@@ -326,19 +326,19 @@ export async function EmployeeToday({ profile }: { profile: Profile }) {
 
           <dl className="mt-4 grid grid-cols-3 gap-2">
             <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-muted)] px-2.5 py-2.5">
-              <dt className="text-[10.5px] font-medium text-[var(--text-3)]">Có mặt</dt>
+              <dt className="text-[11px] font-medium text-[var(--text-3)]">Có mặt</dt>
               <dd className="tnum mt-1 text-[20px] font-bold leading-none text-[var(--navy-900)]">
                 {presentDays}
               </dd>
             </div>
             <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-muted)] px-2.5 py-2.5">
-              <dt className="text-[10.5px] font-medium text-[var(--text-3)]">Giờ làm</dt>
+              <dt className="text-[11px] font-medium text-[var(--text-3)]">Giờ làm</dt>
               <dd className="tnum mt-1 text-[20px] font-bold leading-none text-[var(--navy-900)]">
                 {formatDuration(weekMinutes)}
               </dd>
             </div>
             <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-muted)] px-2.5 py-2.5">
-              <dt className="text-[10.5px] font-medium text-[var(--text-3)]">Đi muộn</dt>
+              <dt className="text-[11px] font-medium text-[var(--text-3)]">Đi muộn</dt>
               <dd className="tnum mt-1 text-[20px] font-bold leading-none text-[var(--navy-900)]">
                 {lateCount}
               </dd>
@@ -368,7 +368,7 @@ export async function EmployeeToday({ profile }: { profile: Profile }) {
                       <p className="truncate text-[13px] font-semibold text-[var(--navy-800)]">
                         {formatShortDate(row.work_date)}
                       </p>
-                      <p className="tnum mt-0.5 text-[11.5px] text-[var(--text-3)]">
+                      <p className="tnum mt-0.5 text-[12px] text-[var(--text-3)]">
                         {row.first_in ? formatTime(row.first_in) : "—"} –{" "}
                         {row.last_out ? formatTime(row.last_out) : "—"}
                       </p>

@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  formatDateOnly,
   formatDateTimeInZone,
+  formatDurationMinutes,
   formatShortDateInZone,
   formatTimeInZone,
 } from "@/lib/datetime";
@@ -29,5 +31,18 @@ describe("datetime formatting theo múi giờ", () => {
   it("giá trị không hợp lệ trả về —", () => {
     expect(formatTimeInZone("not-a-date")).toBe("—");
     expect(formatShortDateInZone("not-a-date")).toBe("—");
+    expect(formatDateOnly("not-a-date")).toBe("—");
+  });
+
+  it("ngày thuần YYYY-MM-DD không bị lệch múi giờ", () => {
+    expect(formatDateOnly("2026-10-09")).toBe("09/10/2026");
+    expect(formatDateOnly("2026-10-09T07:58:00+07:00")).toBe("09/10/2026");
+    expect(formatDateOnly(null)).toBe("—");
+  });
+
+  it("tổng thời gian làm việc dạng 8h32", () => {
+    expect(formatDurationMinutes(544)).toBe("9h04");
+    expect(formatDurationMinutes(0)).toBe("0h00");
+    expect(formatDurationMinutes(null)).toBe("0h00");
   });
 });

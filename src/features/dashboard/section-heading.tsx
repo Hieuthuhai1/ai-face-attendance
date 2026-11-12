@@ -30,7 +30,7 @@ export function SectionHeading({
           {title}
         </h2>
         {description ? (
-          <p className="mt-0.5 text-[12.5px] leading-relaxed text-[var(--text-3)]">{description}</p>
+          <p className="mt-0.5 text-[13px] leading-relaxed text-[var(--text-3)]">{description}</p>
         ) : null}
       </div>
       {action ? <div className="shrink-0">{action}</div> : null}

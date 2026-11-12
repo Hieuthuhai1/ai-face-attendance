@@ -33,10 +33,10 @@ export function QuickActions({
               <Icon name="arrow-up-right" size={14} />
             </span>
           </div>
-          <p className="mt-4 text-[14.5px] font-semibold tracking-[-0.01em] text-[var(--navy-900)]">
+          <p className="mt-4 text-[15px] font-semibold tracking-[-0.01em] text-[var(--navy-900)]">
             {action.title}
           </p>
-          <p className="mt-0.5 text-[12.5px] leading-relaxed text-[var(--text-2)]">
+          <p className="mt-0.5 text-[13px] leading-relaxed text-[var(--text-2)]">
             {action.description}
           </p>
         </Link>

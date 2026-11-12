@@ -26,7 +26,7 @@ export interface TodayHeroProps {
 function ShiftTimeChip({ label, time }: { label: string; time: string }) {
   return (
     <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1 text-[13px] font-semibold text-white ring-1 ring-inset ring-white/10">
-      <span className="text-[10px] font-semibold uppercase tracking-[0.1em] text-white/45">
+      <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-white/70">
         {label}
       </span>
       <span className="tnum">{time}</span>
@@ -121,7 +121,7 @@ export function TodayHero({
 
       <div className="relative grid gap-6 p-5 sm:p-7 xl:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)] xl:items-stretch xl:gap-8 xl:p-8">
         <div className="flex min-w-0 flex-col">
-          <p className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-white/55">
+          <p className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-white/70">
             <Icon name="clock" size={14} className="text-[var(--accent)]" /> Ca làm hôm nay
           </p>
 
@@ -135,14 +135,14 @@ export function TodayHero({
           {shift ? (
             <div className="mt-3 flex flex-wrap items-center gap-2">
               <ShiftTimeChip label="Vào" time={shift.start_time} />
-              <Icon name="arrow-right" size={14} className="text-white/35" />
+              <Icon name="arrow-right" size={14} className="text-white/55" />
               <ShiftTimeChip label="Ra" time={shift.end_time} />
               {shift.overnight ? (
-                <span className="text-[12px] font-medium text-white/55">· qua đêm</span>
+                <span className="text-[12px] font-medium text-white/70">· qua đêm</span>
               ) : null}
             </div>
           ) : (
-            <p className="mt-3 max-w-lg text-[13.5px] leading-relaxed text-white/65">
+            <p className="mt-3 max-w-lg text-[14px] leading-relaxed text-white/75">
               Liên hệ quản lý nếu bạn cần được phân ca hôm nay.
             </p>
           )}
@@ -151,7 +151,7 @@ export function TodayHero({
             <Badge tone={statusTone}>{statusLabel}</Badge>
             <EnrollmentBadge hasEnrollment={hasEnrollment} enrollmentState={enrollmentState} />
             {lastEventAt ? (
-              <span className="text-[11.5px] text-white/55">Cập nhật {lastEventAt}</span>
+              <span className="text-[12px] text-white/70">Cập nhật {lastEventAt}</span>
             ) : null}
           </div>
 
@@ -159,9 +159,9 @@ export function TodayHero({
             <Avatar name={employeeName} size="lg" className="ring-2 ring-white/25" />
             <div className="min-w-0">
               <p className="truncate text-[14px] font-semibold text-white">{employeeName}</p>
-              <p className="truncate text-[12px] text-white/55">{identity || "Nhân viên"}</p>
+              <p className="truncate text-[12px] text-white/70">{identity || "Nhân viên"}</p>
             </div>
-            <span className="ml-auto hidden items-center gap-1.5 rounded-full bg-white/[0.07] px-2.5 py-1 text-[11.5px] font-medium text-white/60 ring-1 ring-inset ring-white/10 sm:inline-flex">
+            <span className="ml-auto hidden items-center gap-1.5 rounded-full bg-white/[0.07] px-2.5 py-1 text-[12px] font-medium text-white/75 ring-1 ring-inset ring-white/10 sm:inline-flex">
               <Icon name="activity" size={13} />
               {todayCount} lượt hôm nay
             </span>
@@ -169,7 +169,7 @@ export function TodayHero({
         </div>
 
         <div className="flex flex-col rounded-2xl border border-white/15 bg-white/[0.07] p-4 backdrop-blur-sm sm:p-5">
-          <p className="text-[10.5px] font-semibold uppercase tracking-[0.16em] text-white/45">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-white/70">
             Hành động chính
           </p>
 
@@ -186,26 +186,26 @@ export function TodayHero({
 
           <dl className="mt-4 grid grid-cols-3 gap-2 border-t border-white/10 pt-3.5">
             <div className="min-w-0">
-              <dt className="text-[10.5px] font-medium text-white/45">Giờ vào</dt>
+              <dt className="text-[11px] font-medium text-white/70">Giờ vào</dt>
               <dd className="tnum mt-1 text-[15px] font-semibold leading-none text-white">
                 {firstInLabel}
               </dd>
             </div>
             <div className="min-w-0">
-              <dt className="text-[10.5px] font-medium text-white/45">Giờ ra</dt>
+              <dt className="text-[11px] font-medium text-white/70">Giờ ra</dt>
               <dd className="tnum mt-1 text-[15px] font-semibold leading-none text-white">
                 {lastOutLabel}
               </dd>
             </div>
             <div className="min-w-0">
-              <dt className="text-[10.5px] font-medium text-white/45">Đã làm</dt>
+              <dt className="text-[11px] font-medium text-white/70">Đã làm</dt>
               <dd className="tnum mt-1 text-[15px] font-semibold leading-none text-white">
                 {workedLabel}
               </dd>
             </div>
           </dl>
 
-          <p className="mt-auto flex items-center gap-1.5 pt-3.5 text-[11px] text-white/45">
+          <p className="mt-auto flex items-center gap-1.5 pt-3.5 text-[11px] text-white/70">
             <Icon name="shield" size={12} /> Xác minh 1:1 · Không lưu ảnh thô
           </p>
         </div>

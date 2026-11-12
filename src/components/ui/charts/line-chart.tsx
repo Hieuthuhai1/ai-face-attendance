@@ -373,7 +373,7 @@ export function SimpleLineChart({
           {referenceLine.label}: {referenceLine.y.toLocaleString("vi-VN")}
         </div>
       )}
-      <div className="absolute bottom-0 left-0 right-0 flex justify-between text-xs text-slate-400">
+      <div className="absolute bottom-0 left-0 right-0 flex justify-between text-xs text-[var(--text-3)]">
         <span>{data[0]?.x}</span>
         <span>{data[data.length - 1]?.x}</span>
       </div>

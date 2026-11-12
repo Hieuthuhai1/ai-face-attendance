@@ -131,8 +131,10 @@ export function Tabs({
       role="tablist"
       aria-orientation={orientation}
       className={cn(
-        "flex gap-1",
-        orientation === "vertical" ? "flex-col" : "",
+        "flex max-w-full gap-1",
+        orientation === "vertical"
+          ? "flex-col"
+          : "scrollbar-none -mx-1 overflow-x-auto px-1 pb-0.5",
         className
       )}
     >
@@ -149,9 +151,10 @@ export function Tabs({
           onKeyDown={(e) => handleKeyDown(e, index)}
           onFocus={() => setFocusedIndex(index)}
           className={cn(
-            "relative inline-flex items-center gap-1.5 font-semibold",
+            "relative inline-flex items-center gap-1.5 whitespace-nowrap font-semibold",
             "focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[var(--brand-ring)]",
             "disabled:opacity-50 disabled:cursor-not-allowed",
+            orientation === "horizontal" && "shrink-0",
             sizeClass,
             variantClasses.base,
             item.key === value ? variantClasses.active : variantClasses.inactive,
@@ -163,7 +166,7 @@ export function Tabs({
           {item.badge !== undefined && item.badge !== "" && (
             <span
               className={cn(
-                "inline-flex h-4 min-w-[18px] items-center justify-center rounded-full px-1.5 text-[10px] font-semibold",
+                "inline-flex h-4 min-w-[18px] items-center justify-center rounded-full px-1.5 text-[11px] font-semibold",
                 item.key === value
                   ? variant === "enclosed"
                     ? "bg-white/20 text-white"

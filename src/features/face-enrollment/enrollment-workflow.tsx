@@ -479,7 +479,7 @@ export function EnrollmentWorkflow({
               <p role="alert" className="max-w-md text-slate-700">
                 {error?.message ?? "Đã xảy ra lỗi không xác định."}
               </p>
-              {error?.code ? <p className="mt-1 text-xs text-slate-400">Mã lỗi: {error.code}</p> : null}
+              {error?.code ? <p className="mt-1 text-xs text-[var(--text-3)]">Mã lỗi: {error.code}</p> : null}
             </div>
             <div className="flex flex-wrap justify-center gap-2">
               <Button variant="secondary" onClick={() => { setError(null); setView("capture"); }}>

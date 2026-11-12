@@ -83,7 +83,7 @@ export function IconButton({
         <span
           className={cn(
             "absolute -right-1 -top-1 flex h-4 min-w-[16px] items-center justify-center rounded-full px-1",
-            "text-[10px] font-semibold text-white",
+            "text-[11px] font-semibold text-white",
             BADGE_COLORS[badgeColor]
           )}
           aria-label={`${badge} thông báo`}

@@ -115,7 +115,7 @@ export function AdjustmentForm() {
           </p>
         ) : null}
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--border)] pt-4">
-          <p className="flex items-center gap-1.5 text-[11.5px] text-[var(--text-3)]">
+          <p className="flex items-center gap-1.5 text-[12px] text-[var(--text-3)]">
             <Icon name="info" size={13} /> Duyệt sẽ áp correction vào tổng hợp ngày.
           </p>
           <Button type="submit" loading={saving}>
@@ -144,21 +144,21 @@ export function MyAdjustments({ rows }: { rows: AdjustmentRow[] }) {
         {
           key: "proposal",
           header: "Đề xuất",
-          render: (r) => <span className="text-[12.5px] text-[var(--text-2)]">{proposalText(r) || "—"}</span>,
+          render: (r) => <span className="text-[13px] text-[var(--text-2)]">{proposalText(r) || "—"}</span>,
         },
         { key: "status", header: "Trạng thái", render: (r) => statusBadge(r.status) },
         {
           key: "note",
           header: "Phản hồi",
           render: (r) => (
-            <span className="line-clamp-2 max-w-56 text-[12.5px] text-[var(--text-2)]">{r.resolution_note ?? "—"}</span>
+            <span className="line-clamp-2 max-w-56 text-[13px] text-[var(--text-2)]">{r.resolution_note ?? "—"}</span>
           ),
         },
       ]}
       cardTitle={(r) => r.work_date}
       cardStatus={(r) => statusBadge(r.status)}
       cardMeta={(r) => (
-        <span className="flex flex-col gap-1 text-[12.5px] text-[var(--text-2)]">
+        <span className="flex flex-col gap-1 text-[13px] text-[var(--text-2)]">
           <span>{proposalText(r) || "Chỉnh sửa"}</span>
           {r.resolution_note ? <span>Phản hồi: {r.resolution_note}</span> : null}
         </span>
@@ -221,13 +221,13 @@ export function AdjustmentQueue({ rows }: { rows: AdjustmentRow[] }) {
           {
             key: "proposal",
             header: "Đề xuất",
-            render: (r) => <span className="text-[12.5px] text-[var(--text-2)]">{proposalText(r) || "—"}</span>,
+            render: (r) => <span className="text-[13px] text-[var(--text-2)]">{proposalText(r) || "—"}</span>,
           },
           {
             key: "reason",
             header: "Lý do",
             render: (r) => (
-              <span className="line-clamp-2 max-w-56 text-[12.5px] text-[var(--text-2)]" title={r.reason}>{r.reason}</span>
+              <span className="line-clamp-2 max-w-56 text-[13px] text-[var(--text-2)]" title={r.reason}>{r.reason}</span>
             ),
           },
           {
@@ -247,7 +247,7 @@ export function AdjustmentQueue({ rows }: { rows: AdjustmentRow[] }) {
         ]}
         cardTitle={(r) => `${r.employee_code ?? "—"} — ${r.work_date}`}
         cardMeta={(r) => (
-          <span className="flex flex-col gap-1 text-[12.5px] text-[var(--text-2)]">
+          <span className="flex flex-col gap-1 text-[13px] text-[var(--text-2)]">
             <span>{proposalText(r) || "Chỉnh sửa"}</span>
             <span>Lý do: {r.reason}</span>
           </span>
@@ -286,7 +286,7 @@ export function AdjustmentQueue({ rows }: { rows: AdjustmentRow[] }) {
         }
       >
         <form id="review-adjustment-form" onSubmit={onConfirm} className="flex flex-col gap-4">
-          <div className="rounded-[var(--radius-control)] border border-[var(--border)] bg-[var(--surface-muted)] px-3.5 py-3 text-[12.5px] text-[var(--text-2)]">
+          <div className="rounded-[var(--radius-control)] border border-[var(--border)] bg-[var(--surface-muted)] px-3.5 py-3 text-[13px] text-[var(--text-2)]">
             <p className="font-semibold text-[var(--navy-800)]">
               {target?.row.employee_code} · {target?.row.work_date}
             </p>

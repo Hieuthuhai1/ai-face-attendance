@@ -86,7 +86,7 @@ export function CheckInClient({
             );
           })}
         </div>
-        <p className="px-1.5 text-[11.5px] text-[var(--text-3)] sm:px-0 sm:text-right">
+        <p className="px-1.5 text-[12px] text-[var(--text-3)] sm:px-0 sm:text-right">
           {status.canCheckOut
             ? "Bạn đang trong ca — chọn “Chấm công ra” khi kết thúc."
             : status.canCheckIn

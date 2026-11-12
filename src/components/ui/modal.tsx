@@ -304,10 +304,10 @@ const ALERT_ICONS = {
 };
 
 const ALERT_COLORS = {
-  info: "text-[var(--info)]",
-  success: "text-[var(--success)]",
-  warning: "text-[var(--warning)]",
-  error: "text-[var(--danger)]",
+  info: "text-[var(--info-strong)]",
+  success: "text-[var(--success-strong)]",
+  warning: "text-[var(--warning-strong)]",
+  error: "text-[var(--danger-strong)]",
 };
 
 export function AlertModal({

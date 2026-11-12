@@ -218,7 +218,7 @@ export function EnrollmentRedesigned({
                   ? "Dịch vụ nhận diện sẵn sàng"
                   : "Dịch vụ nhận diện chưa cấu hình"}
             </p>
-            <p className="text-[11.5px] text-[var(--text-3)]">
+            <p className="text-[12px] text-[var(--text-3)]">
               Xác minh 1:1 · không lưu ảnh thô hoặc template sinh trắc
             </p>
           </div>
@@ -304,7 +304,7 @@ export function EnrollmentRedesigned({
                   {statusReason}
                 </p>
               ) : null}
-              <ul className="mt-3 grid gap-1.5 text-[12.5px] text-[var(--text-2)] sm:grid-cols-2">
+              <ul className="mt-3 grid gap-1.5 text-[13px] text-[var(--text-2)] sm:grid-cols-2">
                 <li className="flex items-center gap-1.5"><Icon name="check" size={13} className="text-[var(--success)]" /> Chỉ dùng để xác minh chấm công</li>
                 <li className="flex items-center gap-1.5"><Icon name="check" size={13} className="text-[var(--success)]" /> Không lưu ảnh thô / embedding</li>
                 <li className="flex items-center gap-1.5"><Icon name="check" size={13} className="text-[var(--success)]" /> Có thể thu hồi bất cứ lúc nào</li>
@@ -411,7 +411,7 @@ export function EnrollmentRedesigned({
                 className="mt-0.5 h-4 w-4 rounded border-[var(--border-strong)] text-[var(--brand)] focus:ring-[var(--brand)]"
                 aria-label="Tôi đã đọc và đồng ý"
               />
-              <span className="text-[12.5px] leading-relaxed text-[var(--text-2)]">
+              <span className="text-[13px] leading-relaxed text-[var(--text-2)]">
                 {isAdminFlow
                   ? "Tôi xác nhận nhân viên đã đọc thông báo trên và đồng ý đăng ký khuôn mặt cho mục đích chấm công."
                   : "Tôi đã đọc thông báo trên và đồng ý đăng ký khuôn mặt cho mục đích chấm công."}
@@ -429,7 +429,7 @@ export function EnrollmentRedesigned({
               ) : null}
             </div>
             {!consent ? (
-              <p className="mt-2 flex items-center gap-1.5 text-[11.5px] text-[var(--text-3)]">
+              <p className="mt-2 flex items-center gap-1.5 text-[12px] text-[var(--text-3)]">
                 <Icon name="info" size={13} /> Cần đánh dấu đồng ý để tiếp tục.
               </p>
             ) : null}

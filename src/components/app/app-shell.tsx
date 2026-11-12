@@ -63,7 +63,7 @@ function BrandMark({ collapsed = false }: { collapsed?: boolean }) {
           <span className="block truncate text-[15px] font-bold leading-tight tracking-[-0.01em] text-white">
             Timekeeping
           </span>
-          <span className="mt-0.5 block truncate text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+          <span className="mt-0.5 block truncate text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
             AI Attendance
           </span>
         </span>
@@ -99,7 +99,7 @@ function NavLink({
         aria-current={active ? "page" : undefined}
         onClick={onNavigate}
         className={cn(
-          "flex min-h-14 flex-col items-center justify-center gap-1 px-1 py-1.5 text-[10.5px] font-medium transition-colors",
+          "flex min-h-14 min-w-0 flex-col items-center justify-center gap-1 px-1 py-1.5 text-[11px] font-medium transition-colors",
           active ? "text-[var(--brand)]" : "text-[var(--text-3)] hover:text-[var(--navy-700)]",
         )}
       >
@@ -111,7 +111,7 @@ function NavLink({
         >
           <Icon name={icon} size={19} />
         </span>
-        <span className="max-w-full truncate">{translatedLabel}</span>
+        <span className="w-full truncate text-center leading-tight">{translatedLabel}</span>
       </Link>
     );
   }
@@ -164,7 +164,7 @@ function SidebarNav({
       {groups.map((group) => (
         <div key={group.title} className="flex flex-col gap-1">
           {!collapsed ? (
-            <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400/80">
+            <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400/80">
               {t(group.title)}
             </p>
           ) : (
@@ -202,8 +202,8 @@ function Breadcrumb({ pathname }: { pathname: string }) {
         </Link>
         {trail ? (
           <>
-            <Icon name="chevron-right" size={13} className="shrink-0 text-slate-300" />
-            <span className="truncate text-[var(--text-3)]">{t(trail.group)}</span>
+            <Icon name="chevron-right" size={13} className="hidden shrink-0 text-slate-300 xl:block" />
+            <span className="hidden truncate text-[var(--text-3)] xl:inline">{t(trail.group)}</span>
             <Icon name="chevron-right" size={13} className="shrink-0 text-slate-300" />
             <span className="truncate font-semibold text-[var(--navy-800)]">{t(trail.label)}</span>
           </>
@@ -262,7 +262,7 @@ export function PageHeader({
           </p>
         ) : null}
       </div>
-      {actions ? <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div> : null}
+      {actions ? <div className="flex min-w-0 max-w-full flex-wrap items-center gap-2">{actions}</div> : null}
     </div>
   );
 }
@@ -395,7 +395,7 @@ export function AppShell({
             <div className="mb-2 flex items-center gap-2.5 rounded-xl border border-white/[0.06] bg-white/[0.04] p-2.5">
               <Avatar name={user.displayName} src={user.avatar} size="sm" className="ring-2 ring-white/10" />
               <div className="min-w-0 flex-1">
-                <p className="truncate text-[12.5px] font-semibold text-white">{user.displayName}</p>
+                <p className="truncate text-[13px] font-semibold text-white">{user.displayName}</p>
                 <p className="truncate text-[11px] text-slate-400">{roleLabel}</p>
               </div>
               <button
@@ -428,7 +428,7 @@ export function AppShell({
             aria-label={t(collapsed ? "Mở rộng menu" : "Thu gọn menu")}
             aria-expanded={!collapsed}
             className={cn(
-              "flex h-9 w-full items-center gap-2 rounded-[10px] px-3 text-[12.5px] font-medium text-slate-400 transition-colors hover:bg-white/[0.06] hover:text-white",
+              "flex h-9 w-full items-center gap-2 rounded-[10px] px-3 text-[13px] font-medium text-slate-400 transition-colors hover:bg-white/[0.06] hover:text-white",
               collapsed && "justify-center px-0",
             )}
           >
@@ -473,7 +473,7 @@ export function AppShell({
             >
               <Icon name="search" size={16} />
               <span className="flex-1 truncate text-left">{t("Tìm kiếm...")}</span>
-              <kbd className="rounded-md border border-[var(--border)] bg-white px-1.5 py-0.5 font-mono text-[10px] font-medium text-[var(--text-3)]">
+              <kbd className="rounded-md border border-[var(--border)] bg-white px-1.5 py-0.5 font-mono text-[11px] font-medium text-[var(--text-3)]">
                 ⌘K
               </kbd>
             </button>
@@ -530,9 +530,9 @@ export function AppShell({
           aria-label={t("Điều hướng nhanh")}
           className="fixed inset-x-0 bottom-0 z-30 border-t border-[var(--border)] bg-white/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_16px_-12px_rgba(16,27,60,0.25)] backdrop-blur-xl lg:hidden"
         >
-          <div className="grid" style={{ gridTemplateColumns: `repeat(${mobile.length}, 1fr)` }}>
+          <div className="grid" style={{ gridTemplateColumns: `repeat(${mobile.length}, minmax(0, 1fr))` }}>
             {mobile.map((item) => (
-              <NavLink key={item.href} href={item.href} label={item.label} icon={item.icon} vertical />
+              <NavLink key={item.href} href={item.href} label={item.short ?? item.label} icon={item.icon} vertical />
             ))}
           </div>
         </nav>

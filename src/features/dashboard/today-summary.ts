@@ -1,5 +1,6 @@
 import { APP_TZ } from "@/config/app";
 import { minutesEarlyLeave, minutesLate } from "@/lib/attendance/rules";
+import { formatDurationMinutes } from "@/lib/datetime";
 
 /** Tone badge dùng chung cho trạng thái ca / lượt chấm công. */
 export type BadgeTone = "neutral" | "success" | "warning" | "danger" | "info";
@@ -63,11 +64,9 @@ export function formatTime(value: string): string {
   return TIME_FMT.format(new Date(value));
 }
 
+/** Giữ tên cũ cho các component dashboard; logic nằm ở `src/lib/datetime.ts`. */
 export function formatDuration(minutes: number): string {
-  if (!minutes || minutes <= 0) return "0h00";
-  const h = Math.floor(minutes / 60);
-  const m = minutes % 60;
-  return `${h}h${String(m).padStart(2, "0")}`;
+  return formatDurationMinutes(minutes);
 }
 
 function minutesBetween(from: string, to: string): number {

@@ -4,6 +4,8 @@ import type { IconName } from "@/components/ui/icon";
 export interface NavItem {
   href: string;
   label: string;
+  /** Nhãn ngắn cho bottom-bar mobile (tránh cắt chữ). */
+  short?: string;
   icon: IconName;
   roles: Role[];
 }
@@ -29,7 +31,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { href: "/dashboard", label: "Dashboard", icon: "dashboard", roles: ALL },
       { href: "/check-in", label: "Chấm công", icon: "camera", roles: ALL },
       { href: "/enrollment", label: "Nhận diện khuôn mặt AI", icon: "scan-face", roles: ALL },
-      { href: "/history", label: "Lịch sử chấm công", icon: "clock", roles: ALL },
+      { href: "/history", label: "Lịch sử chấm công", short: "Lịch sử", icon: "clock", roles: ALL },
     ],
   },
   {
@@ -38,7 +40,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { href: "/admin/employees", label: "Nhân viên", icon: "users", roles: HR },
       { href: "/admin/attendance", label: "Chấm công toàn thể", icon: "chart", roles: REVIEW },
       { href: "/admin/shifts", label: "Ca làm việc", icon: "calendar", roles: HR },
-      { href: "/reports", label: "Báo cáo thống kê", icon: "chart", roles: REVIEW },
+      { href: "/reports", label: "Báo cáo thống kê", short: "Báo cáo", icon: "chart", roles: REVIEW },
       { href: "/approval", label: "Trung tâm duyệt", icon: "clipboard-check", roles: REVIEW },
       { href: "/admin/enrollments", label: "Xác minh khuôn mặt", icon: "shield", roles: REVIEW },
       { href: "/audit", label: "Nhật ký Audit", icon: "file-text", roles: HR },

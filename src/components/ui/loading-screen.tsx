@@ -66,7 +66,7 @@ export function AppLoadingScreen({
         </span>
         <div className="text-left">
           <p className="text-base font-bold tracking-tight text-slate-900">AI Face Attendance</p>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--text-3)]">
             Face Verification Platform
           </p>
         </div>
@@ -105,7 +105,7 @@ export function AppLoadingScreen({
         </div>
       </div>
 
-      <p className="relative flex items-center gap-1.5 text-xs text-slate-400">
+      <p className="relative flex items-center gap-1.5 text-xs text-[var(--text-3)]">
         <Icon name="shield" size={13} />
         Dữ liệu khuôn mặt được bảo vệ và không lưu ảnh thô
       </p>
