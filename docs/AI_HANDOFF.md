@@ -2230,7 +2230,10 @@ authentication hay AI model; không xoá/tắt chức năng đang chạy.
 - Không có secret trong diff; `.tmp-*` (script/JSON/ảnh QA) đã xoá trước commit.
 
 **Commit:** `feat(ui): phase 4 premium UI polish and full-app QA`
-**Deployment:** (cập nhật sau khi Vercel build xong)
+— SHA `1a7cd22` (pushed `main`).
+**Deployment:** Vercel Git integration báo `success` cho commit `1a7cd22`
+(`vercel.com/hieu-98a8/ai-face-attendance`); alias
+https://ai-face-attendance-zeta.vercel.app (`/login`: HTTP 200).
 **Known issues / Next:**
 - Next.js 16.4.0 vẫn bị cảnh báo bảo mật và thỉnh thoảng chặn 1 lần build;
   cần chạy `next upgrade --agent=security` (chưa chạy trong phase này).
