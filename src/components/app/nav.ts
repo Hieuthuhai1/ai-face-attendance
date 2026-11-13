@@ -30,7 +30,7 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { href: "/dashboard", label: "Dashboard", icon: "dashboard", roles: ALL },
       { href: "/check-in", label: "Chấm công", icon: "camera", roles: ALL },
-      { href: "/enrollment", label: "Nhận diện khuôn mặt AI", icon: "scan-face", roles: ALL },
+      { href: "/enrollment", label: "Nhận diện khuôn mặt AI", short: "Nhận diện", icon: "scan-face", roles: ALL },
       { href: "/history", label: "Lịch sử chấm công", short: "Lịch sử", icon: "clock", roles: ALL },
     ],
   },
@@ -38,18 +38,18 @@ export const NAV_GROUPS: NavGroup[] = [
     title: "Quản trị nhân sự",
     items: [
       { href: "/admin/employees", label: "Nhân viên", icon: "users", roles: HR },
-      { href: "/admin/attendance", label: "Chấm công toàn thể", icon: "chart", roles: REVIEW },
-      { href: "/admin/shifts", label: "Ca làm việc", icon: "calendar", roles: HR },
+      { href: "/admin/attendance", label: "Chấm công toàn thể", short: "Chấm công", icon: "chart", roles: REVIEW },
+      { href: "/admin/shifts", label: "Ca làm việc", short: "Ca làm", icon: "calendar", roles: HR },
       { href: "/reports", label: "Báo cáo thống kê", short: "Báo cáo", icon: "chart", roles: REVIEW },
-      { href: "/approval", label: "Trung tâm duyệt", icon: "clipboard-check", roles: REVIEW },
-      { href: "/admin/enrollments", label: "Xác minh khuôn mặt", icon: "shield", roles: REVIEW },
-      { href: "/audit", label: "Nhật ký Audit", icon: "file-text", roles: HR },
+      { href: "/approval", label: "Trung tâm duyệt", short: "Duyệt đơn", icon: "clipboard-check", roles: REVIEW },
+      { href: "/admin/enrollments", label: "Xác minh khuôn mặt", short: "Xác minh", icon: "shield", roles: REVIEW },
+      { href: "/audit", label: "Nhật ký Audit", short: "Audit", icon: "file-text", roles: HR },
     ],
   },
   {
     title: "Đơn từ",
     items: [
-      { href: "/requests", label: "Yêu cầu của tôi", icon: "file-text", roles: ALL },
+      { href: "/requests", label: "Yêu cầu của tôi", short: "Yêu cầu", icon: "file-text", roles: ALL },
       { href: "/adjustments", label: "Chỉnh công", icon: "file", roles: ALL },
       { href: "/leave", label: "Đơn nghỉ", icon: "calendar", roles: ALL },
     ],
@@ -79,12 +79,12 @@ export function primaryMobileNav(role: Role | undefined): NavItem[] {
 }
 
 /** Breadcrumb [Nhóm, Trang] cho pathname. */
-export function findTrail(pathname: string): { group: string; label: string } | null {
+export function findTrail(pathname: string): { group: string; label: string; short?: string } | null {
   for (const g of NAV_GROUPS) {
     const item = [...g.items]
       .sort((a, b) => b.href.length - a.href.length)
       .find((i) => pathname === i.href || pathname.startsWith(`${i.href}/`));
-    if (item) return { group: g.title, label: item.label };
+    if (item) return { group: g.title, label: item.label, short: item.short };
   }
   return null;
 }

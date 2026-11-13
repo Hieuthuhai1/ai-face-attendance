@@ -143,7 +143,7 @@ async function HistoryData({ searchParams }: { searchParams: Promise<HistorySear
           ) : null}
         </div>
 
-        <form method="get" className="mt-4 grid gap-3 border-t border-[var(--border)] pt-4 sm:grid-cols-2 xl:grid-cols-[150px_minmax(0,1fr)_190px_180px_auto]">
+        <form method="get" className="mt-4 grid gap-3 border-t border-[var(--border)] pt-4 sm:grid-cols-2 xl:grid-cols-[210px_minmax(0,1fr)_190px_180px_auto]">
           <label className="flex flex-col gap-1.5 text-[13px] font-medium text-[var(--text-2)]">
             Tháng
             <input

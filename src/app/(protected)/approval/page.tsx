@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { PageHeader } from "@/components/app/app-shell";
 import { requireRole } from "@/server/auth";
 import { createClient } from "@/lib/supabase/server";
 import { ApprovalCenter } from "@/features/workflow/approval-center";
@@ -6,8 +7,13 @@ import { LoadingState } from "@/components/ui/states";
 
 export default function ApprovalPage() {
   return (
-    <main className="page-shell flex flex-col gap-4">
-      <h1 className="text-2xl font-bold">Trung tâm duyệt</h1>
+    <main className="page-shell flex flex-col gap-6">
+      <PageHeader
+        eyebrow="Quản lý đội ngũ"
+        icon="inbox"
+        title="Trung tâm duyệt"
+        description="Duyệt đơn nghỉ và yêu cầu chỉnh công của nhân viên; mọi quyết định đều ghi audit."
+      />
       <Suspense fallback={<LoadingState message="Đang tải…" />}>
         <ApprovalData />
       </Suspense>

@@ -12,6 +12,8 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectOption } from "@/components/ui/select";
 import { ErrorState } from "@/components/ui/states";
 import { reviewLeave, reviewAdjustment } from "@/features/workflow/actions";
+import { leaveTypeLabel } from "@/features/workflow/leave-types";
+import { formatDateOnly, formatDateTimeInZone } from "@/lib/datetime";
 import { toast } from "@/components/ui/toast";
 
 export interface ApprovalRow {
@@ -72,11 +74,16 @@ function requestTypeIcon(type: string) {
 
 function requestDetailRow(r: ApprovalRow) {
   if (r.type === "leave") {
-    return `${r.leave_type} · ${r.start_date} → ${r.end_date}`;
+    const range =
+      r.start_date && r.end_date && r.start_date !== r.end_date
+        ? `${formatDateOnly(r.start_date)} → ${formatDateOnly(r.end_date)}`
+        : formatDateOnly(r.start_date);
+    return `${leaveTypeLabel(r.leave_type)} · ${range}`;
   }
   const parts: string[] = [];
-  if (r.requested_in) parts.push(`vào ${new Date(r.requested_in).toLocaleString("vi-VN")}`);
-  if (r.requested_out) parts.push(`ra ${new Date(r.requested_out).toLocaleString("vi-VN")}`);
+  if (r.work_date) parts.push(formatDateOnly(r.work_date));
+  if (r.requested_in) parts.push(`vào ${formatDateTimeInZone(r.requested_in)}`);
+  if (r.requested_out) parts.push(`ra ${formatDateTimeInZone(r.requested_out)}`);
   return parts.join(" · ") || "Chỉnh sửa";
 }
 
@@ -195,8 +202,8 @@ export function ApprovalCenter({ rows: rowsProp = [] }: { rows?: ApprovalRow[] }
               { key: "type", header: "Loại", render: (r) => <span className="flex items-center gap-1"><Icon name={requestTypeIcon(r.type)} size={14} /> {requestTypeLabel(r.type)}</span> },
               { key: "emp", header: "Nhân viên", render: (r) => <span className="font-medium">{r.employee_code}</span> },
               { key: "dept", header: "Phòng ban", render: (r) => r.department ?? "—" },
-              { key: "detail", header: "Chi tiết", render: (r) => <span className="text-xs">{requestDetailRow(r)}</span> },
-              { key: "reason", header: "Lý do", render: (r) => <span className="max-w-56 truncate text-xs" title={r.reason ?? ""}>{r.reason ?? "—"}</span> },
+              { key: "detail", header: "Chi tiết", render: (r) => <span className="whitespace-nowrap text-xs">{requestDetailRow(r)}</span> },
+              { key: "reason", header: "Lý do", render: (r) => <span className="block max-w-56 truncate text-xs" title={r.reason ?? ""}>{r.reason ?? "—"}</span> },
               {
                 key: "actions",
                 header: <span className="sr-only">Thao tác</span>,
@@ -208,8 +215,13 @@ export function ApprovalCenter({ rows: rowsProp = [] }: { rows?: ApprovalRow[] }
                 ),
               },
             ]}
-            cardTitle={(r) => `${r.employee_code} · ${requestDetailRow(r)}`}
-            cardMeta={(r) => <span className="text-xs">{requestDetailRow(r)} · {r.reason ?? "—"}</span>}
+            cardTitle={(r) => `${r.employee_code} · ${requestTypeLabel(r.type)}`}
+            cardMeta={(r) => (
+              <span className="flex flex-col gap-1 text-xs">
+                <span className="text-[var(--text-2)]">{requestDetailRow(r)}</span>
+                <span className="text-[var(--text-3)]">Lý do: {r.reason ?? "—"}</span>
+              </span>
+            )}
             cardActions={(r) => (
               <>
                 <Button size="sm" onClick={() => decide(r, "approved")} disabled={busy}>Duyệt</Button>
@@ -235,13 +247,19 @@ export function ApprovalCenter({ rows: rowsProp = [] }: { rows?: ApprovalRow[] }
               { key: "type", header: "Loại", render: (r) => <span className="flex items-center gap-1"><Icon name={requestTypeIcon(r.type)} size={14} /> {requestTypeLabel(r.type)}</span> },
               { key: "emp", header: "Nhân viên", render: (r) => <span className="font-medium">{r.employee_code}</span> },
               { key: "dept", header: "Phòng ban", render: (r) => r.department ?? "—" },
-              { key: "detail", header: "Chi tiết", render: (r) => <span className="text-xs">{requestDetailRow(r)}</span> },
+              { key: "detail", header: "Chi tiết", render: (r) => <span className="whitespace-nowrap text-xs">{requestDetailRow(r)}</span> },
               { key: "status", header: "Trạng thái", render: (r) => statusBadge(r.status) },
-              { key: "reason", header: "Lý do", render: (r) => <span className="max-w-56 truncate text-xs" title={r.reason ?? ""}>{r.reason ?? "—"}</span> },
-              { key: "created", header: "Ngày tạo", render: (r) => <span className="tnum text-xs">{new Date(r.created_at).toLocaleString("vi-VN")}</span> },
+              { key: "reason", header: "Lý do", render: (r) => <span className="block max-w-56 truncate text-xs" title={r.reason ?? ""}>{r.reason ?? "—"}</span> },
+              { key: "created", header: "Ngày tạo", render: (r) => <span className="tnum whitespace-nowrap text-xs">{formatDateTimeInZone(r.created_at)}</span> },
             ]}
-            cardTitle={(r) => `${r.employee_code} · ${requestDetailRow(r)}`}
-            cardMeta={(r) => <span className="text-xs">{requestDetailRow(r)} · {r.reason ?? "—"}</span>}
+            cardTitle={(r) => `${r.employee_code} · ${requestTypeLabel(r.type)}`}
+            cardMeta={(r) => (
+              <span className="flex flex-col gap-1 text-xs">
+                <span className="text-[var(--text-2)]">{requestDetailRow(r)}</span>
+                <span className="text-[var(--text-3)]">Lý do: {r.reason ?? "—"}</span>
+                <span className="tnum text-[var(--text-3)]">Tạo lúc {formatDateTimeInZone(r.created_at)}</span>
+              </span>
+            )}
             cardStatus={(r) => statusBadge(r.status)}
           />
         </div>

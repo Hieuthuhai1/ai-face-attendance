@@ -36,6 +36,30 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   loading?: boolean;
 }
 
+/**
+ * Class dùng chung cho `<button>` và `<Link>` (tránh lồng `<a><button>`).
+ * Ví dụ: `<Link href="/x" className={buttonClassName({ variant: "secondary" })}>`.
+ */
+export function buttonClassName({
+  variant = "primary",
+  size = "md",
+  className,
+}: {
+  variant?: Variant;
+  size?: Size;
+  className?: string;
+} = {}) {
+  return cn(
+    "inline-flex select-none items-center justify-center gap-2 rounded-[var(--radius-control)] font-semibold tracking-[-0.01em]",
+    "transition-all duration-150 active:translate-y-px",
+    "focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[var(--brand-ring)]",
+    "disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-55",
+    VARIANTS[variant],
+    SIZES[size],
+    className,
+  );
+}
+
 export function Button({
   variant = "primary",
   size = "md",
@@ -47,15 +71,7 @@ export function Button({
 }: ButtonProps) {
   return (
     <button
-      className={cn(
-        "inline-flex select-none items-center justify-center gap-2 rounded-[var(--radius-control)] font-semibold tracking-[-0.01em]",
-        "transition-all duration-150 active:translate-y-px",
-        "focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[var(--brand-ring)]",
-        "disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-55",
-        VARIANTS[variant],
-        SIZES[size],
-        className,
-      )}
+      className={buttonClassName({ variant, size, className })}
       disabled={disabled ?? loading}
       aria-busy={loading || undefined}
       {...rest}

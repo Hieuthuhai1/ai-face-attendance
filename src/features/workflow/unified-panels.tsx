@@ -32,20 +32,8 @@ export interface UnifiedRequestRow {
   created_at: string;
 }
 
-const LEAVE_TYPES = [
-  { value: "annual", label: "Phép năm", icon: "calendar" as const },
-  { value: "sick", label: "Ốm đau", icon: "alert" as const },
-  { value: "unpaid", label: "Nghỉ không lương", icon: "calendar" as const },
-  { value: "maternity", label: "Thai sản", icon: "calendar" as const },
-  { value: "other", label: "Khác", icon: "file-text" as const },
-];
-
-const LEAVE_TYPE_LABEL = Object.fromEntries(LEAVE_TYPES.map((type) => [type.value, type.label]));
-
-function leaveTypeLabel(value?: string) {
-  if (!value) return "Đơn nghỉ";
-  return LEAVE_TYPE_LABEL[value] ?? value;
-}
+import { LEAVE_TYPES, leaveTypeLabel } from "@/features/workflow/leave-types";
+import { formatDateOnly, formatDateTimeInZone } from "@/lib/datetime";
 
 function statusConfig(status: string) {
   const map: Record<string, { tone: "success" | "danger" | "warning" | "neutral"; icon: "check" | "x" | "clock" | "help"; label: string }> = {
@@ -176,7 +164,9 @@ export function UnifiedRequestForm() {
           <form onSubmit={onLeaveSubmit} className="mt-4 flex flex-col gap-4">
             <div className="grid gap-3 sm:grid-cols-2">
               <label className="flex flex-col gap-1.5 text-[13px] font-semibold text-[var(--text-2)]">
-                Loại nghỉ <span className="text-[var(--danger)]">*</span>
+                <span>
+                  Loại nghỉ <span className="text-[var(--danger)]">*</span>
+                </span>
                 <select name="leave_type" required defaultValue="" className={SELECT_CLASS}>
                   <option value="">— Chọn loại nghỉ —</option>
                   {LEAVE_TYPES.map((type) => (
@@ -268,11 +258,16 @@ export function UnifiedRequestForm() {
 
 function requestDetailRow(r: UnifiedRequestRow) {
   if (r.type === "leave") {
-    return `${leaveTypeLabel(r.leave_type)} · ${r.start_date} → ${r.end_date}`;
+    const range =
+      r.start_date && r.end_date && r.start_date !== r.end_date
+        ? `${formatDateOnly(r.start_date)} → ${formatDateOnly(r.end_date)}`
+        : formatDateOnly(r.start_date);
+    return `${leaveTypeLabel(r.leave_type)} · ${range}`;
   }
   const parts: string[] = [];
-  if (r.requested_in) parts.push(`vào ${new Date(r.requested_in).toLocaleString("vi-VN")}`);
-  if (r.requested_out) parts.push(`ra ${new Date(r.requested_out).toLocaleString("vi-VN")}`);
+  if (r.work_date) parts.push(formatDateOnly(r.work_date));
+  if (r.requested_in) parts.push(`vào ${formatDateTimeInZone(r.requested_in)}`);
+  if (r.requested_out) parts.push(`ra ${formatDateTimeInZone(r.requested_out)}`);
   return parts.join(" · ") || "Chỉnh sửa";
 }
 
@@ -305,14 +300,14 @@ export function MyRequests({ rows }: { rows: UnifiedRequestRow[] }) {
         {
           key: "detail",
           header: "Chi tiết",
-          render: (r) => <span className="text-[13px] text-[var(--text-2)]">{requestDetailRow(r)}</span>,
+          render: (r) => <span className="whitespace-nowrap text-[13px] text-[var(--text-2)]">{requestDetailRow(r)}</span>,
         },
         {
           key: "created",
           header: "Gửi lúc",
           render: (r) => (
-            <span className="tnum text-[13px] text-[var(--text-2)]">
-              {new Date(r.created_at).toLocaleDateString("vi-VN")}
+            <span className="tnum whitespace-nowrap text-[13px] text-[var(--text-2)]">
+              {formatDateTimeInZone(r.created_at)}
             </span>
           ),
         },
@@ -327,13 +322,13 @@ export function MyRequests({ rows }: { rows: UnifiedRequestRow[] }) {
           ),
         },
       ]}
-      cardTitle={(r) => `${requestTypeLabel(r.type)} · ${new Date(r.created_at).toLocaleDateString("vi-VN")}`}
+      cardTitle={(r) => `${requestTypeLabel(r.type)} · ${formatDateOnly(r.created_at)}`}
       cardStatus={(r) => statusBadge(r.status)}
       cardMeta={(r) => (
         <span className="flex flex-col gap-1 text-[13px] text-[var(--text-2)]">
           <span>{requestDetailRow(r)}</span>
           {r.resolution_note ? <span>Phản hồi: {r.resolution_note}</span> : null}
-          {r.reviewed_at ? <span>Đã xử lý: {new Date(r.reviewed_at).toLocaleString("vi-VN")}</span> : null}
+          {r.reviewed_at ? <span>Đã xử lý: {formatDateTimeInZone(r.reviewed_at)}</span> : null}
         </span>
       )}
     />

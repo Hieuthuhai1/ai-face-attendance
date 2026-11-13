@@ -45,6 +45,7 @@ function BrandMark({ collapsed = false }: { collapsed?: boolean }) {
   return (
     <Link
       href="/dashboard"
+      prefetch={false}
       className={cn(
         "flex min-w-0 items-center gap-3 rounded-xl focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--accent)]",
         collapsed && "justify-center",
@@ -78,6 +79,7 @@ function NavLink({
   icon,
   collapsed,
   vertical,
+  prefetch,
   onNavigate,
 }: {
   href: string;
@@ -85,17 +87,33 @@ function NavLink({
   icon: IconName;
   collapsed?: boolean;
   vertical?: boolean;
+  /** `false` = không prefetch route này khi link vào viewport. */
+  prefetch?: boolean;
   onNavigate?: () => void;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
   const { t } = useLanguage();
   const active = isActiveItem(pathname, href);
   const translatedLabel = t(label);
+
+  /**
+   * Không prefetch khi link vào viewport (10 route × render server = tải nặng
+   * ngay khi mở trang). Chỉ prefetch khi người dùng có ý định bấm (hover/focus)
+   * để chuyển trang vẫn nhanh.
+   */
+  const prefetchOnIntent = () => {
+    if (prefetch === false) return;
+    router.prefetch(href);
+  };
 
   if (vertical) {
     return (
       <Link
         href={href}
+        prefetch={false}
+        onMouseEnter={prefetchOnIntent}
+        onFocus={prefetchOnIntent}
         aria-current={active ? "page" : undefined}
         onClick={onNavigate}
         className={cn(
@@ -119,6 +137,9 @@ function NavLink({
   return (
     <Link
       href={href}
+      prefetch={false}
+      onMouseEnter={prefetchOnIntent}
+      onFocus={prefetchOnIntent}
       aria-current={active ? "page" : undefined}
       title={collapsed ? translatedLabel : undefined}
       onClick={onNavigate}
@@ -195,6 +216,7 @@ function Breadcrumb({ pathname }: { pathname: string }) {
       <nav aria-label="Breadcrumb" className="hidden min-w-0 items-center gap-1.5 text-[13px] sm:flex">
         <Link
           href="/dashboard"
+          prefetch={false}
           className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--text-3)] transition-colors hover:bg-[var(--surface-muted)] hover:text-[var(--brand)]"
           aria-label="Dashboard"
         >
@@ -215,7 +237,7 @@ function Breadcrumb({ pathname }: { pathname: string }) {
         )}
       </nav>
       <span className="truncate text-sm font-semibold text-[var(--navy-800)] sm:hidden">
-        {trail ? t(trail.label) : "AI Attendance"}
+        {trail ? t(trail.short ?? trail.label) : "AI Attendance"}
       </span>
     </>
   );
@@ -532,7 +554,16 @@ export function AppShell({
         >
           <div className="grid" style={{ gridTemplateColumns: `repeat(${mobile.length}, minmax(0, 1fr))` }}>
             {mobile.map((item) => (
-              <NavLink key={item.href} href={item.href} label={item.short ?? item.label} icon={item.icon} vertical />
+              <NavLink
+                key={item.href}
+                href={item.href}
+                label={item.short ?? item.label}
+                icon={item.icon}
+                vertical
+                // Thanh dưới chỉ hiện trên mobile nhưng vẫn nằm trong DOM ở
+                // desktop → prefetch trùng với sidebar. Tắt để không tải 2 lần.
+                prefetch={false}
+              />
             ))}
           </div>
         </nav>

@@ -4,6 +4,15 @@ const nextConfig: NextConfig = {
   /* config options here */
   cacheComponents: true,
   partialPrefetching: true,
+  experimental: {
+    // Giữ RSC payload đã prefetch trong client cache. Mặc định dynamic = 0s
+    // khiến mỗi lần click/prefetch lại phải round-trip server (đo được ~20
+    // request _rsc mỗi lần vào trang).
+    staleTimes: {
+      dynamic: 15,
+      static: 300,
+    },
+  },
   typescript: {
     ignoreBuildErrors: true,
   },

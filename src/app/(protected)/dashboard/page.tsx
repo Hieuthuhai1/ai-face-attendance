@@ -12,7 +12,7 @@ import {
 import { EmployeeToday } from "@/features/dashboard/employee-today";
 import type { Profile, Role } from "@/types/db";
 import type { TrendBucket, TrendDay } from "@/lib/dashboard/trends";
-import { Button } from "@/components/ui/button";
+import { Button, buttonClassName } from "@/components/ui/button";
 import { Card, CardHeader } from "@/components/ui/card";
 import { DataTable } from "@/components/ui/data-table";
 import { ErrorState } from "@/components/ui/states";
@@ -34,7 +34,7 @@ import {
   LateAbsentChart,
   OnTimeDonut,
   ShiftDistributionPie,
-} from "@/features/dashboard/charts";
+} from "@/features/dashboard/charts-lazy";
 import { formatShortDateInZone, formatTimeInZone, todayInZone } from "@/lib/datetime";
 
 // ============================================================
@@ -841,10 +841,11 @@ function DashboardView({
                   key: "actions",
                   header: <span className="sr-only">Thao tác</span>,
                   render: (exception) => (
-                    <Link href={exception.href} className="inline-flex">
-                      <Button variant="ghost" size="sm">
-                        Xem
-                      </Button>
+                    <Link
+                      href={exception.href}
+                      className={buttonClassName({ variant: "ghost", size: "sm" })}
+                    >
+                      Xem
                     </Link>
                   ),
                 },
@@ -861,10 +862,11 @@ function DashboardView({
                 <span className="text-xs text-[var(--text-2)]">{exception.detail}</span>
               )}
               cardActions={(exception) => (
-                <Link href={exception.href}>
-                  <Button variant="ghost" size="sm">
-                    Xem chi tiết
-                  </Button>
+                <Link
+                  href={exception.href}
+                  className={buttonClassName({ variant: "ghost", size: "sm" })}
+                >
+                  Xem chi tiết
                 </Link>
               )}
             />

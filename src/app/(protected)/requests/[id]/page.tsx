@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { PageHeader } from "@/components/app/app-shell";
 import { createClient } from "@/lib/supabase/server";
 import { UnifiedRequestDetail } from "@/features/workflow/unified-panels";
 import { LoadingState } from "@/components/ui/states";
@@ -10,8 +11,13 @@ interface RequestDetailPageProps {
 
 export default function RequestDetailPage({ params }: RequestDetailPageProps) {
   return (
-    <main className="page-shell-form flex flex-col gap-4">
-      <h1 className="text-2xl font-bold">Chi tiết yêu cầu</h1>
+    <main className="page-shell-form flex flex-col gap-6">
+      <PageHeader
+        eyebrow="Đơn từ"
+        icon="file-text"
+        title="Chi tiết yêu cầu"
+        description="Thông tin đơn, trạng thái duyệt và ghi chú xử lý."
+      />
       <Suspense fallback={<LoadingState message="Đang tải…" />}>
         <RequestDetailContent params={params} />
       </Suspense>

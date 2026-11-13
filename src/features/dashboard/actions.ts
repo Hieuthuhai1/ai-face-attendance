@@ -1,5 +1,6 @@
 "use server";
 
+import { cache } from "react";
 import { requireRole, requireUser } from "@/server/auth";
 import { createClient } from "@/lib/supabase/server";
 import { todayInZone } from "@/lib/datetime";
@@ -39,24 +40,27 @@ async function myEmployee(supabase: Db, userId: string) {
   return (data as { id: string; organization_id: string } | null) ?? null;
 }
 
-async function reportScope(
-  supabase: Db,
-  userId: string,
-  role: Role,
-  orgId: string,
-): Promise<Scope> {
-  const me = await myEmployee(supabase, userId);
-  if (role === "manager") {
-    const { data: team } = await supabase
-      .from("employees")
-      .select("id")
-      .eq("manager_id", me?.id ?? "");
-    const ids = ((team ?? []) as Array<{ id: string }>).map((t) => t.id);
-    if (me) ids.push(me.id);
-    return { orgId, employeeIds: ids, ownEmployeeId: me?.id ?? null };
-  }
-  return { orgId, employeeIds: null, ownEmployeeId: me?.id ?? null };
-}
+/**
+ * Phạm vi dữ liệu theo role. Bọc `cache()` để một request (dashboard gọi
+ * 8 server action song song) chỉ query employee/team MỘT lần thay vì 9 lần.
+ * Client Supabase được tạo bên trong để cache key chỉ gồm tham số ổn định.
+ */
+const reportScope = cache(
+  async (userId: string, role: Role, orgId: string): Promise<Scope> => {
+    const supabase = await createClient();
+    const me = await myEmployee(supabase, userId);
+    if (role === "manager") {
+      const { data: team } = await supabase
+        .from("employees")
+        .select("id")
+        .eq("manager_id", me?.id ?? "");
+      const ids = ((team ?? []) as Array<{ id: string }>).map((t) => t.id);
+      if (me) ids.push(me.id);
+      return { orgId, employeeIds: ids, ownEmployeeId: me?.id ?? null };
+    }
+    return { orgId, employeeIds: null, ownEmployeeId: me?.id ?? null };
+  },
+);
 
 // ============================================================
 // Dashboard Data Types
@@ -269,7 +273,7 @@ export async function getDashboardKPIs(filters: DashboardFilters): Promise<{
   const { userId, profile } = await requireRole(REVIEW_ROLES);
   const supabase = await createClient();
   const day = filters.date ?? todayInZone();
-  const scope = await reportScope(supabase, userId, profile.role, profile.organization_id ?? "");
+  const scope = await reportScope(userId, profile.role, profile.organization_id ?? "");
   const { start, end } = getDateRange(day);
 
   try {
@@ -286,15 +290,15 @@ export async function getDashboardKPIs(filters: DashboardFilters): Promise<{
     const empIds = ((employees ?? []) as Array<{ id: string }>).map((e) => e.id);
     const totalActive = empIds.length;
 
-    // Get employees with shift assignments for today
-    const { data: assigned } = await supabase
+    // Các query dưới đây không phụ thuộc nhau → chạy song song.
+    // Trước đây chúng chạy tuần tự (12 round-trip) nên TTFB dashboard ~1s.
+    let assignedQuery = supabase
       .from("shift_assignments")
       .select("employee_id, work_shifts(name)")
       .eq("organization_id", scope.orgId)
       .lte("effective_from", day)
       .or(`effective_to.is.null,effective_to.gte.${day}`)
       .in("employee_id", empIds.length > 0 ? empIds : ["00000000-0000-0000-0000-000000000000"]);
-    const assignedIds = new Set(((assigned ?? []) as Array<{ employee_id: string }>).map((a) => a.employee_id));
 
     // Get attendance summaries for today
     let sumQuery = supabase
@@ -305,9 +309,6 @@ export async function getDashboardKPIs(filters: DashboardFilters): Promise<{
     if (scope.employeeIds) {
       sumQuery = sumQuery.in("employee_id", scope.employeeIds.length > 0 ? scope.employeeIds : ["00000000-0000-0000-0000-000000000000"]);
     }
-    const { data: summaries } = await sumQuery;
-    const sums = (summaries ?? []) as Array<{ employee_id: string; status: string; first_in: string | null; late_min: number; early_leave_min: number }>;
-    const checkedIds = new Set(sums.filter((s) => s.first_in !== null).map((s) => s.employee_id));
 
     // Get previous day summaries for comparison
     const prevDay = addDays(day, -1);
@@ -319,22 +320,16 @@ export async function getDashboardKPIs(filters: DashboardFilters): Promise<{
     if (scope.employeeIds) {
       prevSumQuery = prevSumQuery.in("employee_id", scope.employeeIds.length > 0 ? scope.employeeIds : ["00000000-0000-0000-0000-000000000000"]);
     }
-    const { data: prevSummaries } = await prevSumQuery;
-    const prevSums = (prevSummaries ?? []) as Array<{ employee_id: string; status: string; first_in: string | null }>;
-    const prevCheckedIds = new Set(prevSums.filter((s) => s.first_in !== null).map((s) => s.employee_id));
 
     // Phân ca của ngày trước (để so sánh tỷ lệ đúng ngữ cảnh, không dùng
     // phân ca hôm nay làm mẫu số cho hôm qua).
-    const { data: prevAssigned } = await supabase
+    let prevAssignedQuery = supabase
       .from("shift_assignments")
       .select("employee_id")
       .eq("organization_id", scope.orgId)
       .lte("effective_from", prevDay)
       .or(`effective_to.is.null,effective_to.gte.${prevDay}`)
       .in("employee_id", empIds.length > 0 ? empIds : ["00000000-0000-0000-0000-000000000000"]);
-    const prevAssignedIds = new Set(
-      ((prevAssigned ?? []) as Array<{ employee_id: string }>).map((a) => a.employee_id),
-    );
 
     let prevLeaveQuery = supabase
       .from("leave_requests")
@@ -349,11 +344,6 @@ export async function getDashboardKPIs(filters: DashboardFilters): Promise<{
         scope.employeeIds.length > 0 ? scope.employeeIds : ["00000000-0000-0000-0000-000000000000"],
       );
     }
-    const { count: prevOnLeave } = await prevLeaveQuery;
-
-    // Calculate KPIs
-    const checkedIn = checkedIds.size;
-    const late = sums.filter((s) => s.status === "late").length;
 
     // Pending review events
     let evQuery = supabase
@@ -366,7 +356,6 @@ export async function getDashboardKPIs(filters: DashboardFilters): Promise<{
     if (scope.employeeIds) {
       evQuery = evQuery.in("employee_id", scope.employeeIds.length > 0 ? scope.employeeIds : ["00000000-0000-0000-0000-000000000000"]);
     }
-    const { count: pendingReview } = await evQuery;
 
     // Pending enrollments
     let enrollQuery = supabase
@@ -377,7 +366,6 @@ export async function getDashboardKPIs(filters: DashboardFilters): Promise<{
     if (scope.employeeIds) {
       enrollQuery = enrollQuery.in("employee_id", scope.employeeIds.length > 0 ? scope.employeeIds : ["00000000-0000-0000-0000-000000000000"]);
     }
-    const { count: pendingEnroll } = await enrollQuery;
 
     // Pending adjustments
     let adjQuery = supabase
@@ -388,7 +376,6 @@ export async function getDashboardKPIs(filters: DashboardFilters): Promise<{
     if (scope.employeeIds) {
       adjQuery = adjQuery.in("employee_id", scope.employeeIds.length > 0 ? scope.employeeIds : ["00000000-0000-0000-0000-000000000000"]);
     }
-    const { count: pendingAdj } = await adjQuery;
 
     // Pending leave
     let leaveQuery = supabase
@@ -399,7 +386,6 @@ export async function getDashboardKPIs(filters: DashboardFilters): Promise<{
     if (scope.employeeIds) {
       leaveQuery = leaveQuery.in("employee_id", scope.employeeIds.length > 0 ? scope.employeeIds : ["00000000-0000-0000-0000-000000000000"]);
     }
-    const { count: pendingLeave } = await leaveQuery;
 
     // On leave today (approved leave covering today)
     let onLeaveQuery = supabase
@@ -412,14 +398,6 @@ export async function getDashboardKPIs(filters: DashboardFilters): Promise<{
     if (scope.employeeIds) {
       onLeaveQuery = onLeaveQuery.in("employee_id", scope.employeeIds.length > 0 ? scope.employeeIds : ["00000000-0000-0000-0000-000000000000"]);
     }
-    const { count: onLeave } = await onLeaveQuery;
-    const onLeaveCount = onLeave ?? 0;
-
-    // Vắng mặt = có ca nhưng không chấm công, trừ người đã có đơn nghỉ duyệt.
-    const absent = Math.max(0, assignedIds.size - checkedIn - onLeaveCount);
-    // Tỷ lệ chuyên cần = đã chấm công / số nhân viên có ca (null khi chưa phân ca).
-    const attendanceRate =
-      assignedIds.size > 0 ? Math.round((checkedIn / assignedIds.size) * 100) : null;
 
     // Working now (checked in but not checked out)
     let workingNowQuery = supabase
@@ -433,9 +411,7 @@ export async function getDashboardKPIs(filters: DashboardFilters): Promise<{
     if (scope.employeeIds) {
       workingNowQuery = workingNowQuery.in("employee_id", scope.employeeIds.length > 0 ? scope.employeeIds : ["00000000-0000-0000-0000-000000000000"]);
     }
-    const { data: checkIns } = await workingNowQuery;
-    const checkInIds = new Set(((checkIns ?? []) as Array<{ employee_id: string }>).map((e) => e.employee_id));
-    
+
     let checkOutQuery = supabase
       .from("attendance_events")
       .select("employee_id")
@@ -447,9 +423,59 @@ export async function getDashboardKPIs(filters: DashboardFilters): Promise<{
     if (scope.employeeIds) {
       checkOutQuery = checkOutQuery.in("employee_id", scope.employeeIds.length > 0 ? scope.employeeIds : ["00000000-0000-0000-0000-000000000000"]);
     }
-    const { data: checkOuts } = await checkOutQuery;
+
+    const [
+      { data: assigned },
+      { data: summaries },
+      { data: prevSummaries },
+      { data: prevAssigned },
+      { count: prevOnLeave },
+      { count: pendingReview },
+      { count: pendingEnroll },
+      { count: pendingAdj },
+      { count: pendingLeave },
+      { count: onLeave },
+      { data: checkIns },
+      { data: checkOuts },
+    ] = await Promise.all([
+      assignedQuery,
+      sumQuery,
+      prevSumQuery,
+      prevAssignedQuery,
+      prevLeaveQuery,
+      evQuery,
+      enrollQuery,
+      adjQuery,
+      leaveQuery,
+      onLeaveQuery,
+      workingNowQuery,
+      checkOutQuery,
+    ]);
+
+    const assignedIds = new Set(((assigned ?? []) as Array<{ employee_id: string }>).map((a) => a.employee_id));
+    const sums = (summaries ?? []) as Array<{ employee_id: string; status: string; first_in: string | null; late_min: number; early_leave_min: number }>;
+    const checkedIds = new Set(sums.filter((s) => s.first_in !== null).map((s) => s.employee_id));
+    const prevSums = (prevSummaries ?? []) as Array<{ employee_id: string; status: string; first_in: string | null }>;
+    const prevCheckedIds = new Set(prevSums.filter((s) => s.first_in !== null).map((s) => s.employee_id));
+    const prevAssignedIds = new Set(
+      ((prevAssigned ?? []) as Array<{ employee_id: string }>).map((a) => a.employee_id),
+    );
+
+    // Calculate KPIs
+    const checkedIn = checkedIds.size;
+    const late = sums.filter((s) => s.status === "late").length;
+
+    const onLeaveCount = onLeave ?? 0;
+
+    // Vắng mặt = có ca nhưng không chấm công, trừ người đã có đơn nghỉ duyệt.
+    const absent = Math.max(0, assignedIds.size - checkedIn - onLeaveCount);
+    // Tỷ lệ chuyên cần = đã chấm công / số nhân viên có ca (null khi chưa phân ca).
+    const attendanceRate =
+      assignedIds.size > 0 ? Math.round((checkedIn / assignedIds.size) * 100) : null;
+
+    const checkInIds = new Set(((checkIns ?? []) as Array<{ employee_id: string }>).map((e) => e.employee_id));
     const checkOutIds = new Set(((checkOuts ?? []) as Array<{ employee_id: string }>).map((e) => e.employee_id));
-    
+
     const workingNow = [...checkInIds].filter(id => !checkOutIds.has(id)).length;
 
     // Calculate percentage changes
@@ -579,7 +605,7 @@ export async function getLiveActivity(filters: DashboardFilters, limit = 20): Pr
   const { userId, profile } = await requireRole(REVIEW_ROLES);
   const supabase = await createClient();
   const day = filters.date ?? todayInZone();
-  const scope = await reportScope(supabase, userId, profile.role, profile.organization_id ?? "");
+  const scope = await reportScope(userId, profile.role, profile.organization_id ?? "");
   const { start, end } = getDateRange(day);
 
   try {
@@ -662,7 +688,7 @@ export async function getExceptions(filters: DashboardFilters): Promise<{
   const { userId, profile } = await requireRole(REVIEW_ROLES);
   const supabase = await createClient();
   const day = filters.date ?? todayInZone();
-  const scope = await reportScope(supabase, userId, profile.role, profile.organization_id ?? "");
+  const scope = await reportScope(userId, profile.role, profile.organization_id ?? "");
   const { start, end } = getDateRange(day);
 
   try {
@@ -884,7 +910,7 @@ export async function getTimeTrend(filters: DashboardFilters): Promise<{
   const { userId, profile } = await requireRole(REVIEW_ROLES);
   const supabase = await createClient();
   const day = filters.date ?? todayInZone();
-  const scope = await reportScope(supabase, userId, profile.role, profile.organization_id ?? "");
+  const scope = await reportScope(userId, profile.role, profile.organization_id ?? "");
   const { start, end } = getDateRange(day);
 
   try {
@@ -942,7 +968,7 @@ export async function getShiftDistribution(filters: DashboardFilters): Promise<{
   const { userId, profile } = await requireRole(REVIEW_ROLES);
   const supabase = await createClient();
   const day = filters.date ?? todayInZone();
-  const scope = await reportScope(supabase, userId, profile.role, profile.organization_id ?? "");
+  const scope = await reportScope(userId, profile.role, profile.organization_id ?? "");
 
   try {
     // Get shifts with employee counts for today
@@ -1008,7 +1034,7 @@ export async function getDepartmentAttendance(filters: DashboardFilters): Promis
   const { userId, profile } = await requireRole(REVIEW_ROLES);
   const supabase = await createClient();
   const day = filters.date ?? todayInZone();
-  const scope = await reportScope(supabase, userId, profile.role, profile.organization_id ?? "");
+  const scope = await reportScope(userId, profile.role, profile.organization_id ?? "");
 
   try {
     // Get departments
@@ -1104,7 +1130,7 @@ export async function getAttendanceTrends(filters: DashboardFilters): Promise<{
   const { userId, profile } = await requireRole(REVIEW_ROLES);
   const supabase = await createClient();
   const day = filters.date ?? todayInZone();
-  const scope = await reportScope(supabase, userId, profile.role, profile.organization_id ?? "");
+  const scope = await reportScope(userId, profile.role, profile.organization_id ?? "");
   const range = resolveDateRange(day, filters.range ?? "today");
   const windowFrom = addDays(range.to, -(TREND_WINDOW_DAYS - 1));
   const trendFrom = windowFrom < range.from ? windowFrom : range.from;

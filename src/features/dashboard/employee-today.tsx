@@ -3,7 +3,7 @@ import { connection } from "next/server";
 import { getTodayStatus } from "@/features/attendance/actions";
 import { getPersonalHistory } from "@/features/reports/actions";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { buttonClassName } from "@/components/ui/button";
 import { Card, CardHeader } from "@/components/ui/card";
 import { Icon, type IconName } from "@/components/ui/icon";
 import { StatCard } from "@/components/ui/stat-card";
@@ -99,8 +99,8 @@ export async function EmployeeToday({ profile }: { profile: Profile }) {
             title="Tài khoản chưa gắn với nhân viên"
             description="Liên hệ HR để cập nhật hồ sơ nhân sự trước khi chấm công."
             action={
-              <Link href="/requests">
-                <Button variant="secondary">Gửi yêu cầu</Button>
+              <Link href="/requests" className={buttonClassName({ variant: "secondary" })}>
+                Gửi yêu cầu
               </Link>
             }
           />
@@ -229,10 +229,11 @@ export async function EmployeeToday({ profile }: { profile: Profile }) {
               description="Bấm “Chấm công vào” ở thẻ ca làm để bắt đầu ngày làm việc."
               action={
                 status.canCheckIn ? (
-                  <Link href="/check-in">
-                    <Button size="sm" variant="soft">
-                      <Icon name="camera" size={14} /> Chấm công vào
-                    </Button>
+                  <Link
+                    href="/check-in"
+                    className={buttonClassName({ size: "sm", variant: "soft" })}
+                  >
+                    <Icon name="camera" size={14} /> Chấm công vào
                   </Link>
                 ) : undefined
               }

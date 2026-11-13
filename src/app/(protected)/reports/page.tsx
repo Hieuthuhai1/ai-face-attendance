@@ -24,6 +24,14 @@ const STATUS_MAP: Record<string, "ontime" | "late" | "early_leave" | "absent" | 
   incomplete: "needs_review",
 };
 
+const STATUS_LABEL: Record<string, string> = {
+  present: "Có mặt",
+  late: "Đi muộn",
+  early_leave: "Về sớm",
+  absent: "Vắng",
+  incomplete: "Thiếu dữ liệu",
+};
+
 const EXCEPTION_TYPE_LABELS: Record<string, string> = {
   unverified: "Chưa xác minh",
   missing_checkout: "Thiếu check-out",
@@ -37,6 +45,9 @@ const EXCEPTION_SEVERITY_COLORS: Record<string, "success" | "warning" | "danger"
   medium: "warning",
   low: "neutral",
 };
+
+const FILTER_CONTROL =
+  "h-10 w-full rounded-[var(--radius-control)] border border-[var(--border-strong)] bg-white px-3 text-sm text-[var(--text-1)] shadow-[var(--shadow-xs)] transition-colors placeholder:text-[var(--text-3)] hover:border-[var(--border-strong)] focus-visible:border-[var(--brand)] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[var(--brand-ring)]";
 
 export default function ReportsPage({
   searchParams,
@@ -95,40 +106,61 @@ async function ReportsData({ searchParams }: { searchParams: Promise<Record<stri
 
       {/* Filters */}
       <Card>
-        <CardTitle>Bộ lọc</CardTitle>
-        <form method="get" className="mt-2 grid gap-2 sm:grid-cols-6">
-          <label className="flex flex-col gap-1 text-sm">Từ ngày<input type="date" name="from" defaultValue={filters.from} className="h-10 rounded-lg border px-2" /></label>
-          <label className="flex flex-col gap-1 text-sm">Đến ngày<input type="date" name="to" defaultValue={filters.to} className="h-10 rounded-lg border px-2" /></label>
-          <label className="flex flex-col gap-1 text-sm">Phòng ban
-            <select name="departmentId" defaultValue={filters.departmentId ?? ""} className="h-10 rounded-lg border px-2">
+        <div className="flex items-start gap-2.5">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--radius-icon)] bg-[var(--brand-soft)] text-[var(--brand)] ring-1 ring-inset ring-blue-100">
+            <Icon name="filter" size={17} />
+          </span>
+          <div>
+            <CardTitle>Bộ lọc</CardTitle>
+            <p className="mt-0.5 text-[13px] text-[var(--text-2)]">
+              Vắng chỉ kết luận khi nhân viên có phân ca phủ ngày xem. Xuất CSV ghi audit.
+            </p>
+          </div>
+        </div>
+        <form method="get" className="mt-4 grid gap-3 border-t border-[var(--border)] pt-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6">
+          <label className="flex min-w-0 flex-col gap-1.5 text-[13px] font-medium text-[var(--text-2)]">
+            Từ ngày
+            <input type="date" name="from" defaultValue={filters.from} className={FILTER_CONTROL} />
+          </label>
+          <label className="flex min-w-0 flex-col gap-1.5 text-[13px] font-medium text-[var(--text-2)]">
+            Đến ngày
+            <input type="date" name="to" defaultValue={filters.to} className={FILTER_CONTROL} />
+          </label>
+          <label className="flex min-w-0 flex-col gap-1.5 text-[13px] font-medium text-[var(--text-2)]">
+            Phòng ban
+            <select name="departmentId" defaultValue={filters.departmentId ?? ""} className={FILTER_CONTROL}>
               <option value="">Tất cả</option>
               {(departments ?? []).map((d) => <option key={d.id as string} value={d.id as string}>{d.name as string}</option>)}
             </select>
           </label>
-          <label className="flex flex-col gap-1 text-sm">Nhân viên
-            <select name="employeeId" defaultValue={filters.employeeId ?? ""} className="h-10 rounded-lg border px-2">
+          <label className="flex min-w-0 flex-col gap-1.5 text-[13px] font-medium text-[var(--text-2)]">
+            Nhân viên
+            <select name="employeeId" defaultValue={filters.employeeId ?? ""} className={FILTER_CONTROL}>
               <option value="">Tất cả</option>
               {(employees ?? []).map((e) => <option key={e.id as string} value={e.id as string}>{e.employee_code as string} — {e.display_name as string}</option>)}
             </select>
           </label>
-          <label className="flex flex-col gap-1 text-sm">Ca
-            <select name="shiftId" defaultValue={filters.shiftId ?? ""} className="h-10 rounded-lg border px-2">
+          <label className="flex min-w-0 flex-col gap-1.5 text-[13px] font-medium text-[var(--text-2)]">
+            Ca
+            <select name="shiftId" defaultValue={filters.shiftId ?? ""} className={FILTER_CONTROL}>
               <option value="">Tất cả</option>
               {(shifts ?? []).map((s) => <option key={s.id as string} value={s.id as string}>{s.name as string}</option>)}
             </select>
           </label>
-          <label className="flex flex-col gap-1 text-sm">Trạng thái
-            <select name="status" defaultValue={filters.status ?? ""} className="h-10 rounded-lg border px-2">
+          <label className="flex min-w-0 flex-col gap-1.5 text-[13px] font-medium text-[var(--text-2)]">
+            Trạng thái
+            <select name="status" defaultValue={filters.status ?? ""} className={FILTER_CONTROL}>
               <option value="">Tất cả</option>
-              {["present", "late", "early_leave", "absent", "incomplete"].map((s) => <option key={s} value={s}>{s}</option>)}
+              {["present", "late", "early_leave", "absent", "incomplete"].map((s) => <option key={s} value={s}>{STATUS_LABEL[s] ?? s}</option>)}
             </select>
           </label>
-          <div className="flex items-end gap-2">
-            <Button type="submit" size="sm">Lọc</Button>
+          <div className="flex flex-wrap items-center gap-2 sm:col-span-2 lg:col-span-3 2xl:col-span-6">
+            <Button type="submit" size="md">
+              <Icon name="search" size={15} /> Lọc
+            </Button>
             <ExportButton filters={filters} />
           </div>
         </form>
-        <p className="mt-2 text-xs text-slate-500">Vắng chỉ kết luận khi nhân viên có phân ca phủ ngày xem. Xuất CSV ghi audit.</p>
       </Card>
 
       <ReportsTabs

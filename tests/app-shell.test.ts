@@ -43,7 +43,12 @@ describe("active + breadcrumb + public routes", () => {
   });
 
   it("findTrail trả nhóm + nhãn", () => {
-    expect(findTrail("/admin/shifts")).toEqual({ group: "Quản trị nhân sự", label: "Ca làm việc" });
+    // `short` là nhãn rút gọn cho breadcrumb trên mobile.
+    expect(findTrail("/admin/shifts")).toEqual({
+      group: "Quản trị nhân sự",
+      label: "Ca làm việc",
+      short: "Ca làm",
+    });
     expect(findTrail("/settings/profile")).toEqual({ group: "Hệ thống", label: "Tài khoản" });
     expect(findTrail("/nope")).toBeNull();
   });

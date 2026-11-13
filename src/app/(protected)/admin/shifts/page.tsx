@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { PageHeader } from "@/components/app/app-shell";
 import { requireRole } from "@/server/auth";
 import { createClient } from "@/lib/supabase/server";
 import { ShiftManager } from "@/features/hr/shift-manager";
@@ -6,8 +7,13 @@ import { LoadingState } from "@/components/ui/states";
 
 export default function ShiftsPage() {
   return (
-    <main className="page-shell flex flex-col gap-4">
-      <h1 className="text-2xl font-bold">Quản lý ca làm & phân ca</h1>
+    <main className="page-shell flex flex-col gap-6">
+      <PageHeader
+        eyebrow="Quản trị"
+        icon="clock"
+        title="Quản lý ca làm & phân ca"
+        description="Cấu hình ca làm việc, grace period, làm tròn và gán ca cho nhân viên."
+      />
       <Suspense fallback={<LoadingState message="Đang tải ca làm…" />}>
         <ShiftData />
       </Suspense>

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { buttonClassName } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import type { BadgeTone, TodayShift } from "./today-summary";
 
@@ -75,28 +75,20 @@ export function TodayHero({
   const identity = [employeeCode, department].filter(Boolean).join(" · ");
 
   const primaryAction = canCheckOut ? (
-    <Link href="/check-in" className="block">
-      <Button variant="inverse" size="lg" className="h-12 w-full text-[15px]">
-        <Icon name="logout" size={19} /> Chấm công ra
-      </Button>
+    <Link href="/check-in" className={buttonClassName({ variant: "inverse", size: "lg", className: "h-12 w-full text-[15px]" })}>
+      <Icon name="logout" size={19} /> Chấm công ra
     </Link>
   ) : canCheckIn ? (
-    <Link href="/check-in" className="block">
-      <Button variant="inverse" size="lg" className="h-12 w-full text-[15px]">
-        <Icon name="camera" size={19} /> Chấm công vào
-      </Button>
+    <Link href="/check-in" className={buttonClassName({ variant: "inverse", size: "lg", className: "h-12 w-full text-[15px]" })}>
+      <Icon name="camera" size={19} /> Chấm công vào
     </Link>
   ) : !hasEnrollment ? (
-    <Link href="/enrollment" className="block">
-      <Button variant="glass" size="lg" className="h-12 w-full text-[15px]">
-        <Icon name="scan-face" size={19} /> Đăng ký khuôn mặt
-      </Button>
+    <Link href="/enrollment" className={buttonClassName({ variant: "glass", size: "lg", className: "h-12 w-full text-[15px]" })}>
+      <Icon name="scan-face" size={19} /> Đăng ký khuôn mặt
     </Link>
   ) : (
-    <Link href="/history" className="block">
-      <Button variant="glass" size="lg" className="h-12 w-full text-[15px]">
-        <Icon name="clock" size={19} /> Xem lịch sử
-      </Button>
+    <Link href="/history" className={buttonClassName({ variant: "glass", size: "lg", className: "h-12 w-full text-[15px]" })}>
+      <Icon name="clock" size={19} /> Xem lịch sử
     </Link>
   );
 
@@ -176,10 +168,8 @@ export function TodayHero({
           <div className="mt-3 flex flex-col gap-2">
             {primaryAction}
             {canCheckOut || canCheckIn || !hasEnrollment ? (
-              <Link href="/history" className="block">
-                <Button variant="glass" size="md" className="w-full">
-                  <Icon name="clock" size={16} /> Xem lịch sử hôm nay
-                </Button>
+              <Link href="/history" className={buttonClassName({ variant: "glass", size: "md", className: "w-full" })}>
+                <Icon name="clock" size={16} /> Xem lịch sử hôm nay
               </Link>
             ) : null}
           </div>

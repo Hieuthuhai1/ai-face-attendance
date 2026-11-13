@@ -26,7 +26,7 @@ export function EmptyState({
       className={
         compact
           ? "flex flex-col items-center gap-1.5 px-4 py-8 text-center"
-          : "flex flex-col items-center gap-2 px-6 py-14 text-center"
+          : "flex flex-col items-center gap-2 px-6 py-12 text-center"
       }
     >
       <span

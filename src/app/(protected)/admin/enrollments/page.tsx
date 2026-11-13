@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { PageHeader } from "@/components/app/app-shell";
 import { requireRole } from "@/server/auth";
 import { createClient } from "@/lib/supabase/server";
 import { getProviderHealth } from "@/server/face";
@@ -12,8 +13,13 @@ export default function EnrollmentsAdminPage({
   searchParams: Promise<{ status?: string }>;
 }) {
   return (
-    <main className="page-shell flex flex-col gap-4">
-      <h1 className="text-2xl font-bold">Xác minh đăng ký khuôn mặt</h1>
+    <main className="page-shell flex flex-col gap-6">
+      <PageHeader
+        eyebrow="Quản trị"
+        icon="camera"
+        title="Xác minh đăng ký khuôn mặt"
+        description="Duyệt hoặc từ chối hồ sơ đăng ký khuôn mặt. Không hiển thị ảnh, template hay embedding."
+      />
       <Suspense fallback={<LoadingState message="Đang tải hàng đợi…" />}>
         <QueueData searchParams={searchParams} />
       </Suspense>

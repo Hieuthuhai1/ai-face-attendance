@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { PageHeader } from "@/components/app/app-shell";
 import { getProviderHealth } from "@/server/face/public";
 import { getEmployeeEnrollment } from "@/features/face-enrollment/actions";
 import { LoadingState } from "@/components/ui/states";
@@ -14,8 +15,13 @@ export default function EnrollForEmployeePage({
   params: Promise<{ id: string }>;
 }) {
   return (
-    <main className="page-shell-form flex flex-col gap-4">
-      <h1 className="text-2xl font-bold">Đăng ký khuôn mặt cho nhân viên</h1>
+    <main className="page-shell-form flex flex-col gap-6">
+      <PageHeader
+        eyebrow="Quản trị"
+        icon="scan-face"
+        title="Đăng ký khuôn mặt cho nhân viên"
+        description="Chụp mẫu khuôn mặt và xác minh chất lượng trước khi kích hoạt."
+      />
       <Suspense fallback={<LoadingState message="Đang tải trạng thái…" />}>
         <EnrollmentData params={params} />
       </Suspense>

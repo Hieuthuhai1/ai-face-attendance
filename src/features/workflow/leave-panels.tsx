@@ -11,6 +11,8 @@ import { Icon } from "@/components/ui/icon";
 import { Input, Textarea } from "@/components/ui/input";
 import { ErrorState } from "@/components/ui/states";
 import { createLeave, reviewLeave } from "@/features/workflow/actions";
+import { LEAVE_TYPES, leaveTypeLabel } from "@/features/workflow/leave-types";
+import { formatDateOnly } from "@/lib/datetime";
 import { toast } from "@/components/ui/toast";
 
 export interface LeaveRow {
@@ -21,18 +23,6 @@ export interface LeaveRow {
   reason: string | null;
   status: string;
   employee_code?: string;
-}
-
-const LEAVE_TYPES = [
-  { value: "annual", label: "Phép năm" },
-  { value: "sick", label: "Ốm đau" },
-  { value: "unpaid", label: "Nghỉ không lương" },
-  { value: "maternity", label: "Thai sản" },
-  { value: "other", label: "Khác" },
-] as const;
-
-function leaveTypeLabel(value: string) {
-  return LEAVE_TYPES.find((type) => type.value === value)?.label ?? value;
 }
 
 function leaveBadge(status: string) {
@@ -99,7 +89,9 @@ export function LeaveForm() {
       <form onSubmit={onSubmit} className="mt-4 flex flex-col gap-4">
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="flex flex-col gap-1.5 text-[13px] font-semibold text-[var(--text-2)]">
-            Loại nghỉ <span className="text-[var(--danger)]">*</span>
+            <span>
+              Loại nghỉ <span className="text-[var(--danger)]">*</span>
+            </span>
             <select
               name="leave_type"
               required
@@ -221,8 +213,8 @@ export function LeaveList({ rows, reviewable }: { rows: LeaveRow[]; reviewable: 
             key: "range",
             header: "Thời gian",
             render: (r: LeaveRow) => (
-              <span className="tnum text-[13px] text-[var(--text-2)]">
-                {r.start_date} <span aria-hidden="true" className="text-[var(--text-3)]">→</span> {r.end_date}
+              <span className="tnum whitespace-nowrap text-[13px] text-[var(--text-2)]">
+                {formatDateOnly(r.start_date)} <span aria-hidden="true" className="text-[var(--text-3)]">→</span> {formatDateOnly(r.end_date)}
               </span>
             ),
           },
@@ -236,11 +228,11 @@ export function LeaveList({ rows, reviewable }: { rows: LeaveRow[]; reviewable: 
               }]
             : []),
         ]}
-        cardTitle={(r) => `${leaveTypeLabel(r.leave_type)} · ${r.start_date}`}
+        cardTitle={(r) => `${leaveTypeLabel(r.leave_type)} · ${formatDateOnly(r.start_date)}`}
         cardStatus={(r) => leaveBadge(r.status)}
         cardMeta={(r) => (
           <span className="flex flex-col gap-1 text-[13px] text-[var(--text-2)]">
-            <span className="tnum">{r.start_date} → {r.end_date}</span>
+            <span className="tnum">{formatDateOnly(r.start_date)} → {formatDateOnly(r.end_date)}</span>
             {reviewable && r.employee_code ? <span>Nhân viên: {r.employee_code}</span> : null}
             {r.reason ? <span>Lý do: {r.reason}</span> : null}
           </span>

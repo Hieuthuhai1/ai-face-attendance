@@ -651,7 +651,9 @@ export function FaceVerificationRedesigned(props: FaceVerificationRedesignedProp
           <p>Ghi nhận kèm lý do sẽ được chuyển HR xác nhận. Không thay thế việc xác minh khuôn mặt khi camera hoạt động bình thường.</p>
         </div>
         <label className="flex flex-col gap-1.5 text-[13px] font-medium text-[var(--text-2)]">
-          Lý do <span className="text-[var(--danger)]">*</span>
+          <span>
+            Lý do <span className="text-[var(--danger)]">*</span>
+          </span>
           <textarea
             value={reason}
             onChange={(e) => setReason(e.target.value)}

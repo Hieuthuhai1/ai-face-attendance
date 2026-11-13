@@ -43,7 +43,7 @@ export function DataTable<T>(props: DataTableProps<T>) {
   if (rows.length === 0) {
     return (
       <div className="rounded-[var(--radius-card)] border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow-card)]">
-        <EmptyState title={emptyTitle} description={emptyDescription} />
+        <EmptyState title={emptyTitle} description={emptyDescription} compact />
       </div>
     );
   }

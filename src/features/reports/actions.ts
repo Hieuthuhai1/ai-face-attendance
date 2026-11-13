@@ -1,5 +1,6 @@
 "use server";
 
+import { cache } from "react";
 import { requireRole, requireUser } from "@/server/auth";
 import { createClient } from "@/lib/supabase/server";
 import { MAX_EXPORT_ROWS, monthRange, toCsv, validateRange } from "@/lib/reports/csv";
@@ -25,24 +26,27 @@ async function myEmployee(supabase: Db, userId: string) {
   return (data as { id: string; organization_id: string } | null) ?? null;
 }
 
-async function reportScope(
-  supabase: Db,
-  userId: string,
-  role: Role,
-  orgId: string,
-): Promise<Scope> {
-  const me = await myEmployee(supabase, userId);
-  if (role === "manager") {
-    const { data: team } = await supabase
-      .from("employees")
-      .select("id")
-      .eq("manager_id", me?.id ?? "");
-    const ids = ((team ?? []) as Array<{ id: string }>).map((t) => t.id);
-    if (me) ids.push(me.id);
-    return { orgId, employeeIds: ids, ownEmployeeId: me?.id ?? null };
-  }
-  return { orgId, employeeIds: null, ownEmployeeId: me?.id ?? null };
-}
+/**
+ * Phạm vi dữ liệu theo role. Bọc `cache()` để một request (trang reports gọi
+ * nhiều server action song song) chỉ query employee/team MỘT lần.
+ * Client Supabase được tạo bên trong để cache key chỉ gồm tham số ổn định.
+ */
+const reportScope = cache(
+  async (userId: string, role: Role, orgId: string): Promise<Scope> => {
+    const supabase = await createClient();
+    const me = await myEmployee(supabase, userId);
+    if (role === "manager") {
+      const { data: team } = await supabase
+        .from("employees")
+        .select("id")
+        .eq("manager_id", me?.id ?? "");
+      const ids = ((team ?? []) as Array<{ id: string }>).map((t) => t.id);
+      if (me) ids.push(me.id);
+      return { orgId, employeeIds: ids, ownEmployeeId: me?.id ?? null };
+    }
+    return { orgId, employeeIds: null, ownEmployeeId: me?.id ?? null };
+  },
+);
 
 // ============================ personal history ============================
 
@@ -345,7 +349,7 @@ export async function getDashboard(date: string): Promise<DashboardStats> {
   const { userId, profile } = await requireRole(REVIEW);
   const supabase = await createClient();
   const day = /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : new Date().toISOString().slice(0, 10);
-  const scope = await reportScope(supabase, userId, profile.role, profile.organization_id ?? "");
+  const scope = await reportScope(userId, profile.role, profile.organization_id ?? "");
 
   let empQuery = supabase
     .from("employees")
@@ -635,33 +639,37 @@ export async function getExceptions(scope: Scope, supabase: Db): Promise<Excepti
 
 export async function getTimeTrend(date: string, scope: Scope, supabase: Db): Promise<TimeTrendPoint[]> {
   const day = /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : new Date().toISOString().slice(0, 10);
-  const trend: TimeTrendPoint[] = [];
+  const empFilter = scope.employeeIds?.length ? scope.employeeIds : ["00000000-0000-0000-0000-000000000000"];
 
-  for (let hour = 0; hour < 24; hour++) {
-    const start = `${day}T${String(hour).padStart(2, "0")}:00:00`;
-    const end = `${day}T${String(hour).padStart(2, "0")}:59:59`;
+  // 24 khung giờ độc lập → chạy song song. Trước đây 48 query chạy tuần tự
+  // khiến trang báo cáo mất ~1s chỉ để dựng biểu đồ xu hướng.
+  return Promise.all(
+    Array.from({ length: 24 }, async (_, hour) => {
+      const start = `${day}T${String(hour).padStart(2, "0")}:00:00`;
+      const end = `${day}T${String(hour).padStart(2, "0")}:59:59`;
 
-    const { count: checkins } = await supabase
-      .from("attendance_events")
-      .select("id", { count: "exact", head: true })
-      .eq("organization_id", scope.orgId)
-      .in("employee_id", scope.employeeIds?.length ? scope.employeeIds : ["00000000-0000-0000-0000-000000000000"])
-      .eq("event_type", "check_in")
-      .gte("occurred_at", start)
-      .lte("occurred_at", end);
+      const [{ count: checkins }, { count: checkouts }] = await Promise.all([
+        supabase
+          .from("attendance_events")
+          .select("id", { count: "exact", head: true })
+          .eq("organization_id", scope.orgId)
+          .in("employee_id", empFilter)
+          .eq("event_type", "check_in")
+          .gte("occurred_at", start)
+          .lte("occurred_at", end),
+        supabase
+          .from("attendance_events")
+          .select("id", { count: "exact", head: true })
+          .eq("organization_id", scope.orgId)
+          .in("employee_id", empFilter)
+          .eq("event_type", "check_out")
+          .gte("occurred_at", start)
+          .lte("occurred_at", end),
+      ]);
 
-    const { count: checkouts } = await supabase
-      .from("attendance_events")
-      .select("id", { count: "exact", head: true })
-      .eq("organization_id", scope.orgId)
-      .in("employee_id", scope.employeeIds?.length ? scope.employeeIds : ["00000000-0000-0000-0000-000000000000"])
-      .eq("event_type", "check_out")
-      .gte("occurred_at", start)
-      .lte("occurred_at", end);
-
-    trend.push({ hour, checkins: checkins ?? 0, checkouts: checkouts ?? 0 });
-  }
-  return trend;
+      return { hour, checkins: checkins ?? 0, checkouts: checkouts ?? 0 };
+    }),
+  );
 }
 
 export async function getShiftDistribution(date: string, scope: Scope, supabase: Db): Promise<ShiftDistributionPoint[]> {
@@ -709,7 +717,7 @@ export async function getDepartmentAttendance(date: string, scope: Scope, supaba
 export async function getFullDashboardData(date: string): Promise<AnalyticsData> {
   const { userId, profile } = await requireRole(REVIEW);
   const supabase = await createClient();
-  const scope = await reportScope(supabase, userId, profile.role, profile.organization_id ?? "");
+  const scope = await reportScope(userId, profile.role, profile.organization_id ?? "");
 
   const [kpis, timeTrend, shiftDistribution, departmentAttendance, exceptions] = await Promise.all([
     getDashboardKPIs(date),
@@ -853,7 +861,7 @@ export async function getReport(filters: ReportFilters): Promise<{
   const v = validateRange(filters.from, filters.to);
   if (!v.ok) return { ok: false, message: v.message };
   const supabase = await createClient();
-  const scope = await reportScope(supabase, userId, profile.role, profile.organization_id ?? "");
+  const scope = await reportScope(userId, profile.role, profile.organization_id ?? "");
   // Manager không được xem NV ngoài team qua filter employeeId.
   if (profile.role === "manager" && filters.employeeId && !scope.employeeIds?.includes(filters.employeeId)) {
     return { ok: false, message: "Nhân viên nằm ngoài phạm vi quản lý của bạn." };
@@ -873,7 +881,7 @@ export async function exportCsv(filters: ReportFilters): Promise<
   const v = validateRange(filters.from, filters.to);
   if (!v.ok) return { ok: false, message: v.message };
   const supabase = await createClient();
-  const scope = await reportScope(supabase, userId, profile.role, profile.organization_id ?? "");
+  const scope = await reportScope(userId, profile.role, profile.organization_id ?? "");
   if (profile.role === "manager" && filters.employeeId && !scope.employeeIds?.includes(filters.employeeId)) {
     return { ok: false, message: "Nhân viên nằm ngoài phạm vi quản lý của bạn." };
   }
@@ -921,7 +929,7 @@ export async function getDepartmentSummary(filters: ReportFilters): Promise<{
   const v = validateRange(filters.from, filters.to);
   if (!v.ok) return { ok: false, message: v.message };
   const supabase = await createClient();
-  const scope = await reportScope(supabase, userId, profile.role, profile.organization_id ?? "");
+  const scope = await reportScope(userId, profile.role, profile.organization_id ?? "");
   if (profile.role === "manager" && filters.employeeId && !scope.employeeIds?.includes(filters.employeeId)) {
     return { ok: false, message: "Nhân viên nằm ngoài phạm vi quản lý của bạn." };
   }
@@ -995,7 +1003,7 @@ export async function getEmployeeSummary(filters: ReportFilters): Promise<{
   const v = validateRange(filters.from, filters.to);
   if (!v.ok) return { ok: false, message: v.message };
   const supabase = await createClient();
-  const scope = await reportScope(supabase, userId, profile.role, profile.organization_id ?? "");
+  const scope = await reportScope(userId, profile.role, profile.organization_id ?? "");
   if (profile.role === "manager" && filters.employeeId && !scope.employeeIds?.includes(filters.employeeId)) {
     return { ok: false, message: "Nhân viên nằm ngoài phạm vi quản lý của bạn." };
   }
@@ -1070,7 +1078,7 @@ export async function getLateEarlyReport(filters: ReportFilters): Promise<{
   const v = validateRange(filters.from, filters.to);
   if (!v.ok) return { ok: false, message: v.message };
   const supabase = await createClient();
-  const scope = await reportScope(supabase, userId, profile.role, profile.organization_id ?? "");
+  const scope = await reportScope(userId, profile.role, profile.organization_id ?? "");
   if (profile.role === "manager" && filters.employeeId && !scope.employeeIds?.includes(filters.employeeId)) {
     return { ok: false, message: "Nhân viên nằm ngoài phạm vi quản lý của bạn." };
   }
@@ -1129,7 +1137,7 @@ export async function getMissingCheckReport(filters: ReportFilters): Promise<{
   const v = validateRange(filters.from, filters.to);
   if (!v.ok) return { ok: false, message: v.message };
   const supabase = await createClient();
-  const scope = await reportScope(supabase, userId, profile.role, profile.organization_id ?? "");
+  const scope = await reportScope(userId, profile.role, profile.organization_id ?? "");
   if (profile.role === "manager" && filters.employeeId && !scope.employeeIds?.includes(filters.employeeId)) {
     return { ok: false, message: "Nhân viên nằm ngoài phạm vi quản lý của bạn." };
   }

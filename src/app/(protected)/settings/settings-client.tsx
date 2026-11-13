@@ -12,6 +12,7 @@ import { DataTable } from "@/components/ui/data-table";
 import { Modal } from "@/components/ui/modal";
 import { ConfirmModal } from "@/components/ui/modal";
 import { toast } from "@/components/ui/toast";
+import { PageHeader } from "@/components/app/app-shell";
 import { Tabs, TabPanel } from "@/components/ui/tabs";
 import { format } from "date-fns";
 import { vi } from "date-fns/locale";
@@ -296,7 +297,12 @@ export function SettingsClient() {
 
   return (
     <div className="page-shell flex flex-col gap-6">
-      <h1 className="text-2xl font-bold">Cài đặt tổ chức</h1>
+      <PageHeader
+        eyebrow="Hệ thống"
+        icon="settings"
+        title="Cài đặt tổ chức"
+        description="Cấu hình tổ chức, chính sách chấm công, nhận diện khuôn mặt, ngày lễ và phân quyền."
+      />
       <Tabs items={[
         { key: "organization", label: "Tổ chức", icon: <Icon name="building" size={15} /> },
         { key: "policies", label: "Chính sách chấm công", icon: <Icon name="file-text" size={15} /> },
