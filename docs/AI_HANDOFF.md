@@ -2304,9 +2304,18 @@ https://ai-face-attendance-zeta.vercel.app (`/login`: HTTP 200).
 1 SKIP, 0 FAIL** (biểu đồ dashboard/báo cáo vẫn render sau khi lazy-load).
 
 **Commit:** `perf: speed up page loads with request caching, fewer prefetches and lazy charts`
-— SHA `7800172`.
-**Deployment:** push `main`; Vercel Git integration build cho SHA `7800172`.
+— SHA `7800172`; `refactor(workflow): dùng chung danh mục loại nghỉ phép` — SHA `7daf105`
+(file `leave-types.ts` bị bỏ sót khi commit đầu nên Vercel build lỗi `Module not found`,
+đã bổ sung và deploy lại xanh).
+**Deployment:** Vercel Git integration báo `success` cho `7daf105` ở cả hai project
+(`timekeeping`, `ai-face-attendance`); alias https://ai-face-attendance-zeta.vercel.app
+(`/login`: HTTP 200). Đo trên production (sau khi warm): login 416ms, login→dashboard
+3.4s (chủ yếu round-trip Supabase Auth), điều hướng client `/reports` 443ms,
+`/history` 1.97s (cold function), `/dashboard` 402ms; biểu đồ dashboard render đủ 14
+svg, tab Phân tích của báo cáo render 3 biểu đồ.
 **Known issues:** các trang `/history`, `/approval` chênh ±50ms là nhiễu đo cục bộ
-(chạy lại cho kết quả khác nhau), không phải hồi quy.
+(chạy lại cho kết quả khác nhau), không phải hồi quy. Prefetch chỉ bật khi hover/focus
+nên lần điều hướng đầu tiên trên mobile (không có hover) có thể chậm hơn trước
+(không còn prefetch nền 10 route); đổi lại trang đầu tải nhanh hơn rõ rệt.
 
 
