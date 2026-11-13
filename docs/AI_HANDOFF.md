@@ -2252,3 +2252,61 @@ https://ai-face-attendance-zeta.vercel.app (`/login`: HTTP 200).
 - `PHASE_6_FINAL_SUMMARY.md` (bản nháp cũ, lỗi encoding) vẫn để untracked,
   không đưa vào commit.
 
+## Phase 39 - Tăng tốc tải trang (performance) (2026-11-13)
+
+**Nguyên nhân chậm (đo trên production build `next start -p 3100`, Supabase local):**
+- Sidebar + bottom-bar prefetch toàn bộ ~10 route ngay khi vào trang → **20 request
+  `_rsc`/lần mở trang** (mỗi route bị prefetch 2 lần, có cả `/reports` chạy
+  analytics nặng). Trình duyệt vừa tải trang vừa gánh 20 render server.
+- `requireUser()` bị gọi 8 lần song song trong một render dashboard (8 round-trip
+  `auth.getUser` + 8 query profile); `reportScope()` query employee/team ~9 lần.
+- `getDashboardKPIs` chạy **13 query tuần tự**; `getTimeTrend` (báo cáo) chạy
+  **48 query tuần tự** (24 giờ × check-in/check-out).
+- Chunk `recharts` (~404KB) nằm trong JS tải ở **mọi route**, không chỉ dashboard.
+
+**Thay đổi:**
+- `src/server/auth.ts` — `requireUser`/`requireRole` bọc `cache()` của React:
+  mỗi request chỉ xác thực + đọc profile **một lần**.
+- `src/features/dashboard/actions.ts` — `reportScope` bọc `cache()` (tự tạo
+  Supabase client bên trong để cache key chỉ gồm tham số ổn định); 12 query KPI
+  chạy song song bằng `Promise.all` sau khi có danh sách nhân viên.
+- `src/features/reports/actions.ts` — `reportScope` dùng chung cache; 48 query
+  xu hướng theo giờ chạy song song.
+- `src/features/dashboard/charts-lazy.tsx` (mới) — 7 biểu đồ dashboard chuyển
+  sang `next/dynamic` + `ssr: false` kèm skeleton đúng chiều cao (không nhảy layout);
+  recharts chỉ tải khi thực sự vẽ biểu đồ.
+- `src/components/app/app-shell.tsx` — link điều hướng `prefetch={false}` (không
+  prefetch khi vào viewport), chỉ `router.prefetch(href)` khi hover/focus; logo và
+  breadcrumb dashboard cũng tắt prefetch. Điều hướng bằng chuột vẫn nhanh, trang
+  đầu không còn gánh 20 render nền.
+- `next.config.ts` — `experimental.staleTimes` (`dynamic: 15`, `static: 300`) để
+  client cache RSC payload thay vì round-trip lại mỗi lần.
+- `tests/app-shell.test.ts` — cập nhật kỳ vọng `findTrail` có `short` (nhãn
+  breadcrumb mobile thêm ở Phase 38).
+
+**Kết quả đo (cùng máy, local Supabase, warm):**
+
+| Trang | Load trước | Load sau | JS trước | JS sau |
+| --- | --- | --- | --- | --- |
+| `/dashboard` | 1034ms | **671ms** | 308KB | **185KB** |
+| `/reports` | 1465ms | **548ms** | 419KB | **193KB** |
+| `/check-in` | 402ms | 288ms | 203KB | 203KB |
+| `/admin/employees` | 359ms | 257ms | 228KB | 228KB |
+| `/audit` | 331ms | 282ms | 189KB | 189KB |
+| `/history` | 324ms | 378ms | 186KB | 186KB |
+
+- Request `_rsc` khi mở một trang: **20 → 0** (chỉ còn khi hover/focus link).
+- Điều hướng client-side (click sidebar): 61–183ms.
+
+**Kiểm tra:** `npm run typecheck` ✅ · `npm test` ✅ 149 pass / 17 skip ·
+`npm run build` ✅ 28 route · audit 95 tổ hợp (19 route × 5 width): 0 tràn ngang,
+0 console/page error, 0 màu < 4.5:1, 0 tap target lỗi · functional: **22 PASS,
+1 SKIP, 0 FAIL** (biểu đồ dashboard/báo cáo vẫn render sau khi lazy-load).
+
+**Commit:** `perf: speed up page loads with request caching, fewer prefetches and lazy charts`
+— SHA `7800172`.
+**Deployment:** push `main`; Vercel Git integration build cho SHA `7800172`.
+**Known issues:** các trang `/history`, `/approval` chênh ±50ms là nhiễu đo cục bộ
+(chạy lại cho kết quả khác nhau), không phải hồi quy.
+
+
